@@ -104,16 +104,20 @@ The manifest is validated against `ExtensionManifestSchema`:
 
 ---
 
-## 5. Process-Level Isolation & Capability-Based API
+## 5. OS-Level Sandboxing & Capability-Based API (Extension Security 2.0)
 
-Third-party extensions execute **exclusively inside an isolated child process** (`ExtensionHostManager`). Node.js `node:vm` has been removed as a security boundary.
+Third-party extensions execute **exclusively inside an operating-system and runtime-sandboxed child process** (`ExtensionHostManager`). Node.js `node:vm` has been completely eliminated as a security boundary, and child processes are constrained by the Node.js Permission Model and OS-level enforcement.
 
-### 5.1 Architecture & Security Properties
-- **Separate OS Process**: Extension scripts run in a dedicated Node.js child process with its own PID and separate memory space.
+### 5.1 Architecture & Runtime Sandboxing Properties
+- **Node.js Permission Model Enforcement (`--permission`)**: Extension host processes are launched with Node runtime permission flags. Node denies `require('child_process')`, `require('worker_threads')`, native `.node` C++ binary addons, and WASI directly at the engine level.
+- **Strict Filesystem Whitelisting**: Filesystem access is locked at the runtime layer using `--allow-fs-read` and `--allow-fs-write`. Extensions can only read/write their own installation directory and dedicated isolated storage folder (`~/.ai-workspace-data/extensions/<id>/.storage`). Direct Node `fs` calls targeting the workspace or application files (`data/app.db`) are blocked with `ERR_ACCESS_DENIED`. All workspace access must occur via `context.workspace` capability APIs mediated by the Main process.
+- **Network Prototype Interception & Air-Gap Defense**: The worker process traps and freezes `net.Socket.prototype.connect`, `dgram.Socket.prototype.send`, global `fetch`, and `WebSocket`. Unpermitted raw sockets, SSRF attempts to private networks (`10.*`, `192.168.*`, `172.16-31.*`, `169.254.169.254`), and local loopback access (`127.0.0.1`, `localhost`) are denied. In Air-Gap Mode, all outbound traffic is dropped.
+- **Resource Quotas & Concurrency Limits**: Memory is capped at 128MB per host (`--max-old-space-size=128`), maximum concurrent active hosts is capped at 5 (`MAX_CONCURRENT_HOSTS = 5`), and IPC frame sizes are strictly enforced at a 5MB maximum to prevent memory exhaustion attacks.
+- **Process Tree Cleanup**: Extension host shutdown uses `taskkill /F /T /PID` on Windows and process group `SIGKILL` on Unix to ensure all spawned descendants are reliably cleaned up.
+- **Graceful Degradation & Untrusted Extensions**: Built-in, vetted extensions are permitted. Third-party extensions on platforms without sandboxing support are blocked by default unless explicitly configured by the user with security warnings.
 - **Environment Sanitization**: All host credentials, API keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`), tokens, and database secrets are purged from the child process environment before launch.
-- **No Direct Privileges**: The child process receives zero direct handles to Electron APIs, SQLite databases, or the host filesystem.
 - **Strict Capability RPC**: All interactions with the workspace and host application must route through structured, validated RPC messages to the trusted Main process.
-- **Crash & Hang Resilience**: If an extension process crashes (`process.exit`) or hangs in an infinite loop, the Main process traps the event, triggers a deterministic timeout, force-terminates the rogue host (`SIGKILL`), and logs an audit security event without crashing or freezing the application.
+- **Crash & Hang Resilience**: If an extension process crashes (`process.exit`) or hangs in an infinite loop, the Main process traps the event, triggers a deterministic timeout, force-terminates the rogue host tree, and logs an audit security event without crashing or freezing the application.
 
 ### 5.2 Capability Namespaces (`ExtensionContext`)
 

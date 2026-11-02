@@ -56,6 +56,115 @@ class ExtensionHostWorker {
     }
   }
 
+  installNetworkSandbox(permissions, airGapEnabled) {
+    const allowExternal = permissions && permissions.network && permissions.network.allowExternal === true && !airGapEnabled;
+    const allowedHosts = (permissions && permissions.network && permissions.network.allowedHosts) || [];
+
+    const checkHostAllowed = (targetHost, port) => {
+      if (!allowExternal) {
+        const msg = airGapEnabled
+          ? 'Network access is strictly forbidden by active Air-Gap isolation mode.'
+          : 'Network access has not been granted by extension permissions.';
+        const err = new Error(msg);
+        err.code = 'ERR_ACCESS_DENIED';
+        throw err;
+      }
+
+      const hostStr = String(targetHost || '').toLowerCase();
+
+      // Block local loopback and sensitive cloud metadata
+      const blockedAddresses = ['localhost', '127.0.0.1', '::1', '0.0.0.0', '169.254.169.254'];
+      if (blockedAddresses.includes(hostStr) || blockedAddresses.some((b) => hostStr.startsWith(b))) {
+        const err = new Error(`Access to local/private network target "${hostStr}" is blocked by Extension Host security policy.`);
+        err.code = 'ERR_ACCESS_DENIED';
+        throw err;
+      }
+
+      // Block private RFC1918 subnets
+      if (
+        /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostStr) ||
+        /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostStr) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostStr)
+      ) {
+        const err = new Error(`Access to private network address "${hostStr}" is blocked by Extension Host security policy.`);
+        err.code = 'ERR_ACCESS_DENIED';
+        throw err;
+      }
+
+      // Check manifest allowedHosts whitelist if specified
+      if (allowedHosts.length > 0) {
+        const matched = allowedHosts.some((h) => {
+          const lowerH = h.toLowerCase();
+          return hostStr === lowerH || hostStr.endsWith('.' + lowerH);
+        });
+        if (!matched) {
+          const err = new Error(`Target host "${hostStr}" is not in the extension manifest allowedHosts list.`);
+          err.code = 'ERR_ACCESS_DENIED';
+          throw err;
+        }
+      }
+    };
+
+    try {
+      const net = require('node:net');
+      const originalConnect = net.Socket.prototype.connect;
+      net.Socket.prototype.connect = function (...args) {
+        let host = 'localhost';
+        let port = 0;
+        if (typeof args[0] === 'object' && args[0] !== null) {
+          host = args[0].host || 'localhost';
+          port = args[0].port || 0;
+        } else if (typeof args[0] === 'number') {
+          port = args[0];
+          if (typeof args[1] === 'string') host = args[1];
+        }
+        checkHostAllowed(host, port);
+        return originalConnect.apply(this, args);
+      };
+
+      const dgram = require('node:dgram');
+      const originalSend = dgram.Socket.prototype.send;
+      dgram.Socket.prototype.send = function (...args) {
+        const address = typeof args[args.length - 2] === 'string' ? args[args.length - 2] : '0.0.0.0';
+        checkHostAllowed(address, 0);
+        return originalSend.apply(this, args);
+      };
+
+      if (typeof globalThis.fetch === 'function') {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = function (resource, init) {
+          try {
+            const urlStr =
+              typeof resource === 'string'
+                ? resource
+                : resource instanceof URL
+                ? resource.toString()
+                : resource.url;
+            const parsed = new URL(urlStr);
+            checkHostAllowed(parsed.hostname, Number(parsed.port) || (parsed.protocol === 'https:' ? 443 : 80));
+          } catch (e) {
+            return Promise.reject(e);
+          }
+          return originalFetch.call(this, resource, init);
+        };
+      }
+
+      if (typeof globalThis.WebSocket === 'function') {
+        const OriginalWebSocket = globalThis.WebSocket;
+        globalThis.WebSocket = function (url, protocols) {
+          const parsed = new URL(url);
+          checkHostAllowed(parsed.hostname, Number(parsed.port) || 80);
+          return new OriginalWebSocket(url, protocols);
+        };
+      }
+
+      Object.freeze(net.Socket.prototype);
+      Object.freeze(dgram.Socket.prototype);
+    } catch {
+      // Ignore hooking errors if already initialized
+    }
+  }
+
   requestCapability(capability, args) {
     return new Promise((resolve, reject) => {
       const id = `cap_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -153,6 +262,23 @@ class ExtensionHostWorker {
   async handleMessage(message) {
     const { id, type, payload, extensionId } = message;
 
+    // Enforce RPC message size limit (5MB maximum)
+    const MAX_RPC_MESSAGE_BYTES = 5 * 1024 * 1024;
+    try {
+      const payloadLen = payload ? JSON.stringify(payload).length : 0;
+      if (payloadLen > MAX_RPC_MESSAGE_BYTES) {
+        this.send({
+          id: id || 'error',
+          type: 'ERROR',
+          extensionId: extensionId || this.currentExtensionId,
+          error: `RPC payload exceeds 5MB limit (${payloadLen} bytes)`
+        });
+        return;
+      }
+    } catch {
+      // Ignore stringify error
+    }
+
     switch (type) {
       case 'PING': {
         this.send({ id, type: 'PONG', extensionId });
@@ -174,8 +300,11 @@ class ExtensionHostWorker {
 
       case 'ACTIVATE': {
         this.currentExtensionId = extensionId;
-        const { entryPath, installPath, permissions, workspacePath } = payload;
+        const { entryPath, installPath, permissions, workspacePath, airGapEnabled } = payload;
         const storagePath = path.join(installPath, '.storage');
+
+        // Apply strict network sandbox policy before loading any extension code
+        this.installNetworkSandbox(permissions || {}, airGapEnabled === true);
 
         const context = this.createExtensionContext(
           extensionId,

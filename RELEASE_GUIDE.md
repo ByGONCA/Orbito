@@ -37,7 +37,7 @@ npm run postinstall
 # 3. Static type check across Main, Preload, and Renderer codebases
 npm run typecheck
 
-# 4. Execute the comprehensive automated test suite (38 test suites, 209 tests)
+# 4. Execute the comprehensive automated test suite (43 test suites, 267 tests)
 npm test
 
 # 5. Compile production assets with electron-vite
@@ -171,5 +171,15 @@ Before releasing a new version binary, perform this verification checklist on a 
 3. **Provider Detection:** Navigate to Settings / Providers. Verify installed CLIs (`claude`, `codex`, `gemini`, `ollama`) report accurate status (`ready`, `not_installed`, or `authentication_required`).
 4. **Air-Gap Activation:** Toggle Air-Gap mode ON in Settings. Verify that cloud providers seamlessly reroute to local Ollama.
 5. **Workflow Execution:** Open Flow Builder, select a template (e.g. "PR Review Pipeline"), and click "Run Workflow". Verify node execution events update in real time.
-6. **Extension Isolation:** Install or enable a third-party extension. Verify in OS process list that the extension executes in its own isolated child process with sanitized environment variables, and terminates cleanly when toggled off.
+6. **Extension OS-Level Sandboxing (Security 2.0):** Install or enable a third-party extension. Verify in OS process list that the extension executes in an isolated child process launched with `--permission` and memory limits (`--max-old-space-size=128`), and with blocked raw network sockets and loopback access. Verify that toggling the extension OFF terminates the entire process tree cleanly (`taskkill /F /T` on Windows or process group kill on Unix).
 7. **Clean Exit:** Close window and verify all background processes and extension hosts terminate cleanly without dangling Node.js processes in task manager.
+
+---
+
+## 7. Extension Sandboxing & Platform Isolation Notes
+
+AI Workspace enforces **Extension Security 2.0: OS-Level Sandboxing** on all third-party extension hosts:
+- **Node.js Permission Model:** Supported out of the box in Node.js v20+. Restricts native subprocess execution (`require('child_process')`), `require('worker_threads')`, native C++ `.node` addons, and confines filesystem access strictly to the extension's folder and `.storage` directory.
+- **Linux Sandboxing:** Supports unprivileged `bwrap` (Bubblewrap) when available on the host system to enforce namespace-level isolation.
+- **macOS Sandboxing:** Supports `sandbox-exec` profile containment on compatible macOS versions.
+- **Graceful Degradation:** Built-in extensions are permitted by default. Untrusted third-party extensions are blocked on platforms without sandboxing capabilities unless the user explicitly overrides the restriction in settings with acknowledged security warnings.

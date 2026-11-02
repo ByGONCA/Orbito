@@ -10,6 +10,7 @@ import { registerCustomNode, unregisterCustomNode } from '../../shared/node-regi
 import { skillRegistry } from '../skills/skill-registry';
 import { auditService } from '../services/audit.service';
 import { airGapManager } from '../services/air-gap.manager';
+import { osSandboxPolicy } from './sandbox/os-sandbox-policy';
 
 interface ExtensionHostInstance {
   extensionId: string;
@@ -25,6 +26,7 @@ export class ExtensionHostManager {
   private static instance: ExtensionHostManager;
   private hosts = new Map<string, ExtensionHostInstance>();
   private workerScriptPath: string;
+  public static readonly MAX_CONCURRENT_HOSTS = 5;
 
   public constructor() {
     // Resolve extension-host.worker.cjs
@@ -116,6 +118,36 @@ export class ExtensionHostManager {
       return;
     }
 
+    // Check concurrency limit
+    if (this.hosts.size >= ExtensionHostManager.MAX_CONCURRENT_HOSTS && !this.hosts.has(id)) {
+      const err = `Maximum concurrent extension host limit reached (${ExtensionHostManager.MAX_CONCURRENT_HOSTS}). Please deactivate unused extensions.`;
+      auditService.logSecurityViolation(id, 'extension_concurrency_limit', err);
+      throw new Error(err);
+    }
+
+    // Check platform sandboxing capability and graceful degradation
+    const sandboxCheck = osSandboxPolicy.canExecuteUntrusted(record);
+    if (!sandboxCheck.allowed) {
+      auditService.logSecurityViolation(
+        id,
+        'extension_sandbox_unsupported',
+        sandboxCheck.reason || 'OS sandboxing unsupported'
+      );
+      throw new Error(sandboxCheck.reason);
+    }
+
+    if (sandboxCheck.warning) {
+      auditService.log({
+        eventType: 'extension_security_warning',
+        severity: 'warning',
+        actor: id,
+        action: 'unsandboxed_override',
+        details: { warning: sandboxCheck.warning }
+      });
+    }
+
+    record.sandboxMode = sandboxCheck.sandboxMode;
+
     const entryPath = path.resolve(installPath, manifest.main);
     const normalizedEntry = path.normalize(entryPath);
     const normalizedInstall = path.normalize(installPath);
@@ -132,12 +164,24 @@ export class ExtensionHostManager {
     }
 
     const env = this.buildSanitizedEnv(id, installPath);
+    const storagePath = path.join(installPath, '.storage');
 
-    // Spawn child process with restricted args
+    // Build OS/runtime sandboxing arguments (Node Permission Model + memory cap)
+    const execArgv = osSandboxPolicy.buildSandboxExecArgs({
+      installPath,
+      workerScriptPath: this.workerScriptPath,
+      storagePath,
+      workspacePath,
+      permissions: manifest.permissions,
+      airGapEnabled: airGapManager.isAirGapEnabled(),
+      maxMemoryMb: 128
+    });
+
+    // Spawn child process with OS/runtime permission boundaries
     const child = fork(this.workerScriptPath, [], {
       env,
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-      execArgv: ['--disallow-code-generation-from-strings']
+      execArgv
     });
 
     const instance: ExtensionHostInstance = {
@@ -163,7 +207,8 @@ export class ExtensionHostManager {
           entryPath,
           installPath,
           permissions: manifest.permissions || {},
-          workspacePath
+          workspacePath,
+          airGapEnabled: airGapManager.isAirGapEnabled()
         },
         timeoutMs
       );
@@ -618,17 +663,15 @@ export class ExtensionHostManager {
     }
 
     try {
-      if (!host.process.killed) {
-        host.process.kill('SIGTERM');
-        // Force kill after 500ms if not exited
-        setTimeout(() => {
-          if (!host.process.killed) {
-            host.process.kill('SIGKILL');
-          }
-        }, 500);
+      if (host.process.pid && !host.process.killed) {
+        await osSandboxPolicy.terminateProcessTree(host.process.pid);
       }
     } catch {
-      // Ignore process termination errors
+      try {
+        host.process.kill('SIGKILL');
+      } catch {
+        // Ignore kill errors
+      }
     }
 
     this.hosts.delete(extensionId);

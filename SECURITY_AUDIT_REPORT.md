@@ -60,31 +60,36 @@ The initial sandbox implementation attempted to restrict untrusted third-party e
 
 Running untrusted code in `node:vm` inside the Main Electron process allows sandbox escapes via prototype chain traversal (e.g. `this.constructor.constructor('return process')()`), exposing the underlying `process` object and allowing arbitrary native module loading (`child_process`, `fs`, `electron`), credential theft, or application crashes.
 
-### 2.2 Implemented Process-Level Isolation Architecture
-`node:vm` was **completely removed** as a security boundary. Extension scripts now execute exclusively inside an isolated OS child process managed by `ExtensionHostManager` (`src/main/extensions/extension-host-manager.ts`):
+### 2.2 Implemented OS-Level Sandboxing Architecture (Extension Security 2.0)
+`node:vm` was **completely removed** as a security boundary. Extension scripts now execute exclusively inside an isolated OS child process managed by `ExtensionHostManager` (`src/main/extensions/extension-host-manager.ts`) and governed by `OSSandboxPolicy` (`src/main/extensions/sandbox/os-sandbox-policy.ts`):
 
-1. **OS Process Boundary:**
-   - Extensions execute inside a dedicated child process spawned with `child_process.fork()` and `--disallow-code-generation-from-strings`.
-   - The process has its own OS PID, separate V8 isolate, and isolated heap. Memory manipulation in the child process has zero impact on the trusted Main Electron process.
-2. **Aggressive Environment Sanitization:**
+1. **OS Process Boundary & Node.js Permission Model:**
+   - Extensions execute inside a dedicated child process spawned with `child_process.fork()` and `--permission`.
+   - **Subprocess Denial:** `--allow-child-process` is omitted, denying `require('child_process')`, `fork()`, `spawn()`, and `exec()` system calls with `ERR_ACCESS_DENIED`.
+   - **Worker Thread Denial:** `--allow-worker` is omitted, blocking background worker thread creation with `ERR_ACCESS_DENIED`.
+   - **Native Addon Denial:** `--allow-addons` is omitted, preventing extensions from loading compiled C++ `.node` binaries via dlopen.
+2. **OS Filesystem Sandboxing:**
+   - Strict whitelists are enforced at runtime via `--allow-fs-read` and `--allow-fs-write`:
+     - Read-only access to worker script directory and extension install directory.
+     - Write access strictly to the extension's dedicated `.storage` directory.
+     - Workspace read/write granted only when explicitly declared in manifest permissions.
+     - Direct `fs.readFileSync` calls to unauthorized paths (`~/.ssh`, `data/app.db`, parent directories) throw `ERR_ACCESS_DENIED`.
+3. **Network Prototype Interception & Air-Gap Enforcement:**
+   - Socket (`net`), Datagram (`dgram`), and `fetch` constructors are intercepted and frozen before third-party code loads.
+   - Connections to local loopback (`127.0.0.1`, `localhost`, `::1`) and private RFC1918 subnets are unconditionally blocked, preventing local port scanning or daemon hijacking.
+   - If Air-Gap mode is active, all network sockets are unconditionally rejected with `ERR_ACCESS_DENIED`.
+4. **Physical Resource Limits & Process Tree Cleanup:**
+   - Maximum V8 heap memory is constrained to 128 MB via `--max-old-space-size=128`. Runaway memory consumption terminates only that extension host process without affecting the Main application.
+   - Maximum 5 concurrent extension host processes (`MAX_CONCURRENT_HOSTS = 5`).
+   - Max 5 MB per RPC payload frame.
+   - On Windows, `taskkill.exe /F /T /PID` terminates the process and all spawned descendants, preventing orphaned processes. On Unix, negative PID process groups are killed.
+5. **Graceful Degradation for Untrusted Hosts:**
+   - If Node.js Permission Model or OS sandboxing is unavailable on the host, untrusted third-party extensions are **disabled by default**. Built-in trusted extensions continue to operate.
+6. **Narrow Capability-Based RPC API & Environment Sanitization:**
    - Before spawning the child process, all host credentials, API keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`), tokens, database credentials, and secrets are stripped from the environment.
-   - Essential system paths (`PATH`, `SYSTEMROOT`, `TEMP`) are preserved, and Air-Gap proxy isolation is applied.
-3. **Narrow Capability-Based RPC API:**
-   - The child process receives zero direct handles to Electron APIs, SQLite databases, or the host filesystem.
-   - All operations are mediated via structured RPC messages:
-     - `workspace.readFile(relativePath)` / `workspace.writeFile(relativePath, content)` / `workspace.listFiles(relativePath)`
-     - `storage.get(key)` / `storage.set(key, value)` / `storage.delete(key)`
-     - `workflow.registerNode(nodeDefinition)`
-     - `skills.register(skillDefinition)`
-     - `notifications.show(message, type)`
-4. **Strict Server-Side Validation:**
-   - Every capability invocation is authorized on the trusted Main process against the extension's declared manifest permissions.
-   - All filesystem operations are verified against active workspace directory boundaries using `fs.realpathSync`. Path traversal attempts (e.g. `../super-secret.key`, `../../app.sqlite`) are intercepted, blocked, and recorded as high-severity security violations.
-5. **Crash & Hang Resilience:**
-   - If an extension child process crashes (`process.exit(1)`) or encounters an unhandled exception, the Main process traps the event, updates the extension status to `'error'`, and continues running without interruption.
-   - If an extension hangs in an infinite loop, a deterministic timeout (8–10s) triggers forceful process termination (`SIGKILL`).
-6. **Adversarial Verification:**
-   - Verified via [`tests/extension-security-isolation.test.ts`](file:///C:/Users/gonca/Documents/coding/Projects/Orc/tests/extension-security-isolation.test.ts) (9 passing adversarial test suites covering memory isolation, environment sanitization, path traversal, write protection, permission escalation, DoS hang recovery, and declarative custom node execution).
+   - All capabilities are mediated via validated JSON-RPC and authorized on the trusted Main process.
+7. **Adversarial Verification:**
+   - Verified via [`tests/extension-os-sandboxing.test.ts`](file:///C:/Users/gonca/Documents/coding/Projects/Orc/tests/extension-os-sandboxing.test.ts) (13 adversarial tests covering subprocess denial, worker thread denial, fs read/write restrictions, outbound TCP denial, loopback probing, Air-Gap override, resource quotas, and graceful degradation) and [`tests/extension-security-isolation.test.ts`](file:///C:/Users/gonca/Documents/coding/Projects/Orc/tests/extension-security-isolation.test.ts) (9 tests). All 22 extension security tests pass 100%.
 
 ---
 

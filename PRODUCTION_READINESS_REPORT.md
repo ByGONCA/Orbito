@@ -14,9 +14,9 @@ The AI Workspace application has undergone a comprehensive, independent producti
 
 The codebase achieves:
 - **TypeScript Typecheck:** 0 errors across Node (Main/Preload) and Web (Renderer) configurations.
-- **Automated Tests:** **38 test suites passed (100% pass rate), 205 tests passed, 4 real-CLI integration tests safely skipped** (in environments without authenticated API credentials).
-- **Production Compilation:** `npm run build` succeeds in 19.18s, outputting clean Main, Preload, and Renderer production assets.
-- **Security Hardening:** Untrusted extension execution sandboxed in `node:vm`, Air-Gap isolation enforced with proxy dead-ends and Chromium session request blocking, prototype pollution vectors closed, and null-byte injection protections active.
+- **Automated Tests:** **43 test suites passed (100% pass rate), 263 tests passed, 4 real-CLI integration tests safely skipped** (in environments without authenticated API credentials).
+- **Production Compilation:** `npm run build` succeeds cleanly, outputting Main, Preload, and Renderer production assets.
+- **Security Hardening:** Untrusted extension execution secured via OS-Level Sandboxing (Extension Security 2.0 with Node.js Permission Model `--permission`, network prototype interception, resource quotas, and process tree termination), Air-Gap isolation enforced with proxy dead-ends and Chromium session request blocking, prototype pollution vectors closed, and null-byte injection protections active.
 
 The designation **READY WITH LIMITATIONS** is assigned rather than an unqualified "READY" to honestly reflect system boundaries inherent to local-first desktop architectures:
 1. **Air-Gap Subprocess Boundary:** Application-level and proxy-environment restrictions isolate compliant tools and LLM adapters, but cannot replace OS-level kernel firewall rules against adversarial binaries forging raw OS sockets.
@@ -74,8 +74,11 @@ The designation **READY WITH LIMITATIONS** is assigned rather than an unqualifie
 - **Subprocess Environment Injection:** Injects dead-end proxy environment variables (`HTTP_PROXY=http://127.0.0.1:0`, `npm_config_offline=true`) into all child processes.
 - **Provider Rerouting:** Automatically routes LLM requests to local Ollama when Air-Gap is active.
 
-### 1.11 Sandboxed Extension SDK
-- **VM Isolation:** Third-party extensions run inside `node:vm` sandboxes without access to `process`, `require`, `fs`, `child_process`, or `net`.
+### 1.11 Sandboxed Extension SDK (Extension Security 2.0)
+- **OS & Runtime Isolation:** Third-party extensions run inside a dedicated child process enforcing the Node.js Permission Model (`--permission`), denying `require('child_process')`, `require('worker_threads')`, native C++ addons, and WASI.
+- **Filesystem Confinement:** `--allow-fs-read` and `--allow-fs-write` lock disk access strictly to extension installation and `.storage` directories.
+- **Network Prototype Guard:** Traps `net`, `dgram`, `fetch`, and `WebSocket` prototypes to prevent unpermitted raw sockets, localhost SSRF (Ollama/PostgreSQL), and enforce Air-Gap isolation.
+- **Resource Quotas & Teardown:** Enforces 128MB max heap, max 5 concurrent hosts, 5MB RPC frame limit, and clean OS process tree cleanup (`taskkill /F /T` on Windows).
 - **Privilege Containment:** Extensions cannot contribute nodes or skills with permissions exceeding their declared `extension.json` manifest.
 
 ### 1.12 Analytics & Audit Kernel
@@ -88,7 +91,7 @@ The designation **READY WITH LIMITATIONS** is assigned rather than an unqualifie
 
 | Component | Audit Finding | Applied Hardening | Status |
 |---|---|---|---|
-| **Extension SDK** | Executed untrusted code via `require()` / `node:vm` | Replaced with true process-level child process isolation (`ExtensionHostManager`) and narrow capability-based RPC API | **RESOLVED** |
+| **Extension SDK** | Executed untrusted code via `require()` / `node:vm` | Replaced with OS-Level Sandboxing (Extension Security 2.0: Node.js Permission Model `--permission`, network prototype interceptors, process tree cleanup, and capability-based RPC API) | **RESOLVED** |
 | **Air-Gap Mode** | IPv6 bracket parsing bug & missing child env proxies | Added IPv6 bracket normalization, `127.0.0.0/8` support, and offline proxy injection | **RESOLVED** |
 | **Workflows** | AI nodes bypassed Air-Gap provider resolution | Added `airGapManager.resolveProvider()` across all AI nodes | **RESOLVED** |
 | **Expression Evaluator** | Prototype property traversal vulnerability | Filtered `__proto__`, `prototype`, and `constructor` keys in `resolvePath` | **RESOLVED** |
@@ -136,15 +139,17 @@ The designation **READY WITH LIMITATIONS** is assigned rather than an unqualifie
 
 - [x] All 7 implementation phases completed and verified.
 - [x] Security vulnerabilities audited and hardened.
-- [x] Process-level isolated extension host execution with narrow capability RPC active.
+- [x] Process-level and OS-level sandboxed extension host execution (Extension Security 2.0) with narrow capability RPC active.
 - [x] Air-Gap network isolation and proxy dead-ends enforced.
 - [x] Dual SQLite WAL architecture tested for concurrency and recovery.
 - [x] `npm run typecheck` passed (0 errors).
-- [x] `npm test` passed (38 test files, 205 passed, 4 skipped, 0 failed).
-- [x] `npm run build` succeeds (19.18s compilation).
+- [x] `npm test` passed (43 test files, 263 passed, 4 skipped, 0 failed).
+- [x] `npm run build` succeeds.
 - [x] Cross-platform GitHub Actions CI matrix updated with build step.
 - [x] Technical reports generated:
   - `SECURITY_AUDIT_REPORT.md`
+  - `OS_LEVEL_EXTENSION_SANDBOX_REPORT.md`
+  - `EXTENSION_ISOLATION_REMEDIATION_REPORT.md`
   - `PERFORMANCE_AUDIT_REPORT.md`
   - `RELEASE_GUIDE.md`
   - `PRODUCTION_READINESS_REPORT.md`

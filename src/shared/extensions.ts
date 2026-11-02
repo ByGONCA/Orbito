@@ -73,6 +73,8 @@ export interface ExtensionRecord {
   errorMessage?: string;
   createdAt: number;
   updatedAt: number;
+  isBuiltIn?: boolean;
+  sandboxMode?: string;
 }
 
 export interface WorkspaceCapability {
