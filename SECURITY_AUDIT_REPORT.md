@@ -52,22 +52,39 @@ The loopback allowlist parser was hardened against URL parsing anomalies and alt
 
 ---
 
-## 2. Extension SDK & Untrusted Code Execution
+## 2. Extension SDK & Untrusted Code Execution Boundary
 
-### 2.1 Initial Vulnerability Finding
-In the initial Phase 7 implementation, `ExtensionLoader.activateExtension()` loaded `manifest.main` directly using Node's native `require(entryPath)`. This allowed third-party extensions to execute arbitrary code with full Electron Main process privileges, giving untrusted scripts immediate access to `child_process`, `fs`, `process`, and native C++ modules.
+### 2.1 Critical Vulnerability Finding: Insecurity of node:vm
+The initial sandbox implementation attempted to restrict untrusted third-party extension scripts inside Node's native `node:vm` context. However, official Node.js security advisories unequivocally state:
+> *"The node:vm module is not a security mechanism. Do not use it to run untrusted code."*
 
-### 2.2 Implemented Sandboxing Architecture
-`src/main/extensions/extension-loader.ts` was refactored to isolate all extension script execution within an unprivileged `node:vm` sandbox:
-1. **Sandbox Context Isolation:**
-   - The VM context provides only benign runtime utilities: `console` (prefixed with `[Ext:id]`), `setTimeout`, `clearTimeout`, `setInterval`, `clearInterval`, `exports`, and `module`.
-   - `process`, `require`, `global`, `Buffer`, `child_process`, `fs`, `net`, and `electron` are **completely omitted**.
-2. **Code Generation Disabled:** The VM context is initialized with `codeGeneration: { strings: false, wasm: false }`, preventing dynamic `eval()` or WebAssembly compilation.
-3. **Execution Timeout:** Extension scripts run with `{ timeout: 3000 }` ms to prevent infinite loop denial-of-service.
-4. **Path Traversal Containment:** `manifest.main` is resolved and asserted to reside strictly within `installPath`. Directory traversal attempts (e.g. `../../package.json`) are blocked and audited.
-5. **Privilege Escalation Prevention:**
-   - If an extension attempts to contribute or dynamically register a workflow node requiring `terminal.execute: true` while the extension's manifest declares `shell: false`, registration is blocked.
-   - If a contributed skill requests permissions exceeding `manifest.permissions`, registration is blocked and a `skill_permission_escalation` security violation is logged.
+Running untrusted code in `node:vm` inside the Main Electron process allows sandbox escapes via prototype chain traversal (e.g. `this.constructor.constructor('return process')()`), exposing the underlying `process` object and allowing arbitrary native module loading (`child_process`, `fs`, `electron`), credential theft, or application crashes.
+
+### 2.2 Implemented Process-Level Isolation Architecture
+`node:vm` was **completely removed** as a security boundary. Extension scripts now execute exclusively inside an isolated OS child process managed by `ExtensionHostManager` (`src/main/extensions/extension-host-manager.ts`):
+
+1. **OS Process Boundary:**
+   - Extensions execute inside a dedicated child process spawned with `child_process.fork()` and `--disallow-code-generation-from-strings`.
+   - The process has its own OS PID, separate V8 isolate, and isolated heap. Memory manipulation in the child process has zero impact on the trusted Main Electron process.
+2. **Aggressive Environment Sanitization:**
+   - Before spawning the child process, all host credentials, API keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`), tokens, database credentials, and secrets are stripped from the environment.
+   - Essential system paths (`PATH`, `SYSTEMROOT`, `TEMP`) are preserved, and Air-Gap proxy isolation is applied.
+3. **Narrow Capability-Based RPC API:**
+   - The child process receives zero direct handles to Electron APIs, SQLite databases, or the host filesystem.
+   - All operations are mediated via structured RPC messages:
+     - `workspace.readFile(relativePath)` / `workspace.writeFile(relativePath, content)` / `workspace.listFiles(relativePath)`
+     - `storage.get(key)` / `storage.set(key, value)` / `storage.delete(key)`
+     - `workflow.registerNode(nodeDefinition)`
+     - `skills.register(skillDefinition)`
+     - `notifications.show(message, type)`
+4. **Strict Server-Side Validation:**
+   - Every capability invocation is authorized on the trusted Main process against the extension's declared manifest permissions.
+   - All filesystem operations are verified against active workspace directory boundaries using `fs.realpathSync`. Path traversal attempts (e.g. `../super-secret.key`, `../../app.sqlite`) are intercepted, blocked, and recorded as high-severity security violations.
+5. **Crash & Hang Resilience:**
+   - If an extension child process crashes (`process.exit(1)`) or encounters an unhandled exception, the Main process traps the event, updates the extension status to `'error'`, and continues running without interruption.
+   - If an extension hangs in an infinite loop, a deterministic timeout (8–10s) triggers forceful process termination (`SIGKILL`).
+6. **Adversarial Verification:**
+   - Verified via [`tests/extension-security-isolation.test.ts`](file:///C:/Users/gonca/Documents/coding/Projects/Orc/tests/extension-security-isolation.test.ts) (9 passing adversarial test suites covering memory isolation, environment sanitization, path traversal, write protection, permission escalation, DoS hang recovery, and declarative custom node execution).
 
 ---
 

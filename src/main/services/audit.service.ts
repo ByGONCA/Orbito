@@ -90,6 +90,10 @@ export class AuditService {
     return databaseService.queryAuditLogs(filter);
   }
 
+  public queryLogs(filter?: AuditLogFilter): AuditLogEntry[] {
+    return this.query(filter);
+  }
+
   /**
    * Export audit log report as JSON or CSV.
    */

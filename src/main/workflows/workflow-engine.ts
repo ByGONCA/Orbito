@@ -9,6 +9,8 @@ import type {
 } from '../../shared/workflows';
 import { WorkflowValidator } from './workflow-validator';
 import { NODE_EXECUTORS, type NodeExecutionContext } from './node-executors';
+import { NODE_REGISTRY } from '../../shared/node-registry';
+import { extensionHostManager } from '../extensions/extension-host-manager';
 import { databaseService } from '../db/database.service';
 import { SkillPermissionManager, type WorkspacePermissionTier } from '../skills/skill-permission-manager';
 import { airGapManager } from '../services/air-gap.manager';
@@ -276,9 +278,25 @@ export class WorkflowEngine {
       }
     }
 
-    const handler = NODE_EXECUTORS[node.data.nodeType];
+    let handler = NODE_EXECUTORS[node.data.nodeType];
     if (!handler) {
-      throw new Error(`No execution handler for node type: "${node.data.nodeType}"`);
+      const customDef = NODE_REGISTRY[node.data.nodeType];
+      if (customDef) {
+        handler = async (_, c) => {
+          const extensionId = customDef.type.includes(':')
+            ? customDef.type.split(':')[0]
+            : customDef.type;
+          const outputs = await extensionHostManager.executeCustomNode(
+            extensionId,
+            node.data.nodeType,
+            c.inputs,
+            node.data.config || {}
+          );
+          return { outputs };
+        };
+      } else {
+        throw new Error(`No execution handler for node type: "${node.data.nodeType}"`);
+      }
     }
 
     const ctx: NodeExecutionContext = {

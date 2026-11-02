@@ -104,7 +104,104 @@ The manifest is validated against `ExtensionManifestSchema`:
 
 ---
 
-## 5. Contributing Custom Workflow Nodes
+## 5. Process-Level Isolation & Capability-Based API
+
+Third-party extensions execute **exclusively inside an isolated child process** (`ExtensionHostManager`). Node.js `node:vm` has been removed as a security boundary.
+
+### 5.1 Architecture & Security Properties
+- **Separate OS Process**: Extension scripts run in a dedicated Node.js child process with its own PID and separate memory space.
+- **Environment Sanitization**: All host credentials, API keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`), tokens, and database secrets are purged from the child process environment before launch.
+- **No Direct Privileges**: The child process receives zero direct handles to Electron APIs, SQLite databases, or the host filesystem.
+- **Strict Capability RPC**: All interactions with the workspace and host application must route through structured, validated RPC messages to the trusted Main process.
+- **Crash & Hang Resilience**: If an extension process crashes (`process.exit`) or hangs in an infinite loop, the Main process traps the event, triggers a deterministic timeout, force-terminates the rogue host (`SIGKILL`), and logs an audit security event without crashing or freezing the application.
+
+### 5.2 Capability Namespaces (`ExtensionContext`)
+
+Extensions interact with the application via narrow, strongly typed capability namespaces:
+
+```typescript
+export interface ExtensionContext {
+  extensionId: string;
+  storagePath: string;
+  permissions: ExtensionPermissions;
+  workspacePath?: string;
+  log: (message: string, level?: 'info' | 'warn' | 'error') => void;
+
+  // Workspace filesystem access (strictly confined to active workspace boundaries)
+  workspace: {
+    readFile: (relativePath: string) => Promise<{ content: string }>;
+    listFiles: (relativePath?: string) => Promise<{ files: string[] }>;
+    writeFile: (relativePath: string, content: string) => Promise<{ success: boolean; bytesWritten: number }>;
+  };
+
+  // Extension-isolated persistent key-value storage
+  storage: {
+    get: (key: string) => Promise<any>;
+    set: (key: string, value: any) => Promise<void>;
+    delete: (key: string) => Promise<boolean>;
+  };
+
+  // Declarative workflow node registration
+  workflow: {
+    registerNode: (node: NodeDefinition) => Promise<void>;
+  };
+
+  // Domain skill registration
+  skills: {
+    register: (skill: SkillManifest) => Promise<void>;
+  };
+
+  // User notifications
+  notifications: {
+    show: (message: string, type?: 'info' | 'warning' | 'error') => Promise<void>;
+  };
+}
+```
+
+### 5.3 Extension Entrypoint Lifecycle (`index.js`)
+
+```javascript
+module.exports = {
+  activate: async (context) => {
+    context.log('Activating custom extension...');
+
+    // Read a project file inside the authorized workspace
+    const { content } = await context.workspace.readFile('package.json');
+    const pkg = JSON.parse(content);
+
+    // Persist extension-scoped state
+    await context.storage.set('last_scanned_pkg', pkg.name);
+
+    // Register a declarative workflow node
+    await context.workflow.registerNode({
+      type: 'ext_pkg_auditor',
+      category: 'dev',
+      name: 'Package Auditor',
+      description: 'Audits dependencies',
+      icon: 'Shield',
+      inputs: [{ id: 'in', name: 'Input', type: 'string' }],
+      outputs: [{ id: 'out', name: 'Output', type: 'string' }],
+      defaultData: {}
+    });
+  },
+
+  // Invoked when custom workflow nodes execute
+  executeNode: async (nodeType, inputs, config) => {
+    if (nodeType === 'ext_pkg_auditor') {
+      return { out: `Audited ${inputs.in}` };
+    }
+    throw new Error('Unknown node type: ' + nodeType);
+  },
+
+  deactivate: async () => {
+    // Cleanup hooks
+  }
+};
+```
+
+---
+
+## 6. Contributing Custom Workflow Nodes
 
 To contribute custom visual nodes to the React Flow canvas:
 1. Define the node in `contributes.nodes` within `extension.json`.

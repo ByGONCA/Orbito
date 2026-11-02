@@ -110,9 +110,14 @@ To guarantee appropriate human oversight, three execution safety tiers are enfor
 - **Rerouting Cloud to Local**: Attempts to invoke third-party closed-source cloud providers (`claude`, `codex`, `gemini`) under Air-Gap are intercepted; if `enforceLocalModels` is configured, requests are rerouted to the local Ollama daemon, preventing inadvertent token transmission.
 - **Violation Auditing**: Every blocked egress attempt or prohibited provider invocation immediately records a critical audit entry in `audit_logs`.
 
-### 2.10 Custom Extension Sandboxing & Permission Gate
-- **Static Schema Contract**: Extension manifests (`extension.json`) undergo strict Zod schema validation (`ExtensionManifestSchema`) before registration.
-- **Air-Gap Compliance Traps**: If an extension declares `permissions.network.allowExternal: true` while Air-Gap mode is enabled, the loader denies registration and records an audit security violation.
+### 2.10 Custom Extension Process-Level Isolation & Capability Gate
+- **No node:vm as Security Boundary**: In accordance with official Node.js security advisories, `node:vm` is rejected as a security sandbox. Third-party extension scripts execute strictly inside separate isolated OS child processes (`ExtensionHostManager`).
+- **Memory & Process Boundary**: The extension host process possesses a separate PID, separate V8 isolate, and isolated heap. Memory manipulation or prototype pollution in the extension child process cannot compromise or pollute the trusted Main Electron process.
+- **Environment Sanitization**: Host credentials, API keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`), tokens, and database secrets are purged from the child process environment before launch.
+- **Narrow Capability-Based API**: Extensions receive zero direct access to Electron APIs, Node.js privileged modules, or SQLite databases. All operations (`workspace.readFile`, `workspace.writeFile`, `workspace.listFiles`, `storage.get/set`, `workflow.registerNode`, `skills.register`) route through strict, validated RPC channels back to the trusted Main process.
+- **Strict Workspace Containment**: The Main process validates every workspace capability call against authorized project boundaries using `fs.realpathSync`, preventing path traversal escapes (`../etc/passwd`, `../../app.sqlite`).
+- **Air-Gap Compliance Traps**: If an extension declares `permissions.network.allowExternal: true` while Air-Gap mode is enabled, the loader denies registration and records an audit security violation. Child process environment proxy variables are redirected to null loopback ports (`127.0.0.1:0`).
+- **DoS & Crash Resilience**: Infinite loops or hung promises in extension scripts trigger deterministic timeouts (8–10s) and forceful termination (`SIGKILL`) without freezing or crashing the Main Electron application.
 - **Contribution Isolation**: Contributed nodes and skills are bound to their declared manifests and cannot escalate privileges or modify host settings.
 
 ### 2.11 Immutable Enterprise Audit Logging

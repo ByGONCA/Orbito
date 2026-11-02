@@ -171,4 +171,5 @@ Before releasing a new version binary, perform this verification checklist on a 
 3. **Provider Detection:** Navigate to Settings / Providers. Verify installed CLIs (`claude`, `codex`, `gemini`, `ollama`) report accurate status (`ready`, `not_installed`, or `authentication_required`).
 4. **Air-Gap Activation:** Toggle Air-Gap mode ON in Settings. Verify that cloud providers seamlessly reroute to local Ollama.
 5. **Workflow Execution:** Open Flow Builder, select a template (e.g. "PR Review Pipeline"), and click "Run Workflow". Verify node execution events update in real time.
-6. **Clean Exit:** Close window and verify all background processes terminate cleanly without dangling Node.js processes in task manager.
+6. **Extension Isolation:** Install or enable a third-party extension. Verify in OS process list that the extension executes in its own isolated child process with sanitized environment variables, and terminates cleanly when toggled off.
+7. **Clean Exit:** Close window and verify all background processes and extension hosts terminate cleanly without dangling Node.js processes in task manager.

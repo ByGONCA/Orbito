@@ -1,22 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import vm from 'node:vm';
 import type {
   ExtensionManifest,
-  ExtensionRecord,
-  ExtensionContext,
-  IExtensionModule
+  ExtensionRecord
 } from '../../shared/extensions';
 import { ExtensionManifestSchema } from '../../shared/extensions';
 import { registerCustomNode, unregisterCustomNode } from '../../shared/node-registry';
 import { skillRegistry } from '../skills/skill-registry';
 import { auditService } from '../services/audit.service';
 import { airGapManager } from '../services/air-gap.manager';
+import { extensionHostManager } from './extension-host-manager';
 
 export class ExtensionLoader {
-  private static activeModules = new Map<string, IExtensionModule>();
-
   /**
    * Validates that contributed skill permissions do not exceed extension manifest permissions.
    */
@@ -180,107 +176,15 @@ export class ExtensionLoader {
       }
     }
 
-    // 3. If main script is present, run inside isolated node:vm sandbox
+    // 3. If main script is present, run inside isolated Extension Host child process
     if (manifest.main) {
-      const entryPath = path.resolve(installPath, manifest.main);
-      const normalizedEntry = path.normalize(entryPath);
-      const normalizedInstall = path.normalize(installPath);
-
-      // Path traversal containment check
-      if (!normalizedEntry.startsWith(normalizedInstall + path.sep) && normalizedEntry !== normalizedInstall) {
-        const err = `Extension main script '${manifest.main}' attempts path traversal outside extension directory.`;
-        auditService.logSecurityViolation(record.id, 'extension_traversal_blocked', err, entryPath);
+      try {
+        await extensionHostManager.activateInHost(record);
+      } catch (err: any) {
         record.status = 'error';
-        record.errorMessage = err;
+        record.errorMessage = err.message;
+        console.error(`[ExtensionLoader] Error activating extension ${record.id} in host:`, err);
         return;
-      }
-
-      if (fs.existsSync(entryPath)) {
-        try {
-          const scriptContent = fs.readFileSync(entryPath, 'utf8');
-
-          // Sandboxed execution context without access to process, require, child_process, fs, net
-          const sandbox: Record<string, any> = {
-            console: {
-              log: (...args: any[]) => console.log(`[Ext:${record.id}]`, ...args),
-              warn: (...args: any[]) => console.warn(`[Ext:${record.id}]`, ...args),
-              error: (...args: any[]) => console.error(`[Ext:${record.id}]`, ...args),
-              info: (...args: any[]) => console.info(`[Ext:${record.id}]`, ...args)
-            },
-            setTimeout,
-            clearTimeout,
-            setInterval,
-            clearInterval,
-            exports: {},
-            module: { exports: {} }
-          };
-
-          const vmContext = vm.createContext(sandbox, {
-            codeGeneration: { strings: false, wasm: false }
-          });
-
-          const wrapped = `(function(exports, module) { ${scriptContent}\n})(exports, module);`;
-          const script = new vm.Script(wrapped, { filename: entryPath });
-          script.runInContext(vmContext, { timeout: 3000 });
-
-          const mod: IExtensionModule = sandbox.module?.exports || sandbox.exports;
-          this.activeModules.set(record.id, mod);
-
-          if (typeof mod?.activate === 'function') {
-            const context: ExtensionContext = {
-              extensionId: record.id,
-              storagePath: path.join(installPath, '.storage'),
-              permissions: manifest.permissions || {},
-              log: (msg, lvl = 'info') => {
-                auditService.log({
-                  eventType: 'extension_log',
-                  severity: lvl === 'error' ? 'error' : lvl === 'warn' ? 'warning' : 'info',
-                  actor: record.id,
-                  action: 'runtime_log',
-                  details: { message: msg }
-                });
-              },
-              registerNode: (node: any) => {
-                if (node.data?.requiredPermissions?.terminal?.execute && !manifest.permissions?.shell) {
-                  throw new Error(`Extension "${record.id}" cannot register a node requiring terminal execution.`);
-                }
-                registerCustomNode(node);
-              },
-              registerSkill: (skillManifest: any) => {
-                if (!this.validateSkillPermissions(manifest, skillManifest.requiredPermissions)) {
-                  throw new Error(`Extension "${record.id}" cannot register a skill with permissions exceeding manifest.`);
-                }
-                skillRegistry.registerLoadedSkill({
-                  id: skillManifest.id,
-                  name: skillManifest.name,
-                  description: skillManifest.description,
-                  version: skillManifest.version,
-                  author: skillManifest.author || manifest.author,
-                  category: (skillManifest.category as any) || 'analysis',
-                  tags: skillManifest.tags || ['extension'],
-                  supportedProviders: (skillManifest.supportedProviders as any) || ['claude', 'codex', 'gemini'],
-                  isBuiltIn: false,
-                  enabled: true,
-                  manifestPath: entryPath,
-                  instructionsPath: path.join(installPath, 'README.md'),
-                  permissions: (skillManifest.requiredPermissions as any) || {
-                    filesystem: { read: true, write: false },
-                    terminal: { execute: false },
-                    network: { allowed: false }
-                  },
-                  contextRequirements: skillManifest.contextRequirements || { indexingNeeded: false, maxContextTokens: 16000 },
-                  checksum: record.checksum
-                });
-              }
-            };
-
-            await mod.activate(context);
-          }
-        } catch (err: any) {
-          record.status = 'error';
-          record.errorMessage = err.message;
-          console.error(`[ExtensionLoader] Error activating extension ${record.id}:`, err);
-        }
       }
     }
 
@@ -318,17 +222,13 @@ export class ExtensionLoader {
       }
     }
 
-    // 3. Call deactivate on cached sandboxed module if present
+    // 3. Terminate isolated Extension Host process if running
     if (manifest.main) {
-      const mod = this.activeModules.get(record.id);
-      if (mod && typeof mod.deactivate === 'function') {
-        try {
-          await mod.deactivate();
-        } catch (err) {
-          console.warn(`[ExtensionLoader] Error in deactivate for ${record.id}:`, err);
-        }
+      try {
+        await extensionHostManager.terminateHost(record.id);
+      } catch (err) {
+        console.warn(`[ExtensionLoader] Error terminating host for ${record.id}:`, err);
       }
-      this.activeModules.delete(record.id);
     }
 
     record.status = 'disabled';

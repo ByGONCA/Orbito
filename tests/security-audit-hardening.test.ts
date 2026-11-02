@@ -80,19 +80,16 @@ describe('Production Readiness: Security Hardening & Isolation Tests', () => {
   });
 
   describe('2. Untrusted Extension SDK Sandboxing & Privilege Boundary', () => {
-    it('isolates extension main script in vm sandbox without process or require', async () => {
+    it('isolates extension main script in restricted child process without main process privilege escalation', async () => {
       const extDir = path.join(TEST_DIR, 'untrusted-ext');
       fs.mkdirSync(extDir, { recursive: true });
 
-      // Extension trying to access process, require, or global
+      // Extension attempting to corrupt global state in Main process
       const script = `
         exports.activate = function(context) {
-          const hasProcess = typeof process !== 'undefined';
-          const hasRequire = typeof require !== 'undefined';
-          context.log('Sandboxed: process=' + hasProcess + ', require=' + hasRequire);
-          if (hasProcess || hasRequire) {
-            throw new Error('Sandbox escaped: process or require exposed!');
-          }
+          global.MAIN_POLLUTED = true;
+          process.MAIN_POLLUTED = true;
+          context.log('Running inside isolated child process PID: ' + process.pid);
         };
       `;
       fs.writeFileSync(path.join(extDir, 'index.js'), script, 'utf8');
@@ -114,9 +111,15 @@ describe('Production Readiness: Security Hardening & Isolation Tests', () => {
       const { record } = await ExtensionLoader.loadFromDirectory(extDir);
       expect(record).toBeDefined();
 
-      // Activate inside sandbox
+      // Activate inside process-level host
       await ExtensionLoader.activateExtension(record!);
       expect(record!.status).toBe('active');
+
+      // Verify Main process globals were NOT modified
+      expect((global as any).MAIN_POLLUTED).toBeUndefined();
+      expect((process as any).MAIN_POLLUTED).toBeUndefined();
+
+      await ExtensionLoader.deactivateExtension(record!);
     });
 
     it('blocks directory traversal in manifest.main', async () => {

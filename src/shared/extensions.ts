@@ -75,11 +75,43 @@ export interface ExtensionRecord {
   updatedAt: number;
 }
 
+export interface WorkspaceCapability {
+  readFile: (relativePath: string) => Promise<{ content: string }>;
+  listFiles: (relativePath?: string) => Promise<{ files: string[] }>;
+  writeFile: (relativePath: string, content: string) => Promise<{ success: boolean; bytesWritten: number }>;
+}
+
+export interface StorageCapability {
+  get: (key: string) => Promise<any>;
+  set: (key: string, value: any) => Promise<void>;
+  delete: (key: string) => Promise<boolean>;
+}
+
+export interface WorkflowCapability {
+  registerNode: (node: NodeDefinition) => Promise<void>;
+}
+
+export interface SkillsCapability {
+  register: (skill: SkillManifest) => Promise<void>;
+}
+
+export interface NotificationsCapability {
+  show: (message: string, type?: 'info' | 'warning' | 'error') => Promise<void>;
+}
+
 export interface ExtensionContext {
   extensionId: string;
   storagePath: string;
   permissions: ExtensionPermissions;
+  workspacePath?: string;
   log: (message: string, level?: 'info' | 'warn' | 'error') => void;
+  // Capability-based API namespaces
+  workspace: WorkspaceCapability;
+  storage: StorageCapability;
+  workflow: WorkflowCapability;
+  skills: SkillsCapability;
+  notifications: NotificationsCapability;
+  // Legacy / convenience shorthands
   registerNode: (node: NodeDefinition) => void;
   registerSkill: (skill: SkillManifest) => void;
 }
@@ -87,4 +119,27 @@ export interface ExtensionContext {
 export interface IExtensionModule {
   activate: (context: ExtensionContext) => Promise<void> | void;
   deactivate?: () => Promise<void> | void;
+  executeNode?: (nodeType: string, inputs: Record<string, any>, config?: Record<string, any>) => Promise<Record<string, any>>;
+}
+
+export type ExtensionHostRpcType =
+  | 'ACTIVATE'
+  | 'ACTIVATE_RESULT'
+  | 'DEACTIVATE'
+  | 'DEACTIVATE_RESULT'
+  | 'EXECUTE_NODE'
+  | 'EXECUTE_NODE_RESULT'
+  | 'PING'
+  | 'PONG'
+  | 'CAPABILITY_REQUEST'
+  | 'CAPABILITY_RESPONSE'
+  | 'LOG'
+  | 'ERROR';
+
+export interface ExtensionHostRpcMessage {
+  id: string;
+  type: ExtensionHostRpcType;
+  extensionId: string;
+  payload?: any;
+  error?: string;
 }

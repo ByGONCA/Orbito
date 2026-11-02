@@ -88,7 +88,7 @@ The designation **READY WITH LIMITATIONS** is assigned rather than an unqualifie
 
 | Component | Audit Finding | Applied Hardening | Status |
 |---|---|---|---|
-| **Extension SDK** | Executed untrusted code via `require()` | Refactored to unprivileged `node:vm` sandbox with disabled code generation | **RESOLVED** |
+| **Extension SDK** | Executed untrusted code via `require()` / `node:vm` | Replaced with true process-level child process isolation (`ExtensionHostManager`) and narrow capability-based RPC API | **RESOLVED** |
 | **Air-Gap Mode** | IPv6 bracket parsing bug & missing child env proxies | Added IPv6 bracket normalization, `127.0.0.0/8` support, and offline proxy injection | **RESOLVED** |
 | **Workflows** | AI nodes bypassed Air-Gap provider resolution | Added `airGapManager.resolveProvider()` across all AI nodes | **RESOLVED** |
 | **Expression Evaluator** | Prototype property traversal vulnerability | Filtered `__proto__`, `prototype`, and `constructor` keys in `resolvePath` | **RESOLVED** |
@@ -136,7 +136,7 @@ The designation **READY WITH LIMITATIONS** is assigned rather than an unqualifie
 
 - [x] All 7 implementation phases completed and verified.
 - [x] Security vulnerabilities audited and hardened.
-- [x] Sandboxed `node:vm` extension execution active.
+- [x] Process-level isolated extension host execution with narrow capability RPC active.
 - [x] Air-Gap network isolation and proxy dead-ends enforced.
 - [x] Dual SQLite WAL architecture tested for concurrency and recovery.
 - [x] `npm run typecheck` passed (0 errors).
