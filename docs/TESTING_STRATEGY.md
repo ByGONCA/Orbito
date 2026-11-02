@@ -39,6 +39,14 @@ tests/
 │   ├── skills-registry-loader.test.ts          # 10 Built-in skills, dynamic loading, custom skills
 │   └── skills-execution-integration.test.ts    # End-to-end skill resolution, context assembly, execution
 │
+├── Multi-Agent Orchestration Suites (Phase 5)
+│   ├── agents-dag-validator.test.ts            # DAG acyclicity, cycle detection, topological levels
+│   ├── agents-worktree-manager.test.ts         # Git worktree lifecycle, diffs, branch merge & cleanup
+│   ├── agents-scheduler.test.ts                # Concurrency bounding (max 3), dependency transitions
+│   ├── agents-reviewer-gate.test.ts            # Independent quality gate, test suite, remediation loops
+│   ├── agents-state-persistence.test.ts        # SQLite orchestration schema, task updates, crash recovery
+│   └── agents-orchestrator-integration.test.ts # End-to-end multi-agent orchestration lifecycle & IPC
+│
 ├── Empirical Scale Benchmarks
 │   ├── performance-benchmark.test.ts           # SQLite batch write latency & base memory
 │   └── performance-benchmarks-scale.test.ts    # 1,000 files/chunks, FTS5 < 15ms, assembly < 50ms
@@ -57,7 +65,7 @@ Every code contribution must pass three non-negotiable verification gates:
 # Gate 1: Strict TypeScript Typechecking (zero any coercion, zero errors)
 npm run typecheck
 
-# Gate 2: Full Test Suite Execution (20 test suites, > 105 tests, zero failures)
+# Gate 2: Full Test Suite Execution (26 test suites, 126+ tests, zero failures)
 npm test
 
 # Gate 3: Production Build & Asset Packaging

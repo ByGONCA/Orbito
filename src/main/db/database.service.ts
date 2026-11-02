@@ -5,6 +5,7 @@ import type { ProjectDescriptor, WorkspaceConfig, MemoryRecord, MemoryTier } fro
 import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider } from '../../shared/cli';
 import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shared/context';
 import type { SkillMetadata, SkillExecutionRecord, SkillManifest } from '../../shared/skills';
+import type { OrchestrationRecord, OrchestrationTask, ApprovalRequest } from '../../shared/agents';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -142,6 +143,74 @@ export class DatabaseService {
       );
       CREATE INDEX IF NOT EXISTS idx_skill_exec_skill ON skill_executions(skill_id);
       CREATE INDEX IF NOT EXISTS idx_skill_exec_proj ON skill_executions(project_id);
+
+      CREATE TABLE IF NOT EXISTS orchestrations (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        user_goal TEXT NOT NULL,
+        mode TEXT NOT NULL DEFAULT 'supervised',
+        status TEXT NOT NULL DEFAULT 'planning',
+        tasks_json TEXT NOT NULL DEFAULT '[]',
+        summary TEXT,
+        error_message TEXT,
+        total_tokens INTEGER NOT NULL DEFAULT 0,
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        started_at INTEGER,
+        completed_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_orch_proj ON orchestrations(project_id);
+
+      CREATE TABLE IF NOT EXISTS orchestration_tasks (
+        id TEXT PRIMARY KEY,
+        orchestration_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        role TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        model TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        dependencies_json TEXT NOT NULL DEFAULT '[]',
+        acceptance_criteria_json TEXT NOT NULL DEFAULT '[]',
+        required_skills_json TEXT NOT NULL DEFAULT '[]',
+        permissions_json TEXT NOT NULL,
+        is_modifying INTEGER NOT NULL DEFAULT 0,
+        worktree_path TEXT,
+        branch_name TEXT,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        max_retries INTEGER NOT NULL DEFAULT 1,
+        timeout_seconds INTEGER NOT NULL DEFAULT 180,
+        changed_files_json TEXT NOT NULL DEFAULT '[]',
+        diff TEXT,
+        result_summary TEXT,
+        review_feedback TEXT,
+        review_status TEXT,
+        error_message TEXT,
+        created_at INTEGER NOT NULL,
+        started_at INTEGER,
+        completed_at INTEGER,
+        FOREIGN KEY(orchestration_id) REFERENCES orchestrations(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_orch_tasks_orch ON orchestration_tasks(orchestration_id);
+
+      CREATE TABLE IF NOT EXISTS approval_requests (
+        id TEXT PRIMARY KEY,
+        orchestration_id TEXT NOT NULL,
+        task_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        diff TEXT,
+        changed_files_json TEXT DEFAULT '[]',
+        command TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        rejection_reason TEXT,
+        created_at INTEGER NOT NULL,
+        resolved_at INTEGER,
+        FOREIGN KEY(orchestration_id) REFERENCES orchestrations(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_approval_orch ON approval_requests(orchestration_id);
     `);
 
     try {
@@ -907,6 +976,456 @@ export class DatabaseService {
       createdAt: r.created_at,
       errorMessage: r.error_message || undefined
     }));
+  }
+
+  // ==========================================
+  // Multi-Agent Orchestration Persistence (Phase 5)
+  // ==========================================
+
+  public upsertOrchestration(orch: OrchestrationRecord): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO orchestrations (
+        id, project_id, project_path, user_goal, mode, status,
+        tasks_json, summary, error_message, total_tokens, duration_ms,
+        created_at, started_at, completed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        tasks_json = excluded.tasks_json,
+        summary = excluded.summary,
+        error_message = excluded.error_message,
+        total_tokens = excluded.total_tokens,
+        duration_ms = excluded.duration_ms,
+        started_at = excluded.started_at,
+        completed_at = excluded.completed_at
+    `).run(
+      orch.id,
+      orch.projectId,
+      orch.projectPath,
+      orch.userGoal,
+      orch.mode,
+      orch.status,
+      JSON.stringify(orch.tasks.map((t) => t.id)),
+      orch.summary || null,
+      orch.errorMessage || null,
+      orch.totalTokensUsed,
+      orch.durationMs,
+      orch.createdAt,
+      orch.startedAt || null,
+      orch.completedAt || null
+    );
+
+    // Also upsert tasks
+    for (const task of orch.tasks) {
+      this.upsertOrchestrationTask(task);
+    }
+  }
+
+  public getOrchestration(id: string): OrchestrationRecord | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM orchestrations WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+
+    const tasks = this.getOrchestrationTasks(id);
+
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      projectPath: row.project_path,
+      userGoal: row.user_goal,
+      mode: row.mode,
+      status: row.status,
+      tasks,
+      createdAt: row.created_at,
+      startedAt: row.started_at || undefined,
+      completedAt: row.completed_at || undefined,
+      durationMs: row.duration_ms,
+      totalTokensUsed: row.total_tokens,
+      summary: row.summary || undefined,
+      errorMessage: row.error_message || undefined
+    };
+  }
+
+  public listOrchestrations(projectId?: string, limit = 20): OrchestrationRecord[] {
+    const db = this.getAppDb();
+    let query = `SELECT * FROM orchestrations`;
+    const params: any[] = [];
+    if (projectId) {
+      query += ` WHERE project_id = ?`;
+      params.push(projectId);
+    }
+    query += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const rows = db.prepare(query).all(...params) as any[];
+    return rows.map((r) => {
+      const tasks = this.getOrchestrationTasks(r.id);
+      return {
+        id: r.id,
+        projectId: r.project_id,
+        projectPath: r.project_path,
+        userGoal: r.user_goal,
+        mode: r.mode,
+        status: r.status,
+        tasks,
+        createdAt: r.created_at,
+        startedAt: r.started_at || undefined,
+        completedAt: r.completed_at || undefined,
+        durationMs: r.duration_ms,
+        totalTokensUsed: r.total_tokens,
+        summary: r.summary || undefined,
+        errorMessage: r.error_message || undefined
+      };
+    });
+  }
+
+  public updateOrchestration(
+    id: string,
+    updates: {
+      status?: string;
+      summary?: string;
+      errorMessage?: string;
+      startedAt?: number;
+      completedAt?: number;
+      durationMs?: number;
+      totalTokensUsed?: number;
+    }
+  ): void {
+    const db = this.getAppDb();
+    const sets: string[] = [];
+    const params: any[] = [];
+
+    if (updates.status !== undefined) {
+      sets.push('status = ?');
+      params.push(updates.status);
+    }
+    if (updates.summary !== undefined) {
+      sets.push('summary = ?');
+      params.push(updates.summary);
+    }
+    if (updates.errorMessage !== undefined) {
+      sets.push('error_message = ?');
+      params.push(updates.errorMessage);
+    }
+    if (updates.startedAt !== undefined) {
+      sets.push('started_at = ?');
+      params.push(updates.startedAt);
+    }
+    if (updates.completedAt !== undefined) {
+      sets.push('completed_at = ?');
+      params.push(updates.completedAt);
+    }
+    if (updates.durationMs !== undefined) {
+      sets.push('duration_ms = ?');
+      params.push(updates.durationMs);
+    }
+    if (updates.totalTokensUsed !== undefined) {
+      sets.push('total_tokens = ?');
+      params.push(updates.totalTokensUsed);
+    }
+
+    if (sets.length === 0) return;
+    params.push(id);
+    db.prepare(`UPDATE orchestrations SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  public upsertOrchestrationTask(task: OrchestrationTask): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO orchestration_tasks (
+        id, orchestration_id, title, description, role, provider, model,
+        status, dependencies_json, acceptance_criteria_json, required_skills_json, permissions_json,
+        is_modifying, worktree_path, branch_name, retry_count, max_retries,
+        timeout_seconds, changed_files_json, diff, result_summary,
+        review_feedback, review_status, error_message, created_at, started_at, completed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        retry_count = excluded.retry_count,
+        worktree_path = excluded.worktree_path,
+        branch_name = excluded.branch_name,
+        changed_files_json = excluded.changed_files_json,
+        diff = excluded.diff,
+        result_summary = excluded.result_summary,
+        review_feedback = excluded.review_feedback,
+        review_status = excluded.review_status,
+        error_message = excluded.error_message,
+        started_at = excluded.started_at,
+        completed_at = excluded.completed_at
+    `).run(
+      task.id,
+      task.orchestrationId,
+      task.title,
+      task.description,
+      task.role,
+      task.assignedProvider,
+      task.assignedModel || null,
+      task.status,
+      JSON.stringify(task.dependencies),
+      JSON.stringify(task.acceptanceCriteria || []),
+      JSON.stringify(task.requiredSkills),
+      JSON.stringify(task.requiredPermissions),
+      task.isModifying ? 1 : 0,
+      task.worktreePath || null,
+      task.branchName || null,
+      task.retryCount,
+      task.maxRetries,
+      task.timeoutSeconds,
+      JSON.stringify(task.changedFiles),
+      task.diff || null,
+      task.resultSummary || null,
+      task.reviewFeedback || null,
+      task.reviewStatus || null,
+      task.errorMessage || null,
+      task.createdAt,
+      task.startedAt || null,
+      task.completedAt || null
+    );
+  }
+
+  public getOrchestrationTasks(orchestrationId: string): OrchestrationTask[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`SELECT * FROM orchestration_tasks WHERE orchestration_id = ? ORDER BY created_at ASC`).all(orchestrationId) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      orchestrationId: r.orchestration_id,
+      title: r.title,
+      description: r.description,
+      acceptanceCriteria: JSON.parse(r.acceptance_criteria_json || '[]'),
+      role: r.role,
+      assignedProvider: r.provider,
+      assignedModel: r.model || undefined,
+      status: r.status,
+      dependencies: JSON.parse(r.dependencies_json || '[]'),
+      requiredSkills: JSON.parse(r.required_skills_json || '[]'),
+      requiredPermissions: JSON.parse(r.permissions_json || '{}'),
+      isModifying: r.is_modifying === 1,
+      worktreePath: r.worktree_path || undefined,
+      branchName: r.branch_name || undefined,
+      retryCount: r.retry_count,
+      maxRetries: r.max_retries,
+      timeoutSeconds: r.timeout_seconds,
+      changedFiles: JSON.parse(r.changed_files_json || '[]'),
+      diff: r.diff || undefined,
+      resultSummary: r.result_summary || undefined,
+      reviewFeedback: r.review_feedback || undefined,
+      reviewStatus: r.review_status || undefined,
+      errorMessage: r.error_message || undefined,
+      createdAt: r.created_at,
+      startedAt: r.started_at || undefined,
+      completedAt: r.completed_at || undefined
+    }));
+  }
+
+  public getOrchestrationTask(taskId: string): OrchestrationTask | null {
+    const db = this.getAppDb();
+    const r = db.prepare(`SELECT * FROM orchestration_tasks WHERE id = ?`).get(taskId) as any;
+    if (!r) return null;
+    return {
+      id: r.id,
+      orchestrationId: r.orchestration_id,
+      title: r.title,
+      description: r.description,
+      acceptanceCriteria: JSON.parse(r.acceptance_criteria_json || '[]'),
+      role: r.role,
+      assignedProvider: r.provider,
+      assignedModel: r.model || undefined,
+      status: r.status,
+      dependencies: JSON.parse(r.dependencies_json || '[]'),
+      requiredSkills: JSON.parse(r.required_skills_json || '[]'),
+      requiredPermissions: JSON.parse(r.permissions_json || '{}'),
+      isModifying: r.is_modifying === 1,
+      worktreePath: r.worktree_path || undefined,
+      branchName: r.branch_name || undefined,
+      retryCount: r.retry_count,
+      maxRetries: r.max_retries,
+      timeoutSeconds: r.timeout_seconds,
+      changedFiles: JSON.parse(r.changed_files_json || '[]'),
+      diff: r.diff || undefined,
+      resultSummary: r.result_summary || undefined,
+      reviewFeedback: r.review_feedback || undefined,
+      reviewStatus: r.review_status || undefined,
+      errorMessage: r.error_message || undefined,
+      createdAt: r.created_at,
+      startedAt: r.started_at || undefined,
+      completedAt: r.completed_at || undefined
+    };
+  }
+
+  public updateOrchestrationTask(
+    taskId: string,
+    updates: Partial<OrchestrationTask>
+  ): void {
+    const db = this.getAppDb();
+    const sets: string[] = [];
+    const params: any[] = [];
+
+    if (updates.status !== undefined) {
+      sets.push('status = ?');
+      params.push(updates.status);
+    }
+    if (updates.retryCount !== undefined) {
+      sets.push('retry_count = ?');
+      params.push(updates.retryCount);
+    }
+    if (updates.worktreePath !== undefined) {
+      sets.push('worktree_path = ?');
+      params.push(updates.worktreePath);
+    }
+    if (updates.branchName !== undefined) {
+      sets.push('branch_name = ?');
+      params.push(updates.branchName);
+    }
+    if (updates.changedFiles !== undefined) {
+      sets.push('changed_files_json = ?');
+      params.push(JSON.stringify(updates.changedFiles));
+    }
+    if (updates.diff !== undefined) {
+      sets.push('diff = ?');
+      params.push(updates.diff);
+    }
+    if (updates.resultSummary !== undefined) {
+      sets.push('result_summary = ?');
+      params.push(updates.resultSummary);
+    }
+    if (updates.reviewFeedback !== undefined) {
+      sets.push('review_feedback = ?');
+      params.push(updates.reviewFeedback);
+    }
+    if (updates.reviewStatus !== undefined) {
+      sets.push('review_status = ?');
+      params.push(updates.reviewStatus);
+    }
+    if (updates.errorMessage !== undefined) {
+      sets.push('error_message = ?');
+      params.push(updates.errorMessage);
+    }
+    if (updates.startedAt !== undefined) {
+      sets.push('started_at = ?');
+      params.push(updates.startedAt);
+    }
+    if (updates.completedAt !== undefined) {
+      sets.push('completed_at = ?');
+      params.push(updates.completedAt);
+    }
+
+    if (sets.length === 0) return;
+    params.push(taskId);
+    db.prepare(`UPDATE orchestration_tasks SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  public createApprovalRequest(req: ApprovalRequest): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO approval_requests (
+        id, orchestration_id, task_id, type, title, description,
+        diff, changed_files_json, command, status, rejection_reason,
+        created_at, resolved_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        rejection_reason = excluded.rejection_reason,
+        resolved_at = excluded.resolved_at
+    `).run(
+      req.id,
+      req.orchestrationId,
+      req.taskId,
+      req.type,
+      req.title,
+      req.description,
+      req.diff || null,
+      JSON.stringify(req.changedFiles || []),
+      req.command || null,
+      req.status,
+      req.rejectionReason || null,
+      req.createdAt,
+      req.resolvedAt || null
+    );
+  }
+
+  public getApprovalRequest(id: string): ApprovalRequest | null {
+    const db = this.getAppDb();
+    const r = db.prepare(`SELECT * FROM approval_requests WHERE id = ?`).get(id) as any;
+    if (!r) return null;
+    return {
+      id: r.id,
+      orchestrationId: r.orchestration_id,
+      taskId: r.task_id,
+      type: r.type,
+      title: r.title,
+      description: r.description,
+      diff: r.diff || undefined,
+      changedFiles: JSON.parse(r.changed_files_json || '[]'),
+      command: r.command || undefined,
+      status: r.status,
+      rejectionReason: r.rejection_reason || undefined,
+      createdAt: r.created_at,
+      resolvedAt: r.resolved_at || undefined
+    };
+  }
+
+  public getPendingApprovals(orchestrationId?: string): ApprovalRequest[] {
+    const db = this.getAppDb();
+    let query = `SELECT * FROM approval_requests WHERE status = 'pending'`;
+    const params: any[] = [];
+    if (orchestrationId) {
+      query += ` AND orchestration_id = ?`;
+      params.push(orchestrationId);
+    }
+    query += ` ORDER BY created_at ASC`;
+    const rows = db.prepare(query).all(...params) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      orchestrationId: r.orchestration_id,
+      taskId: r.task_id,
+      type: r.type,
+      title: r.title,
+      description: r.description,
+      diff: r.diff || undefined,
+      changedFiles: JSON.parse(r.changed_files_json || '[]'),
+      command: r.command || undefined,
+      status: r.status,
+      rejectionReason: r.rejection_reason || undefined,
+      createdAt: r.created_at,
+      resolvedAt: r.resolved_at || undefined
+    }));
+  }
+
+  public resolveApprovalRequest(id: string, status: 'approved' | 'rejected', rejectionReason?: string): void {
+    const db = this.getAppDb();
+    db.prepare(`UPDATE approval_requests SET status = ?, rejection_reason = ?, resolved_at = ? WHERE id = ?`).run(
+      status,
+      rejectionReason || null,
+      Date.now(),
+      id
+    );
+  }
+
+  public recoverOrchestrationsOnStartup(): { recoveredOrchestrations: number; recoveredTasks: number } {
+    const db = this.getAppDb();
+    // 1. Mark any active 'running' or 'planning' orchestrations as 'failed' (interrupted by shutdown)
+    const activeOrchs = db.prepare(`SELECT id FROM orchestrations WHERE status IN ('planning', 'running', 'reviewing')`).all() as any[];
+    for (const o of activeOrchs) {
+      db.prepare(`UPDATE orchestrations SET status = 'failed', error_message = 'Interrupted by application shutdown/restart', completed_at = ? WHERE id = ?`).run(
+        Date.now(),
+        o.id
+      );
+    }
+
+    // 2. Mark any active 'running' or 'reviewing' tasks as 'failed'
+    const activeTasks = db.prepare(`SELECT id FROM orchestration_tasks WHERE status IN ('running', 'reviewing')`).all() as any[];
+    for (const t of activeTasks) {
+      db.prepare(`UPDATE orchestration_tasks SET status = 'failed', error_message = 'Interrupted by application restart', completed_at = ? WHERE id = ?`).run(
+        Date.now(),
+        t.id
+      );
+    }
+
+    return {
+      recoveredOrchestrations: activeOrchs.length,
+      recoveredTasks: activeTasks.length
+    };
   }
 
   // ==========================================

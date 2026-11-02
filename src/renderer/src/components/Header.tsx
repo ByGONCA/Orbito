@@ -9,7 +9,8 @@ import {
   Layers,
   Code2,
   Cpu,
-  BrainCircuit
+  BrainCircuit,
+  Bot
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 
@@ -138,6 +139,18 @@ export const Header: React.FC = () => {
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           <span>Skills</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCenterTab('agents')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'agents'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Agents</span>
         </button>
       </div>
 

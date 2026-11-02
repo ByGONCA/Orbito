@@ -86,3 +86,14 @@ AI Workspace is built on the principle that AI assistants must never possess unc
 - Manifests declare exact permissions.
 - In `strict` mode, any skill requesting write access or network egress is denied immediately.
 - Custom skills imported from third-party repositories require explicit human opt-in and toggle before they can execute.
+
+### 2.6 Git Worktree Isolation & Host Protection
+- **No Direct Edits to Active Branch**: Tasks with write intent run in isolated ephemeral Git Worktrees (`.worktrees/agent-task-<id>`) on dedicated task branches (`agent/task-<id>`).
+- **Concurrent Overlap Defense**: Prior to scheduling a modifying task, `WorktreeManager.checkOverlaps` compares predicted modified files against currently active worktrees to prevent destructive parallel race conditions.
+- **Atomic Cleanup**: Upon task failure, cancellation, or rejection, worktrees are pruned (`git worktree remove --force`) and branches deleted, preventing filesystem pollution.
+
+### 2.7 Human-in-the-Loop Multi-Agent Execution Modes
+To guarantee appropriate human oversight, three execution safety tiers are enforced:
+1. **Manual Mode**: Every single task transition, command execution, and file modification requires explicit human approval in the Approval Center.
+2. **Supervised Mode (Default)**: Specialist workers execute read and worktree write operations autonomously; merges into the main branch, system package installations, or high-risk commands pause for human approval with side-by-side diff inspection.
+3. **Autonomous Mode**: Safe workflow execution where tasks that pass automated `ReviewerAgent` gates (typecheck + test suite passes) merge automatically. High-risk system actions or failed verification gates still escalate to human intervention.

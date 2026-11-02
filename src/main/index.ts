@@ -3,6 +3,7 @@ import path from 'node:path';
 import { databaseService } from './db/database.service';
 import { registerIpcHandlers } from './ipc/register';
 import { skillRegistry } from './skills/skill-registry';
+import { agentOrchestrator } from './agents/agent-orchestrator';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -60,6 +61,7 @@ if (!gotTheLock) {
     const appDataPath = path.join(app.getPath('userData'), 'data');
     databaseService.initialize();
     skillRegistry.initialize();
+    agentOrchestrator.initialize();
 
     // 2. Set strict Content Security Policy (CSP)
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

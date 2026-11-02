@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { ProjectDescriptor, FileNode, UIMode, SystemResourceMetrics } from '../../../shared/types';
 import type { IndexStats } from '../../../shared/context';
 import type { SkillMetadata, SkillExecutionRecord } from '../../../shared/skills';
+import type { OrchestrationRecord, ApprovalRequest } from '../../../shared/agents';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -44,9 +45,17 @@ interface WorkspaceState {
   skillExecutions: SkillExecutionRecord[];
   setSkillExecutions: (execs: SkillExecutionRecord[]) => void;
 
+  // Multi-Agent Orchestration State (Phase 5)
+  activeOrchestration: OrchestrationRecord | null;
+  setActiveOrchestration: (orch: OrchestrationRecord | null) => void;
+  orchestrationsHistory: OrchestrationRecord[];
+  setOrchestrationsHistory: (history: OrchestrationRecord[]) => void;
+  pendingApprovals: ApprovalRequest[];
+  setPendingApprovals: (approvals: ApprovalRequest[]) => void;
+
   // UI View Tabs
-  activeCenterTab: 'code' | 'providers' | 'console' | 'context' | 'skills';
-  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context' | 'skills') => void;
+  activeCenterTab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents';
+  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents') => void;
 
   setProject: (project: ProjectDescriptor | null) => void;
   setFiles: (files: FileNode[]) => void;
@@ -112,6 +121,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setSelectedSkillId: (selectedSkillId) => set({ selectedSkillId }),
   skillExecutions: [],
   setSkillExecutions: (skillExecutions) => set({ skillExecutions }),
+
+  // Multi-Agent Initial State
+  activeOrchestration: null,
+  setActiveOrchestration: (activeOrchestration) => set({ activeOrchestration }),
+  orchestrationsHistory: [],
+  setOrchestrationsHistory: (orchestrationsHistory) => set({ orchestrationsHistory }),
+  pendingApprovals: [],
+  setPendingApprovals: (pendingApprovals) => set({ pendingApprovals }),
 
   activeCenterTab: 'code',
   setActiveCenterTab: (activeCenterTab) => set({ activeCenterTab }),

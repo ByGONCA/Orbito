@@ -32,6 +32,15 @@ import {
   ImportCustomSkillSchema,
   DeleteCustomSkillSchema
 } from '../../shared/skills';
+import {
+  StartOrchestrationSchema,
+  CancelOrchestrationSchema,
+  ResolveApprovalSchema,
+  GetOrchestrationSchema,
+  ListOrchestrationsSchema,
+  RetryTaskSchema,
+  GetWorktreeDiffSchema
+} from '../../shared/agents';
 import { workspaceService } from '../services/workspace.service';
 import { databaseService } from '../db/database.service';
 import { safeStorageService } from '../services/safe-storage.service';
@@ -43,6 +52,7 @@ import { skillRegistry } from '../skills/skill-registry';
 import { SkillResolver } from '../skills/skill-resolver';
 import { CustomSkillsService } from '../skills/custom-skills.service';
 import { skillExecutionEngine } from '../skills/skill-execution-engine';
+import { agentOrchestrator } from '../agents/agent-orchestrator';
 import type { SystemResourceMetrics } from '../../shared/types';
 
 export function registerIpcHandlers(): void {
@@ -264,5 +274,60 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('skills:listExecutions', (_, projectId?: string) => {
     return databaseService.listSkillExecutions(projectId);
+  });
+
+  // 9. Multi-Agent Orchestration (Phase 5)
+  ipcMain.handle('orchestration:start', async (_, args) => {
+    const validated = StartOrchestrationSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    return await agentOrchestrator.startOrchestration({
+      projectId: validated.projectId,
+      projectPath: canonical,
+      userGoal: validated.userGoal,
+      mode: validated.mode,
+      provider: validated.provider,
+      model: validated.model
+    });
+  });
+
+  ipcMain.handle('orchestration:cancel', async (_, args) => {
+    const validated = CancelOrchestrationSchema.parse(args);
+    const success = await agentOrchestrator.cancelOrchestration(validated.orchestrationId);
+    return { success };
+  });
+
+  ipcMain.handle('orchestration:resolveApproval', async (_, args) => {
+    const validated = ResolveApprovalSchema.parse(args);
+    const success = await agentOrchestrator.resolveApproval(
+      validated.approvalId,
+      validated.decision,
+      validated.rejectionReason
+    );
+    return { success };
+  });
+
+  ipcMain.handle('orchestration:get', (_, args) => {
+    const validated = GetOrchestrationSchema.parse(args);
+    return agentOrchestrator.getOrchestration(validated.orchestrationId);
+  });
+
+  ipcMain.handle('orchestration:list', (_, args) => {
+    const validated = ListOrchestrationsSchema.parse(args || {});
+    return agentOrchestrator.listOrchestrations(validated.projectId);
+  });
+
+  ipcMain.handle('orchestration:retryTask', async (_, args) => {
+    const validated = RetryTaskSchema.parse(args);
+    const success = await agentOrchestrator.retryTask(validated.orchestrationId, validated.taskId);
+    return { success };
+  });
+
+  ipcMain.handle('orchestration:getWorktreeDiff', async (_, args) => {
+    const validated = GetWorktreeDiffSchema.parse(args);
+    return await agentOrchestrator.getWorktreeDiff(validated.taskId);
+  });
+
+  ipcMain.handle('orchestration:getPendingApprovals', (_, orchestrationId?: string) => {
+    return databaseService.getPendingApprovals(orchestrationId);
   });
 }

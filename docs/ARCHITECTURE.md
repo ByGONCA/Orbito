@@ -1,7 +1,7 @@
 # System Architecture Specification — AI Workspace
 
-**Document Version:** 1.5.0  
-**Status:** Phases 1–4 Fully Implemented & Verified | Phase 5 Multi-Agent Orchestration Specified  
+**Document Version:** 1.6.0  
+**Status:** Phases 1–5 Fully Implemented & Verified | Phase 6 Visual Automation Next  
 **Architecture Classification:** Local-First Multi-Process Desktop Application  
 
 ---
@@ -375,17 +375,75 @@ The `SkillPermissionManager` applies fine-grained policy tiers before invoking s
 
 ---
 
-## 9. Multi-Agent Orchestration Architecture (Phase 5 Specification)
+## 9. Multi-Agent Orchestration Architecture (Phase 5 Completed)
 
-### 9.1 Coordinator DAG Planner
-Complex user goals are compiled into a Directed Acyclic Graph (DAG) with dependency ordering and topological scheduling:
-- **Task Decomposition:** Analyzes scope, partitions concerns (Architecture, Backend, Frontend, Testing), and produces tasks with required skills.
-- **Concurrency Cap:** Up to 3 parallel specialist workers with memory and CPU monitoring.
-- **Cancellation Cascades:** Parent task cancellation immediately issues process tree termination to all descendant nodes.
+### 9.1 Orchestration Subsystem Structure
+The Multi-Agent Orchestration Engine transforms AI Workspace from a single-agent interface into a collaborative, dependency-aware multi-agent system:
 
-### 9.2 Git Worktree Sandboxing
-To avoid file write collisions, concurrent workers execute inside isolated Git Worktrees:
-- Worker path: `.worktrees/wt-task-<id>` on branch `agent/task-<id>`.
-- Zero lock contention on the main working tree.
-- Changes are verified by the **Reviewer Agent** (running automated test suites and OWASP audits) before human-in-the-loop merge approval.
+```
+[User Goal / Epic]
+        │
+        ▼
+[CoordinatorAgent] ─── (Decomposes goal into DAG of specialist tasks)
+        │
+        ▼
+[DAGValidator] ─────── (Validates acyclicity, Kahn's algorithm, dependencies)
+        │
+        ▼
+[AgentScheduler] ───── (Bounded concurrency: max 3 workers, dependency resolution)
+        │
+   ┌────┴────────────────────────┬────────────────────────┐
+   ▼                             ▼                        ▼
+[Worker 1]                  [Worker 2]               [Worker 3]
+(Architect/Backend)         (Frontend/Testing)       (Security/Docs)
+   │                             │                        │
+   ├─ Worktree Isolation         ├─ Worktree Isolation    ├─ Worktree Isolation
+   │  (.worktrees/agent-task-*)  │  (branch agent/task-*) │  (ephemeral cleanup)
+   │                             │                        │
+   └──────────────┬──────────────┴────────────────────────┘
+                  │
+                  ▼
+         [ReviewerAgent] ─────── (Independent gate: typecheck, tests, remediation)
+                  │
+        ┌─────────┴─────────┐
+        ▼                   ▼
+    [Passed]             [Failed]
+        │                   │
+        ▼                   ▼
+[ApprovalCenter]     [RemediationLoop] ── (Feedback to worker, max 2 retries)
+(Manual / Supervised /
+ Autonomous merge)
+```
+
+### 9.2 Specialized Agent Personas & Skill Bindings
+Each agent role is instantiated with targeted system instructions and bound skills:
+1. **Architect:** System design, contract definition, and schemas (`project-understanding`, `code-explanation`).
+2. **Backend:** Business logic, services, databases, and APIs (`refactoring`, `bug-fixing`, `performance-analysis`).
+3. **Frontend:** React UI components, responsive styling, and state (`refactoring`, `code-review`).
+4. **Testing:** Unit, integration, and property tests (`test-generation`, `bug-investigation`).
+5. **Security:** Vulnerability audits, permissions, and input hygiene (`security-review`, `code-review`).
+6. **Documentation:** Architecture guides, API references, and user docs (`documentation-generation`).
+7. **Coordinator:** Decomposes requests into dependency graphs and tracks execution state.
+8. **Reviewer:** Independent verification gatekeeper with zero file write authority.
+
+### 9.3 Git Worktree Isolation & Lifecycle (`WorktreeManager`)
+1. **Creation:** Ephemeral directory `.worktrees/agent-task-<id>` mapped to branch `agent/task-<id>`.
+2. **Execution:** Worker process executes exclusively within the isolated worktree directory.
+3. **Overlap Detection:** Analyzes candidate modified files across active worktrees before spawning to prevent concurrent conflicting writes.
+4. **Verification & Diff:** Computes standard git diffs against the parent branch.
+5. **Merge & Teardown:** Upon approval, commits changes, merges cleanly, removes worktree via `git worktree remove --force`, and deletes the task branch.
+
+### 9.4 State Persistence & Crash Recovery (`databaseService`)
+All orchestration state is persisted to `app.sqlite` across three dedicated tables:
+- `orchestrations`: Records id, project_path, goal, execution_mode (`manual` | `supervised` | `autonomous`), status, created_at, updated_at.
+- `orchestration_tasks`: Records task_id, role, title, prompt, status, assigned_skills, dependencies, branch_name, worktree_path, changed_files, review_status, retry_count.
+- `approval_requests`: Records approval_id, task_id, type (`merge` | `command` | `remediation`), status (`pending` | `approved` | `rejected`), diff, user_feedback.
+- **Startup Recovery:** In-flight tasks interrupted by an application crash are transitioned to `'failed'` or `'cancelled'` with descriptive recovery notes, preventing orphaned locks.
+
+### 9.5 Agents Workspace UI (`AgentsWorkspace.tsx`)
+A dedicated dashboard provides full visual transparency:
+- **Interactive Visual DAG:** Renders dependency hierarchy by topological execution levels with live status indicators.
+- **Agent Monitor:** Displays real-time worker logs, active terminal outputs, and assigned roles.
+- **Approval Center:** Inspects unified git diffs, review results, and allows 1-click approvals, rejections, or targeted feedback.
+- **History & Metrics:** Tracks orchestration run times, task counts, and success rates.
 

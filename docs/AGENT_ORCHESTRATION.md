@@ -1,11 +1,11 @@
-# Multi-Agent Orchestration Specification — AI Workspace
+# Multi-Agent Orchestration Architecture & Implementation — AI Workspace
 
-**Phase:** Phase 5 Preparation (Specification Only)  
-**Status:** Architecture Design Approved for Future Implementation  
-**Version:** 1.0.0  
+**Phase:** Phase 5 — Multi-Agent Orchestration  
+**Status:** Fully Implemented, Integrated & Verified in Production  
+**Version:** 1.5.0  
 
-> [!IMPORTANT]
-> **Implementation Boundary Note:** This document constitutes the formal architectural blueprint and technical design specification for Phase 5. Under the strict rules of Phase 4 execution, no production code for Phase 5 is implemented during this phase.
+> [!NOTE]
+> **Implementation Complete:** Phase 5 is fully realized with real subprocess execution via `ExecutionEngine`, real Git worktree sandboxing via `WorktreeManager`, independent automated verification via `ReviewerAgent`, DAG dependency scheduling via `AgentScheduler`, persistent SQLite storage in `app.sqlite`, and a dedicated `AgentsWorkspace.tsx` dashboard. Zero superficial UI mocks.
 
 ---
 
@@ -174,3 +174,51 @@ The **Reviewer Agent** is the gatekeeper between agent execution and the user's 
 - **Process Watchdogs**: Each agent process is tracked by `activeSessions` with dedicated timeout timers.
 - **Cascading Cancel**: Cancelling a parent node in the DAG immediately sends `SIGTERM`/`taskkill` to all active worker processes and recursively cancels pending subtasks.
 - **Resource Recovery**: `git worktree prune` and directory deletion ensure zero orphaned disk state or dangling Git locks (`index.lock`).
+
+---
+
+## 9. Implemented Component Inventory
+
+| Component | Source File | Responsibilities |
+|---|---|---|
+| `AgentOrchestrator` | `src/main/agents/agent-orchestrator.ts` | Central orchestration lifecycle facade, IPC bridging, startup crash recovery. |
+| `CoordinatorAgent` | `src/main/agents/coordinator-agent.ts` | Decomposes goals into a structured DAG of specialized tasks. |
+| `DAGValidator` | `src/main/agents/dag-validator.ts` | Validates graph acyclicity (Kahn's algorithm), dependencies, and state machine transitions. |
+| `AgentScheduler` | `src/main/agents/agent-scheduler.ts` | Concurrency-bounded task scheduler (max 3 workers), failure cascading, dependency triggers. |
+| `AgentWorker` | `src/main/agents/agent-worker.ts` | Executes tasks with persona prompts and bound skills in isolated Git worktrees. |
+| `ReviewerAgent` | `src/main/agents/reviewer-agent.ts` | Independent verification gate: runs typecheck, test suites, and evaluates criteria. |
+| `WorktreeManager` | `src/main/agents/worktree-manager.ts` | Manages real Git worktrees: add, diff, check file overlap, commit, merge, teardown. |
+| `SpecialistRoles` | `src/main/agents/specialist-roles.ts` | Defines 6 specialist personas + Coordinator and Reviewer system instructions. |
+| `AgentsWorkspace` | `src/renderer/src/components/AgentsWorkspace.tsx` | UI dashboard: Visual DAG, Agent Monitor, Approval Center, Run History. |
+
+---
+
+## 10. IPC API & Event Contracts
+
+The Multi-Agent Orchestration subsystem exposes the following strongly-typed IPC channels:
+
+### 10.1 Invocations (`window.api`)
+- `agents:startOrchestration`: Decomposes goal and begins DAG scheduling in chosen execution mode.
+- `agents:cancelOrchestration`: Recursively terminates all running processes and cleans worktrees.
+- `agents:getOrchestration`: Retrieves full DAG state, active tasks, and status.
+- `agents:listOrchestrations`: Lists recent orchestration runs for the active project.
+- `agents:resolveApproval`: Approves or rejects a pending human gate with optional remediation feedback.
+- `agents:getPendingApprovals`: Retrieves all unreviewed diffs or approval requests.
+
+### 10.2 Live Broadcast Events (`agents:event`)
+- `orchestration_started`, `orchestration_completed`, `orchestration_failed`, `orchestration_cancelled`
+- `task_scheduled`, `task_started`, `task_output`, `task_reviewing`, `task_completed`, `task_failed`, `task_blocked`
+- `approval_requested`, `approval_resolved`
+- `worktree_created`, `worktree_merged`, `worktree_removed`
+
+---
+
+## 11. Verification & Automated Test Coverage
+
+The multi-agent orchestration architecture is verified by 6 dedicated test suites:
+1. `tests/agents-dag-validator.test.ts` (Cycle detection, valid DAGs, topological level assignment, status transitions).
+2. `tests/agents-worktree-manager.test.ts` (Worktree lifecycle, diff extraction, merge, safe deletion).
+3. `tests/agents-scheduler.test.ts` (Topological scheduling, bounded concurrency, dependency progression).
+4. `tests/agents-reviewer-gate.test.ts` (Automated review, criteria assessment, remediation loops).
+5. `tests/agents-state-persistence.test.ts` (SQLite schema persistence, task updates, crash recovery).
+6. `tests/agents-orchestrator-integration.test.ts` (End-to-end orchestration lifecycle, event streaming, cancellation).

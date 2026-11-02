@@ -49,6 +49,21 @@ import {
   ImportCustomSkillSchema,
   DeleteCustomSkillSchema
 } from './skills';
+import type {
+  OrchestrationRecord,
+  OrchestrationTask,
+  ApprovalRequest,
+  OrchestrationEvent
+} from './agents';
+import {
+  StartOrchestrationSchema,
+  CancelOrchestrationSchema,
+  ResolveApprovalSchema,
+  GetOrchestrationSchema,
+  ListOrchestrationsSchema,
+  RetryTaskSchema,
+  GetWorktreeDiffSchema
+} from './agents';
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -147,4 +162,15 @@ export interface IElectronAPI {
   importCustomSkill: (params: z.input<typeof ImportCustomSkillSchema>) => Promise<{ success: boolean; skill?: SkillMetadata; error?: string; securityNotice?: string }>;
   deleteCustomSkill: (params: z.input<typeof DeleteCustomSkillSchema>) => Promise<{ success: boolean }>;
   listSkillExecutions: (projectId?: string) => Promise<SkillExecutionRecord[]>;
+
+  // Multi-Agent Orchestration (Phase 5)
+  startOrchestration: (params: z.input<typeof StartOrchestrationSchema>) => Promise<OrchestrationRecord>;
+  cancelOrchestration: (params: z.input<typeof CancelOrchestrationSchema>) => Promise<{ success: boolean }>;
+  resolveApproval: (params: z.input<typeof ResolveApprovalSchema>) => Promise<{ success: boolean }>;
+  getOrchestration: (params: z.input<typeof GetOrchestrationSchema>) => Promise<OrchestrationRecord | null>;
+  listOrchestrations: (params?: z.input<typeof ListOrchestrationsSchema>) => Promise<OrchestrationRecord[]>;
+  retryOrchestrationTask: (params: z.input<typeof RetryTaskSchema>) => Promise<{ success: boolean }>;
+  getWorktreeDiff: (params: z.input<typeof GetWorktreeDiffSchema>) => Promise<string>;
+  getPendingApprovals: (orchestrationId?: string) => Promise<ApprovalRequest[]>;
+  onOrchestrationEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
 }

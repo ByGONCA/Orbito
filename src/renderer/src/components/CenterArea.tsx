@@ -14,6 +14,7 @@ import { ProvidersPanel } from './ProvidersPanel';
 import { CLIConsole } from './CLIConsole';
 import { ContextInspector } from './ContextInspector';
 import { SkillsManager } from './SkillsManager';
+import { AgentsWorkspace } from './AgentsWorkspace';
 
 export const CenterArea: React.FC = () => {
   const {
@@ -56,6 +57,10 @@ export const CenterArea: React.FC = () => {
 
   if (activeCenterTab === 'skills') {
     return <SkillsManager />;
+  }
+
+  if (activeCenterTab === 'agents') {
+    return <AgentsWorkspace />;
   }
 
   if (activeFilePath && activeFileContent !== null) {

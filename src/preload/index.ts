@@ -63,7 +63,24 @@ const api: IElectronAPI = {
   executeSkill: (params) => ipcRenderer.invoke('skills:execute', params),
   importCustomSkill: (params) => ipcRenderer.invoke('skills:importCustom', params),
   deleteCustomSkill: (params) => ipcRenderer.invoke('skills:deleteCustom', params),
-  listSkillExecutions: (projectId) => ipcRenderer.invoke('skills:listExecutions', projectId)
+  listSkillExecutions: (projectId) => ipcRenderer.invoke('skills:listExecutions', projectId),
+
+  // Multi-Agent Orchestration (Phase 5)
+  startOrchestration: (params) => ipcRenderer.invoke('orchestration:start', params),
+  cancelOrchestration: (params) => ipcRenderer.invoke('orchestration:cancel', params),
+  resolveApproval: (params) => ipcRenderer.invoke('orchestration:resolveApproval', params),
+  getOrchestration: (params) => ipcRenderer.invoke('orchestration:get', params),
+  listOrchestrations: (params) => ipcRenderer.invoke('orchestration:list', params),
+  retryOrchestrationTask: (params) => ipcRenderer.invoke('orchestration:retryTask', params),
+  getWorktreeDiff: (params) => ipcRenderer.invoke('orchestration:getWorktreeDiff', params),
+  getPendingApprovals: (orchestrationId) => ipcRenderer.invoke('orchestration:getPendingApprovals', orchestrationId),
+  onOrchestrationEvent: (callback) => {
+    const handler = (_: any, event: any) => callback(event);
+    ipcRenderer.on('agents:orchestration-event', handler);
+    return () => {
+      ipcRenderer.removeListener('agents:orchestration-event', handler);
+    };
+  }
 };
 
 contextBridge.exposeInMainWorld('api', api);

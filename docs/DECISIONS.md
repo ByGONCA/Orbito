@@ -75,7 +75,37 @@ This document records the foundational architectural decisions, their context, a
 
 ### ADR-008: Git Worktree Sandboxing for Multi-Agent Orchestration
 - **Date:** 2026-11-02  
-- **Status:** Approved Specification (Phase 5)  
+- **Status:** Accepted & Implemented (Phase 5)  
 - **Context:** Multiple specialist agents running concurrently in the same directory cause git index lock errors and file write collisions.
-- **Decision:** Spin up isolated ephemeral Git Worktrees (`.worktrees/wt-task-<id>`) on dedicated task branches (`agent/task-<id>`). Merge changes back only after passing tests and Reviewer Agent verification.
+- **Decision:** Spin up isolated ephemeral Git Worktrees (`.worktrees/agent-task-<id>`) on dedicated task branches (`agent/task-<id>`). Merge changes back only after passing tests and Reviewer Agent verification. Clean up worktrees safely on completion or cancellation.
 - **Consequences:** Enables true parallel multi-agent execution with zero filesystem corruption and clear, auditable pull-request-style diffs.
+
+---
+
+### ADR-009: Directed Acyclic Graph (DAG) with Topological Concurrency Scheduling
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 5)  
+- **Context:** Complex user goals require breaking into coordinated subtasks without infinite cycles or unconstrained resource exhaustion.
+- **Decision:** Implement `CoordinatorAgent` to compile user goals into a strict DAG, validated with Kahn's cycle-detection algorithm (`DAGValidator`). Schedule ready tasks with a bounded concurrency pool (max 3 workers) and cascading cancellations upon prerequisite failure.
+- **Consequences:** Guarantees deterministic, deadlock-free agent execution within acceptable desktop RAM/CPU boundaries (< 500 MB per worker).
+
+---
+
+### ADR-010: Independent Adversarial Reviewer Agent Quality Gates
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 5)  
+- **Context:** Agents evaluating their own code exhibit blind spots, leading to unnoticed regressions and syntax errors.
+- **Decision:** Implement a dedicated `ReviewerAgent` with read-only authority. Before any worker task is marked completed or presented for merge, the Reviewer independently executes typechecking, runs the project's test suite, and verifies acceptance criteria. Failed checks initiate an automated remediation loop (up to 2 retries).
+- **Consequences:** Prevents broken code from reaching the main branch while automating standard defect remediation.
+
+---
+
+### ADR-011: Three-Tier Human-in-the-Loop Approval Model
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 5)  
+- **Context:** Different user personas (beginners vs. experienced architects) and task types demand varying degrees of autonomy vs. verification.
+- **Decision:** Provide three selectable execution modes:
+  1. `manual`: Every task start, command, and diff requires explicit approval.
+  2. `supervised`: Specialist tasks run autonomously in worktrees; branch merges and system operations require human sign-off with unified diff preview.
+  3. `autonomous`: Verified tasks merge automatically when quality gates pass; halts only on unresolvable defects or security anomalies.
+- **Consequences:** Gives users full control over agent autonomy without sacrificing development velocity.
