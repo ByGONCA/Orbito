@@ -14,9 +14,9 @@ export class GeminiAdapter implements ICLIAdapter {
   public readonly provider: CLIProvider = 'gemini';
   public readonly capabilities: CLICapabilities = {
     supportsStreaming: true,
-    supportsResume: false,
+    supportsResume: false, // Stateless per command
     supportsHeadlessPrompt: true,
-    supportsJsonOutput: false
+    supportsJsonOutput: true // Official support via "--output-format stream-json"
   };
 
   private readonly minVersion = '0.1.0';
@@ -56,14 +56,25 @@ export class GeminiAdapter implements ICLIAdapter {
     };
   }
 
-  public async checkAuth(_resolvedPath: string): Promise<CLIAuthStatus> {
-    // 1. Check GEMINI_API_KEY
+  public async checkAuth(resolvedPath?: string): Promise<CLIAuthStatus> {
+    if (!resolvedPath && !(await findExecutableOnPath('gemini'))) {
+      return {
+        provider: this.provider,
+        state: 'not_installed',
+        isAuthenticated: false,
+        authType: 'missing',
+        details: 'Gemini CLI is not installed on system PATH'
+      };
+    }
+
+    // 1. Check GEMINI_API_KEY environment variable
     if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 10) {
       return {
         provider: this.provider,
+        state: 'authenticated',
         isAuthenticated: true,
         authType: 'api-key',
-        details: 'GEMINI_API_KEY configured in environment'
+        details: 'GEMINI_API_KEY found in process environment'
       };
     }
 
@@ -75,16 +86,55 @@ export class GeminiAdapter implements ICLIAdapter {
         : path.join(os.homedir(), '.config', 'gcloud', 'application_default_credentials.json'));
 
     if (fs.existsSync(adcPath)) {
-      return {
-        provider: this.provider,
-        isAuthenticated: true,
-        authType: 'adc',
-        details: 'Google Application Default Credentials (ADC) found'
-      };
+      try {
+        const raw = fs.readFileSync(adcPath, 'utf8');
+        const json = JSON.parse(raw);
+
+        if (!json || Object.keys(json).length === 0) {
+          return {
+            provider: this.provider,
+            state: 'configured',
+            isAuthenticated: false,
+            authType: 'missing',
+            details: 'ADC credentials file exists but is empty'
+          };
+        }
+
+        // Check if token has an expiration timestamp
+        if (json.expiry && typeof json.expiry === 'string') {
+          const expiryDate = new Date(json.expiry).getTime();
+          if (!isNaN(expiryDate) && Date.now() > expiryDate && !json.refresh_token) {
+            return {
+              provider: this.provider,
+              state: 'authentication_expired',
+              isAuthenticated: false,
+              authType: 'adc',
+              details: 'Google ADC token has expired. Run "gcloud auth application-default login".'
+            };
+          }
+        }
+
+        return {
+          provider: this.provider,
+          state: 'authenticated',
+          isAuthenticated: true,
+          authType: 'adc',
+          details: 'Google Application Default Credentials (ADC) active'
+        };
+      } catch (err: any) {
+        return {
+          provider: this.provider,
+          state: 'error',
+          isAuthenticated: false,
+          authType: 'missing',
+          details: `Error reading ADC credentials: ${err.message}`
+        };
+      }
     }
 
     return {
       provider: this.provider,
+      state: 'authentication_required',
       isAuthenticated: false,
       authType: 'missing',
       details: 'Set GEMINI_API_KEY or authenticate via "gcloud auth application-default login"'
@@ -92,9 +142,12 @@ export class GeminiAdapter implements ICLIAdapter {
   }
 
   public buildCommand(prompt: string, workingDirectory: string): CommandSpec {
+    // Correct official syntax: gemini -p "<prompt>" --output-format stream-json
+    const args: string[] = ['-p', prompt, '--output-format', 'stream-json'];
+
     return {
       executable: 'gemini',
-      args: ['prompt', prompt],
+      args,
       env: {
         ...process.env,
         PWD: workingDirectory

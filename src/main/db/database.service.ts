@@ -382,6 +382,23 @@ export class DatabaseService {
     }));
   }
 
+  public getCLISession(sessionId: string): CLISessionRecord | null {
+    const db = this.getAppDb();
+    const r = db.prepare('SELECT * FROM cli_sessions WHERE id = ?').get(sessionId) as any;
+    if (!r) return null;
+    return {
+      id: r.id,
+      provider: r.provider,
+      projectId: r.project_id || undefined,
+      status: r.status,
+      prompt: r.prompt,
+      exitCode: r.exit_code !== null ? r.exit_code : undefined,
+      durationMs: r.duration_ms !== null ? r.duration_ms : undefined,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    };
+  }
+
   public getCLISessionMessages(sessionId: string): CLISessionMessage[] {
     const db = this.getAppDb();
     const rows = db.prepare('SELECT * FROM cli_session_messages WHERE session_id = ? ORDER BY timestamp ASC').all(sessionId) as any[];

@@ -4,6 +4,15 @@ export type CLIProvider = 'claude' | 'codex' | 'gemini';
 
 export type AuthType = 'oauth' | 'api-key' | 'adc' | 'missing';
 
+export type CLIAuthDetailedState =
+  | 'not_installed'
+  | 'installed'
+  | 'configured'
+  | 'authenticated'
+  | 'authentication_required'
+  | 'authentication_expired'
+  | 'error';
+
 export type CLISessionStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface CLIInstallationStatus {
@@ -18,6 +27,7 @@ export interface CLIInstallationStatus {
 
 export interface CLIAuthStatus {
   provider: CLIProvider;
+  state: CLIAuthDetailedState;
   isAuthenticated: boolean;
   authType: AuthType;
   details?: string;

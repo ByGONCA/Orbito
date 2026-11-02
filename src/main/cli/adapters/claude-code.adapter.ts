@@ -16,11 +16,11 @@ export class ClaudeCodeAdapter implements ICLIAdapter {
     supportsStreaming: true,
     supportsResume: true,
     supportsHeadlessPrompt: true,
-    supportsJsonOutput: false
+    supportsJsonOutput: true
   };
 
   private readonly minVersion = '0.2.0';
-  private readonly installGuideUrl = 'https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview';
+  private readonly installGuideUrl = 'https://docs.anthropic.com/en/docs/claude-code/overview';
 
   public async detect(customPath?: string): Promise<CLIInstallationStatus> {
     let resolvedPath: string | null = null;
@@ -56,14 +56,25 @@ export class ClaudeCodeAdapter implements ICLIAdapter {
     };
   }
 
-  public async checkAuth(_resolvedPath: string): Promise<CLIAuthStatus> {
+  public async checkAuth(resolvedPath?: string): Promise<CLIAuthStatus> {
+    if (!resolvedPath && !(await findExecutableOnPath('claude'))) {
+      return {
+        provider: this.provider,
+        state: 'not_installed',
+        isAuthenticated: false,
+        authType: 'missing',
+        details: 'Claude CLI is not installed on system PATH'
+      };
+    }
+
     // 1. Check ANTHROPIC_API_KEY environment variable
     if (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim().length > 10) {
       return {
         provider: this.provider,
+        state: 'authenticated',
         isAuthenticated: true,
         authType: 'api-key',
-        details: 'ANTHROPIC_API_KEY configured in environment'
+        details: 'ANTHROPIC_API_KEY found in process environment'
       };
     }
 
@@ -75,36 +86,85 @@ export class ClaudeCodeAdapter implements ICLIAdapter {
       try {
         const raw = fs.readFileSync(configPath, 'utf8');
         const json = JSON.parse(raw);
-        if (json.oauthAccount || json.sessionToken || json.apiKey || json.userID) {
+
+        // Check if file is just empty/template
+        if (!json || Object.keys(json).length === 0) {
           return {
             provider: this.provider,
-            isAuthenticated: true,
-            authType: 'oauth',
-            details: 'Active Claude CLI session found in ~/.claude.json'
+            state: 'configured',
+            isAuthenticated: false,
+            authType: 'missing',
+            details: 'Config file ~/.claude.json exists but contains no active credentials'
           };
         }
-      } catch {
-        // Fall through to unauthenticated
+
+        // Check expiration if session metadata has expiresAt
+        if (json.oauthAccount?.expiresAt && typeof json.oauthAccount.expiresAt === 'number') {
+          if (Date.now() > json.oauthAccount.expiresAt) {
+            return {
+              provider: this.provider,
+              state: 'authentication_expired',
+              isAuthenticated: false,
+              authType: 'oauth',
+              details: 'Claude CLI session has expired. Run "claude login" to renew.'
+            };
+          }
+        }
+
+        if (json.oauthAccount || json.sessionToken || json.apiKey) {
+          return {
+            provider: this.provider,
+            state: 'authenticated',
+            isAuthenticated: true,
+            authType: json.apiKey ? 'api-key' : 'oauth',
+            details: 'Valid Claude CLI credentials present in ~/.claude.json'
+          };
+        }
+
+        return {
+          provider: this.provider,
+          state: 'authentication_required',
+          isAuthenticated: false,
+          authType: 'missing',
+          details: 'Authentication required. Run "claude login" or set ANTHROPIC_API_KEY.'
+        };
+      } catch (err: any) {
+        return {
+          provider: this.provider,
+          state: 'error',
+          isAuthenticated: false,
+          authType: 'missing',
+          details: `Error reading ~/.claude.json: ${err.message}`
+        };
       }
     }
 
     return {
       provider: this.provider,
+      state: 'authentication_required',
       isAuthenticated: false,
       authType: 'missing',
-      details: 'Run "claude login" or set ANTHROPIC_API_KEY'
+      details: 'No credentials found. Run "claude login" or configure ANTHROPIC_API_KEY.'
     };
   }
 
   public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string): CommandSpec {
     const args: string[] = [];
 
-    if (resumeSessionId) {
-      args.push('resume', resumeSessionId);
-    }
-
     // Use non-interactive print mode for programmatic execution
     args.push('-p', prompt);
+
+    // Stream JSON output format (requires --verbose in Claude Code CLI)
+    args.push('--output-format', 'stream-json', '--verbose');
+
+    // Official resume syntax: --resume <SESSION_ID>
+    if (resumeSessionId) {
+      if (resumeSessionId === '--last' || resumeSessionId === 'last') {
+        args.push('--resume');
+      } else {
+        args.push('--resume', resumeSessionId);
+      }
+    }
 
     return {
       executable: 'claude',

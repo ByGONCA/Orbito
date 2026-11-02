@@ -47,6 +47,7 @@ export class CLIManager {
     if (!detection.isInstalled || !detection.resolvedPath) {
       return {
         provider,
+        state: 'not_installed',
         isAuthenticated: false,
         authType: 'missing',
         details: 'CLI binary is not installed'

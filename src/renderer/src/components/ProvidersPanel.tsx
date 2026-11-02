@@ -167,17 +167,44 @@ export const ProvidersPanel: React.FC = () => {
                   </div>
 
                   {/* Auth Badge */}
-                  <div className="flex items-center justify-between py-1 border-b border-border/50">
-                    <span className="text-muted-foreground">Authentication:</span>
-                    {auth?.isAuthenticated ? (
-                      <span className="flex items-center gap-1 text-emerald-500 font-medium capitalize">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>{auth.authType}</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-amber-500 font-medium">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span>Unauthenticated</span>
+                  <div className="flex flex-col py-1 border-b border-border/50 gap-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Authentication:</span>
+                      {auth?.state === 'authenticated' ? (
+                        <span className="flex items-center gap-1 text-emerald-500 font-medium capitalize">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Authenticated ({auth.authType})</span>
+                        </span>
+                      ) : auth?.state === 'authentication_expired' ? (
+                        <span className="flex items-center gap-1 text-red-500 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Expired</span>
+                        </span>
+                      ) : auth?.state === 'configured' ? (
+                        <span className="flex items-center gap-1 text-amber-500 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Configured (No Keys)</span>
+                        </span>
+                      ) : auth?.state === 'error' ? (
+                        <span className="flex items-center gap-1 text-red-500 font-medium">
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Error</span>
+                        </span>
+                      ) : auth?.state === 'not_installed' ? (
+                        <span className="flex items-center gap-1 text-muted-foreground italic">
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Not Installed</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-amber-500 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Login Required</span>
+                        </span>
+                      )}
+                    </div>
+                    {auth?.details && (
+                      <span className="text-[10px] text-muted-foreground leading-tight">
+                        {auth.details}
                       </span>
                     )}
                   </div>

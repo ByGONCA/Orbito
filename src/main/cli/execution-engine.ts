@@ -86,7 +86,8 @@ export class ExecutionEngine extends EventEmitter {
       cwd: canonicalWorkDir,
       env: cmdSpec.env || process.env,
       shell: false,
-      windowsHide: true
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
 
     // 6. Timeout guard
@@ -110,21 +111,56 @@ export class ExecutionEngine extends EventEmitter {
       timestamp: Date.now()
     });
 
-    // 7. Handle stdout streaming
+    // 7. Handle stdout streaming (with JSONL and raw text parsing)
     child.stdout?.on('data', (chunk: Buffer) => {
-      const text = chunk.toString('utf8');
+      const rawText = chunk.toString('utf8');
+      const lines = rawText.split(/\r?\n/);
+      let parsedDisplay = '';
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const parsed = JSON.parse(line.trim());
+          // Extract session ID if reported by CLI JSON stream
+          if (parsed.session_id || parsed.sessionId || (parsed.type === 'session' && parsed.id)) {
+            const providerSessionId = parsed.session_id || parsed.sessionId || parsed.id;
+            databaseService.updateCLISession(sessionId, 'running', undefined, undefined);
+          }
+
+          // Extract message text from Claude stream-json, Codex --json or Gemini stream-json
+          if (parsed.delta?.text) {
+            parsedDisplay += parsed.delta.text;
+          } else if (parsed.content && typeof parsed.content === 'string') {
+            parsedDisplay += parsed.content;
+          } else if (parsed.response && typeof parsed.response === 'string') {
+            parsedDisplay += parsed.response;
+          } else if (parsed.message?.content) {
+            parsedDisplay += parsed.message.content;
+          } else if (parsed.type === 'error' || parsed.error) {
+            parsedDisplay += `\n[Error] ${JSON.stringify(parsed.error || parsed)}\n`;
+          } else {
+            parsedDisplay += `${line}\n`;
+          }
+        } catch {
+          // Plain text line
+          parsedDisplay += `${line}\n`;
+        }
+      }
+
+      const textToEmit = parsedDisplay || rawText;
+
       databaseService.addCLISessionMessage({
         id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-ast`,
         sessionId,
         role: 'assistant',
-        content: text,
+        content: textToEmit,
         timestamp: Date.now()
       });
 
       this.emitEvent({
         sessionId,
         type: 'stdout',
-        content: text,
+        content: textToEmit,
         timestamp: Date.now()
       });
     });
