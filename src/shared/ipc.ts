@@ -24,6 +24,18 @@ import {
   ListCLISessionsSchema,
   GetSessionMessagesSchema
 } from './cli';
+import type {
+  IndexStats,
+  SearchResult,
+  ContextAssemblyResult
+} from './context';
+import {
+  StartIndexingSchema,
+  CancelIndexingSchema,
+  GetIndexStatsSchema,
+  SearchContextSchema,
+  AssembleContextSchema
+} from './context';
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -103,4 +115,13 @@ export interface IElectronAPI {
   listCLISessions: (params?: z.input<typeof ListCLISessionsSchema>) => Promise<CLISessionRecord[]>;
   getSessionMessages: (params: z.input<typeof GetSessionMessagesSchema>) => Promise<CLISessionMessage[]>;
   onCLIStreamEvent: (callback: (event: CLIStreamEvent) => void) => () => void;
+
+  // Context Engine (Phase 3)
+  startIndexing: (params: z.input<typeof StartIndexingSchema>) => Promise<IndexStats>;
+  cancelIndexing: (params: z.input<typeof CancelIndexingSchema>) => Promise<{ success: boolean }>;
+  getIndexStats: (params: z.input<typeof GetIndexStatsSchema>) => Promise<IndexStats>;
+  searchContext: (params: z.input<typeof SearchContextSchema>) => Promise<SearchResult[]>;
+  assembleContext: (params: z.input<typeof AssembleContextSchema>) => Promise<ContextAssemblyResult>;
+  onIndexingProgress: (callback: (progress: { current: number; total: number; currentFile: string }) => void) => () => void;
+  onIndexingStatus: (callback: (status: { isIndexing: boolean; isWatching: boolean }) => void) => () => void;
 }

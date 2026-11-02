@@ -18,11 +18,20 @@ import {
   GetSessionMessagesSchema,
   type CLIStreamEvent
 } from '../../shared/cli';
+import {
+  StartIndexingSchema,
+  CancelIndexingSchema,
+  GetIndexStatsSchema,
+  SearchContextSchema,
+  AssembleContextSchema
+} from '../../shared/context';
 import { workspaceService } from '../services/workspace.service';
 import { databaseService } from '../db/database.service';
 import { safeStorageService } from '../services/safe-storage.service';
+import { securityService } from '../services/security.service';
 import { cliManager } from '../cli/cli-manager';
 import { executionEngine } from '../cli/execution-engine';
+import { contextEngineService } from '../context/context-engine.service';
 import type { SystemResourceMetrics } from '../../shared/types';
 
 export function registerIpcHandlers(): void {
@@ -32,6 +41,25 @@ export function registerIpcHandlers(): void {
     for (const win of windows) {
       if (!win.isDestroyed()) {
         win.webContents.send('cli:stream-event', event);
+      }
+    }
+  });
+
+  // Global Context Engine progress & status broadcasts
+  contextEngineService.on('progress', (prog: any) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('context:indexing-progress', prog);
+      }
+    }
+  });
+
+  contextEngineService.on('status', (status: any) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('context:indexing-status', status);
       }
     }
   });
@@ -142,5 +170,40 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('cli:getSessionMessages', (_, args) => {
     const validated = GetSessionMessagesSchema.parse(args);
     return databaseService.getCLISessionMessages(validated.sessionId);
+  });
+
+  // 7. Context Engine (Phase 3)
+  ipcMain.handle('context:startIndexing', async (_, args) => {
+    const validated = StartIndexingSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    return await contextEngineService.startIndexing(canonical, validated.forceReindex);
+  });
+
+  ipcMain.handle('context:cancelIndexing', (_, args) => {
+    CancelIndexingSchema.parse(args);
+    contextEngineService.cancelIndexing();
+    return { success: true };
+  });
+
+  ipcMain.handle('context:getIndexStats', (_, args) => {
+    const validated = GetIndexStatsSchema.parse(args);
+    return contextEngineService.getIndexStats(validated.projectPath);
+  });
+
+  ipcMain.handle('context:search', async (_, args) => {
+    const validated = SearchContextSchema.parse(args);
+    return await contextEngineService.search(validated.query, validated.limit);
+  });
+
+  ipcMain.handle('context:assemble', async (_, args) => {
+    const validated = AssembleContextSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    return await contextEngineService.assembleContext({
+      projectPath: canonical,
+      taskDescription: validated.taskDescription,
+      activeFilePath: validated.activeFilePath,
+      maxTokens: validated.maxTokens,
+      modelTarget: validated.modelTarget
+    });
   });
 }

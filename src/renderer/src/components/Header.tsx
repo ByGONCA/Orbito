@@ -8,7 +8,8 @@ import {
   Activity,
   Layers,
   Code2,
-  Cpu
+  Cpu,
+  BrainCircuit
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 
@@ -113,6 +114,18 @@ export const Header: React.FC = () => {
         >
           <Terminal className="w-3.5 h-3.5" />
           <span>CLI Console</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCenterTab('context')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'context'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <BrainCircuit className="w-3.5 h-3.5 text-primary" />
+          <span>Context</span>
         </button>
       </div>
 

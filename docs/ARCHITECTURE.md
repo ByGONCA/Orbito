@@ -178,6 +178,29 @@ To guarantee that AI agents never operate on stale code, hallucinated files, or 
 * **In-Flight Modifications:** While an agent or human is editing files, `@parcel/watcher` flags those files in an in-memory `DirtyFileSet`. When context is assembled, the Context Engine reads these files directly from disk (`fs.readFileSync`), ensuring the model always sees live code.
 * **Interruption & Resumption:** The Indexer persists a checkpoint table `indexing_progress (file_path, status, last_indexed_at)` in `index.sqlite`. If the application exits or crashes mid-indexing, the next startup resumes only from unindexed or dirty files without restarting from scratch.
 
+### 4.3 Structural Code Intelligence with Tree-sitter (WASM Runtime)
+To avoid platform-dependent C++ build issues on Windows/macOS/Linux, the AST engine leverages `web-tree-sitter` (v0.22.6) with pre-compiled WebAssembly grammars (`tree-sitter-wasms`):
+* **Supported Core Grammars:**
+  * **TypeScript / TSX / JavaScript / JSX:** Extracting function declarations, class declarations, methods, interface definitions, type aliases, and module import/export statements.
+  * **Python:** Extracting functions, classes, methods, and import hierarchies.
+  * **HTML & CSS:** Parsing element structures, rulesets, and class/ID selectors.
+  * **JSON & Markdown:** Parsing section hierarchies, headers, code blocks, and schemas.
+* **Documented Fallback:** Files without specialized Tree-sitter WASM grammars utilize a language-aware indentation and sliding-window text chunker (40 lines with 10-line overlap).
+
+### 4.4 Token Optimization & Precise Budgeting
+* **Actual BPE Counting:** Integrated `js-tiktoken` running the `cl100k_base` vocabulary, generating identical token measurements to modern LLMs.
+* **Heuristic Estimation:** Fallback heuristic (~3.8 chars/token) clearly differentiated in metadata from actual BPE tokens.
+* **Range Deduplication:** When multiple search fragments from the same file overlap or sit within 3 lines of each other, the Context Assembly service automatically fuses them into a single continuous range, avoiding duplicated code in prompt context.
+* **Model-Aware Budgeting:** Context limits are calibrated per provider (e.g. 200k for Claude, 128k for Codex, 1M for Gemini), truncated cleanly at function/fragment boundaries if the configured budget is exceeded.
+
+### 4.5 Context Inspector UI
+A dedicated visual dashboard in the desktop client provides full transparency into the AI's knowledge base:
+* Real-time indexing status (Idle / Indexing / Watching) with live file-by-file progress bars.
+* Knowledge base metrics: Total indexed files, AST symbols, FTS5 chunks, and language distribution.
+* Interactive Hybrid Search tester with BM25 score inspection.
+* Context Assembly sandbox with token budget sliders, live disk read indicators, and fragment preview.
+* Simple Mode vs Advanced Mode toggles for developer inspection.
+
 ---
 
 ## 5. Security Kernel: Runtime Enforcement & Defense-in-Depth

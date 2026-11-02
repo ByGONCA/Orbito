@@ -12,6 +12,7 @@ import {
 import { useWorkspaceStore } from '../stores/workspace.store';
 import { ProvidersPanel } from './ProvidersPanel';
 import { CLIConsole } from './CLIConsole';
+import { ContextInspector } from './ContextInspector';
 
 export const CenterArea: React.FC = () => {
   const {
@@ -46,6 +47,10 @@ export const CenterArea: React.FC = () => {
 
   if (activeCenterTab === 'console') {
     return <CLIConsole />;
+  }
+
+  if (activeCenterTab === 'context') {
+    return <ContextInspector />;
   }
 
   if (activeFilePath && activeFileContent !== null) {

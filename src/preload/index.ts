@@ -32,6 +32,27 @@ const api: IElectronAPI = {
     return () => {
       ipcRenderer.removeListener('cli:stream-event', handler);
     };
+  },
+
+  // Context Engine (Phase 3)
+  startIndexing: (params) => ipcRenderer.invoke('context:startIndexing', params),
+  cancelIndexing: (params) => ipcRenderer.invoke('context:cancelIndexing', params),
+  getIndexStats: (params) => ipcRenderer.invoke('context:getIndexStats', params),
+  searchContext: (params) => ipcRenderer.invoke('context:search', params),
+  assembleContext: (params) => ipcRenderer.invoke('context:assemble', params),
+  onIndexingProgress: (callback) => {
+    const handler = (_: any, prog: any) => callback(prog);
+    ipcRenderer.on('context:indexing-progress', handler);
+    return () => {
+      ipcRenderer.removeListener('context:indexing-progress', handler);
+    };
+  },
+  onIndexingStatus: (callback) => {
+    const handler = (_: any, status: any) => callback(status);
+    ipcRenderer.on('context:indexing-status', handler);
+    return () => {
+      ipcRenderer.removeListener('context:indexing-status', handler);
+    };
   }
 };
 

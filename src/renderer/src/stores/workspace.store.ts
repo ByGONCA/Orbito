@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ProjectDescriptor, FileNode, UIMode, SystemResourceMetrics } from '../../../shared/types';
+import type { IndexStats } from '../../../shared/context';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -20,6 +21,10 @@ interface WorkspaceState {
   metrics: SystemResourceMetrics | null;
   logs: Array<{ id: string; timestamp: string; message: string; level: 'info' | 'warn' | 'error' }>;
 
+  // Context Engine State (Phase 3)
+  indexStats: IndexStats | null;
+  setIndexStats: (stats: IndexStats | null) => void;
+
   // CLI Engine State (Phase 2)
   cliStatuses: Record<CLIProvider, CLIInstallationStatus> | null;
   cliAuthStatuses: Record<CLIProvider, CLIAuthStatus> | null;
@@ -31,8 +36,8 @@ interface WorkspaceState {
   sessionsHistory: CLISessionRecord[];
 
   // UI View Tabs
-  activeCenterTab: 'code' | 'providers' | 'console';
-  setActiveCenterTab: (tab: 'code' | 'providers' | 'console') => void;
+  activeCenterTab: 'code' | 'providers' | 'console' | 'context';
+  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context') => void;
 
   setProject: (project: ProjectDescriptor | null) => void;
   setFiles: (files: FileNode[]) => void;
@@ -76,6 +81,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       level: 'info'
     }
   ],
+
+  // Context Engine Initial State
+  indexStats: null,
+  setIndexStats: (indexStats) => set({ indexStats }),
 
   // CLI Initial State
   cliStatuses: null,

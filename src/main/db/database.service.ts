@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import type { ProjectDescriptor, WorkspaceConfig, MemoryRecord, MemoryTier } from '../../shared/types';
 import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider } from '../../shared/cli';
+import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shared/context';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -122,6 +123,7 @@ export class DatabaseService {
         content_hash TEXT NOT NULL,
         size INTEGER NOT NULL,
         mtime_ms REAL NOT NULL,
+        language TEXT NOT NULL DEFAULT 'plaintext',
         last_indexed_at INTEGER NOT NULL
       );
 
@@ -131,10 +133,53 @@ export class DatabaseService {
         name TEXT NOT NULL,
         kind TEXT NOT NULL,
         line INTEGER NOT NULL,
+        end_line INTEGER,
+        container_name TEXT,
+        signature TEXT,
         FOREIGN KEY(file_path) REFERENCES file_hashes(file_path) ON DELETE CASCADE
       );
+      CREATE INDEX IF NOT EXISTS idx_symbols_name ON symbols(name);
+      CREATE INDEX IF NOT EXISTS idx_symbols_file ON symbols(file_path);
 
+      CREATE TABLE IF NOT EXISTS chunks (
+        id TEXT PRIMARY KEY,
+        file_path TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        symbol_name TEXT,
+        content TEXT NOT NULL,
+        token_count INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY(file_path) REFERENCES file_hashes(file_path) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_chunks_file ON chunks(file_path);
+    `);
+
+    // Safe column migrations if existing tables were initialized in Phase 1
+    try {
+      db.exec(`ALTER TABLE file_hashes ADD COLUMN language TEXT NOT NULL DEFAULT 'plaintext'`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE symbols ADD COLUMN end_line INTEGER`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE symbols ADD COLUMN container_name TEXT`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE symbols ADD COLUMN signature TEXT`);
+    } catch {}
+
+    // Check if fts_chunks needs chunk_id column
+    try {
+      const cols = db.prepare(`PRAGMA table_info(fts_chunks)`).all() as any[];
+      const hasChunkId = cols.some((c: any) => c.name === 'chunk_id');
+      if (!hasChunkId && cols.length > 0) {
+        db.exec(`DROP TABLE IF EXISTS fts_chunks`);
+      }
+    } catch {}
+
+    db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
+        chunk_id UNINDEXED,
         file_path UNINDEXED,
         chunk_content,
         symbol_name,
@@ -432,6 +477,226 @@ export class DatabaseService {
       role: r.role,
       content: r.content,
       timestamp: r.timestamp
+    }));
+  }
+
+  // ==========================================
+  // Index DB Operations (Phase 3)
+  // ==========================================
+
+  public getAllFileHashes(): Map<string, { contentHash: string; size: number; mtimeMs: number; language: string }> {
+    const db = this.getIndexDb();
+    const rows = db.prepare('SELECT file_path, content_hash, size, mtime_ms, language FROM file_hashes').all() as any[];
+    const map = new Map<string, { contentHash: string; size: number; mtimeMs: number; language: string }>();
+    for (const r of rows) {
+      map.set(r.file_path, {
+        contentHash: r.content_hash,
+        size: r.size,
+        mtimeMs: r.mtime_ms,
+        language: r.language
+      });
+    }
+    return map;
+  }
+
+  public getFileHash(filePath: string): { contentHash: string; size: number; mtimeMs: number; language: string } | null {
+    const db = this.getIndexDb();
+    const r = db.prepare('SELECT file_path, content_hash, size, mtime_ms, language FROM file_hashes WHERE file_path = ?').get(filePath) as any;
+    if (!r) return null;
+    return {
+      contentHash: r.content_hash,
+      size: r.size,
+      mtimeMs: r.mtime_ms,
+      language: r.language
+    };
+  }
+
+  public upsertFileIndex(
+    filePath: string,
+    contentHash: string,
+    size: number,
+    mtimeMs: number,
+    language: string,
+    symbols: FileSymbol[],
+    chunks: CodeChunk[]
+  ): void {
+    const db = this.getIndexDb();
+
+    const insertTx = db.transaction(() => {
+      // 1. Remove previous entries for file
+      db.prepare('DELETE FROM fts_chunks WHERE file_path = ?').run(filePath);
+      db.prepare('DELETE FROM chunks WHERE file_path = ?').run(filePath);
+      db.prepare('DELETE FROM symbols WHERE file_path = ?').run(filePath);
+
+      // 2. Insert or replace file hash
+      db.prepare(`
+        INSERT OR REPLACE INTO file_hashes (file_path, content_hash, size, mtime_ms, language, last_indexed_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(filePath, contentHash, size, mtimeMs, language, Date.now());
+
+      // 3. Insert symbols
+      const insertSym = db.prepare(`
+        INSERT INTO symbols (id, file_path, name, kind, line, end_line, container_name, signature)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const s of symbols) {
+        insertSym.run(s.id, filePath, s.name, s.kind, s.line, s.endLine || null, s.containerName || null, s.signature || null);
+      }
+
+      // 4. Insert chunks & fts
+      const insertChk = db.prepare(`
+        INSERT INTO chunks (id, file_path, start_line, end_line, symbol_name, content, token_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      const insertFts = db.prepare(`
+        INSERT INTO fts_chunks (chunk_id, file_path, chunk_content, symbol_name)
+        VALUES (?, ?, ?, ?)
+      `);
+
+      for (const c of chunks) {
+        insertChk.run(c.id, filePath, c.startLine, c.endLine, c.symbolName || null, c.content, Math.ceil(c.content.length / 4));
+        insertFts.run(c.id, filePath, c.content, c.symbolName || null);
+      }
+    });
+
+    insertTx();
+  }
+
+  public deleteFileIndex(filePath: string): void {
+    const db = this.getIndexDb();
+    const deleteTx = db.transaction(() => {
+      db.prepare('DELETE FROM fts_chunks WHERE file_path = ?').run(filePath);
+      db.prepare('DELETE FROM chunks WHERE file_path = ?').run(filePath);
+      db.prepare('DELETE FROM symbols WHERE file_path = ?').run(filePath);
+      db.prepare('DELETE FROM file_hashes WHERE file_path = ?').run(filePath);
+    });
+    deleteTx();
+  }
+
+  public searchFTS(query: string, limit = 20): SearchResult[] {
+    const db = this.getIndexDb();
+    const sanitized = query.replace(/[^\w\s]/g, ' ').trim();
+    if (!sanitized) return [];
+
+    try {
+      const rows = db.prepare(`
+        SELECT f.chunk_id, f.file_path, f.chunk_content, f.symbol_name, c.start_line, c.end_line, bm25(fts_chunks) AS rank
+        FROM fts_chunks f
+        LEFT JOIN chunks c ON c.id = f.chunk_id
+        WHERE fts_chunks MATCH ?
+        ORDER BY rank ASC
+        LIMIT ?
+      `).all(sanitized, limit) as any[];
+
+      return rows.map((r) => ({
+        chunkId: r.chunk_id || `chk-${r.file_path}`,
+        filePath: r.file_path,
+        content: r.chunk_content,
+        symbolName: r.symbol_name || undefined,
+        startLine: r.start_line || 1,
+        endLine: r.end_line || 50,
+        score: Math.max(0, 10 - (r.rank || 0)),
+        matchType: 'fts'
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  public searchSymbols(query: string, limit = 20): SearchResult[] {
+    const db = this.getIndexDb();
+    const rows = db.prepare(`
+      SELECT s.id, s.file_path, s.name, s.kind, s.line, s.end_line, s.signature, c.content, c.id AS chunk_id
+      FROM symbols s
+      LEFT JOIN chunks c ON c.file_path = s.file_path AND s.line >= c.start_line AND s.line <= c.end_line
+      WHERE s.name LIKE ?
+      LIMIT ?
+    `).all(`%${query}%`, limit) as any[];
+
+    return rows.map((r) => ({
+      chunkId: r.chunk_id || `sym-chk-${r.id}`,
+      filePath: r.file_path,
+      content: r.content || r.signature || r.name,
+      symbolName: r.name,
+      startLine: r.line,
+      endLine: r.end_line || r.line + 10,
+      score: r.name.toLowerCase() === query.toLowerCase() ? 10 : 7,
+      matchType: 'symbol'
+    }));
+  }
+
+  public searchFilePaths(query: string, limit = 20): SearchResult[] {
+    const db = this.getIndexDb();
+    const rows = db.prepare(`
+      SELECT file_path, language
+      FROM file_hashes
+      WHERE file_path LIKE ?
+      LIMIT ?
+    `).all(`%${query}%`, limit) as any[];
+
+    return rows.map((r) => ({
+      chunkId: `path-${r.file_path}`,
+      filePath: r.file_path,
+      content: `File: ${r.file_path} (${r.language})`,
+      startLine: 1,
+      endLine: 1,
+      score: 5,
+      matchType: 'filename'
+    }));
+  }
+
+  public getIndexStats(): IndexStats {
+    const db = this.getIndexDb();
+    const totalFiles = (db.prepare('SELECT COUNT(*) as count FROM file_hashes').get() as any)?.count || 0;
+    const totalSymbols = (db.prepare('SELECT COUNT(*) as count FROM symbols').get() as any)?.count || 0;
+    const totalChunks = (db.prepare('SELECT COUNT(*) as count FROM chunks').get() as any)?.count || 0;
+    
+    const lastIndexedRow = db.prepare('SELECT MAX(last_indexed_at) as last FROM file_hashes').get() as any;
+    const lastIndexedAt = lastIndexedRow?.last || 0;
+
+    const langRows = db.prepare('SELECT language, COUNT(*) as count FROM file_hashes GROUP BY language').all() as any[];
+    const indexedLanguages: Record<string, number> = {};
+    for (const lr of langRows) {
+      indexedLanguages[lr.language] = lr.count;
+    }
+
+    return {
+      totalFiles,
+      totalSymbols,
+      totalChunks,
+      indexedLanguages,
+      lastIndexedAt,
+      isIndexing: false,
+      isWatching: false
+    };
+  }
+
+  public getChunksForFile(filePath: string): CodeChunk[] {
+    const db = this.getIndexDb();
+    const rows = db.prepare('SELECT * FROM chunks WHERE file_path = ? ORDER BY start_line ASC').all(filePath) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      filePath: r.file_path,
+      startLine: r.start_line,
+      endLine: r.end_line,
+      content: r.content,
+      symbolName: r.symbol_name || undefined,
+      language: 'plaintext'
+    }));
+  }
+
+  public getSymbolsForFile(filePath: string): FileSymbol[] {
+    const db = this.getIndexDb();
+    const rows = db.prepare('SELECT * FROM symbols WHERE file_path = ? ORDER BY line ASC').all(filePath) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      filePath: r.file_path,
+      name: r.name,
+      kind: r.kind,
+      line: r.line,
+      endLine: r.end_line,
+      containerName: r.container_name || undefined,
+      signature: r.signature || undefined
     }));
   }
 
