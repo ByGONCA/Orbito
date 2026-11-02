@@ -10,6 +10,9 @@ import { contextEngineService } from '../context/context-engine.service';
 import { agentOrchestrator } from '../agents/agent-orchestrator';
 import { SPECIALIST_ROLES } from '../agents/specialist-roles';
 import { airGapManager } from '../services/air-gap.manager';
+import { PromptAssemblyService } from '../prompt/prompt-assembly.service';
+import { ToolOutputNormalizer } from '../services/tool-output-normalizer';
+import { MultiTierCacheService } from '../services/cache.service';
 
 const execFileAsync = promisify(execFile);
 
@@ -73,9 +76,19 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
     const rawProvider = node.data.config.provider || 'claude';
     const providerName = airGapManager.resolveProvider(rawProvider as any);
     const promptInput = ctx.inputs.prompt || node.data.config.taskPrompt || 'Analyze project';
-    const contextInput = ctx.inputs.context ? `\n\nContext:\n${ctx.inputs.context}` : '';
+    const contextInput = ctx.inputs.context ? String(ctx.inputs.context) : '';
 
-    const fullPrompt = `${specialist.systemPrompt}\n\nTask:\n${promptInput}${contextInput}`;
+    const assembly = PromptAssemblyService.assemblePrompt({
+      systemPrompt: specialist.systemPrompt,
+      securityConstraints: [
+        'Adhere to project security guidelines and local workspace boundaries.',
+        'Preserve all unrelated comments, tests, and documentation.'
+      ],
+      userObjective: promptInput,
+      contextMarkdown: contextInput,
+      expectedOutputFormat: 'Complete the task directly and report summary of actions.'
+    });
+    const fullPrompt = assembly.assembledPrompt;
 
     ctx.onLog?.(`AI Agent [${roleKey}] running with provider ${providerName}...`);
 
@@ -93,11 +106,13 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
       180000
     );
 
+    const norm = ToolOutputNormalizer.normalize(execResult.stdout || execResult.stderr || '');
+
     return {
       outputs: {
-        result: execResult.stdout || execResult.stderr || 'Task completed without output.',
+        result: norm.normalized || 'Task completed without output.',
         success: execResult.exitCode === 0,
-        tokens: Math.round((execResult.stdout.length + fullPrompt.length) / 4)
+        tokens: Math.round((norm.normalized.length + fullPrompt.length) / 4)
       }
     };
   },
@@ -233,6 +248,14 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
     const text = String(ctx.inputs.text || '').toLowerCase();
     const categories: string[] = node.data.config.categories || ['bug', 'feature', 'refactor', 'test'];
 
+    const cacheKey = `wf_cls:${MultiTierCacheService.hash(text + categories.join(','))}`;
+    const cached = MultiTierCacheService.modelResponseCache.get(cacheKey);
+    if (cached) {
+      try {
+        return { outputs: JSON.parse(cached) };
+      } catch {}
+    }
+
     // Heuristic keyword classifier
     let selected = categories[0] || 'unknown';
     let confidence = 0.5;
@@ -245,12 +268,9 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
       }
     }
 
-    return {
-      outputs: {
-        category: selected,
-        confidence
-      }
-    };
+    const outputs = { category: selected, confidence };
+    MultiTierCacheService.modelResponseCache.set(cacheKey, JSON.stringify(outputs), 20);
+    return { outputs };
   },
 
   // ==================== B. CONTEXT NODES ====================
@@ -260,16 +280,22 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
 
     ctx.onLog?.(`Searching workspace with query: "${query}"`);
 
+    const cacheKey = `search:${ctx.projectPath}:${query}:${maxResults}`;
+    const cached = MultiTierCacheService.contextCache.get(cacheKey);
+    if (cached) {
+      return { outputs: cached };
+    }
+
     const results = await contextEngineService.search(query, maxResults);
     const formatted = results.map((r) => `[${r.filePath}:${r.startLine}] ${r.content}`).join('\n---\n');
 
-    return {
-      outputs: {
-        results,
-        formatted,
-        count: results.length
-      }
+    const outputs = {
+      results,
+      formatted,
+      count: results.length
     };
+    MultiTierCacheService.contextCache.set(cacheKey, outputs, results.length * 15);
+    return { outputs };
   },
 
   read_file: async (node, ctx) => {

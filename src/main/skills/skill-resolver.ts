@@ -1,4 +1,5 @@
 import { skillRegistry } from './skill-registry';
+import { SkillCompositionService } from './skill-composition.service';
 import type { SkillMetadata, SkillResolutionResult } from '../../shared/skills';
 import type { CLIProvider } from '../../shared/cli';
 
@@ -134,6 +135,12 @@ export class SkillResolver {
             matchedKeywords.push(tag);
           }
         }
+      }
+
+      // 5. Historical performance & telemetry boost
+      const telemetry = SkillCompositionService.getSkillTelemetry()[skill.id];
+      if (telemetry && telemetry.invocations >= 3 && telemetry.successRate >= 0.8) {
+        score += 0.05;
       }
 
       // Normalize score between 0.0 and 1.0

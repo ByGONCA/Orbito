@@ -512,3 +512,34 @@ Developers and enterprise teams can extend AI Workspace with custom plugins via 
 - **Immutable SQLite Audit Logging (`audit_logs`):** Automatically traps security violations (path traversal, compound command injection, air-gap egress blocks), extension lifecycle changes, and agent worktree merges.
 - **Zero-Cloud Export:** Data is exportable directly to local CSV or JSON files without remote telemetry transmission.
 
+---
+
+## 12. Phase 8 Architecture: Intelligence & Token Optimization Engine
+
+### 12.1 Canonical Prompt Assembly (`PromptAssemblyService`)
+- **8-Section Layout:** System (100), Security (95), Objective (90), Acceptance Criteria (85), Skills (80), Context (70), History (60), Output Format (50).
+- **Mandatory Non-Trimming:** Security constraints and user objectives can never be trimmed or dropped.
+- **Semantic Whitespace Compression:** Preserves code syntax while collapsing redundant blank lines and trailing space (12–25% savings).
+- **Deterministic SHA-256 Fingerprinting:** Keys assembled prompts for caching.
+
+### 12.2 Progressive Skill Composition (`SkillCompositionService`)
+- **Progressive Tiers:** Level 1 (`metadata`, ~12 tokens), Level 2 (`summary`, ~40 tokens), Level 3 (`full`, ~400 tokens).
+- **Cross-Skill Deduplication:** Reconciles redundant guidelines and resolves output format conflicts across multi-skill worker prompts.
+- **Telemetry-Guided Ranking:** Tracks invocation counts, success rates, and average latency to inform skill resolution.
+
+### 12.3 Multi-Tier Intelligent Caching (`MultiTierCacheService`)
+- **Four LRU Tiers:** Context AST Cache (30 min), Skill Instructions Cache (60 min), Prompt Cache (15 min), Model Response Cache (60 min).
+- **Automated Invalidation:** Purges cached AST fragments and prompts upon local file modifications.
+- **Secret & Mutation Filtering:** Prohibits caching of requests with credentials or state-mutating actions.
+
+### 12.4 Intelligent Model & Provider Routing (`IntelligenceRouter`)
+- **Category Inference:** Classifies tasks (`classification`, `summarization`, `code_generation`, `deep_reasoning`, `architecture`, `security_review`).
+- **Cost Policy & Capabilities:** Routes high-volume lightweight tasks to efficient tiers and deep architectural tasks to frontier models.
+- **Air-Gap Strict Override:** Unconditionally forces local Ollama execution when Air-Gap Mode is enabled.
+
+### 12.5 Tool Output Normalization (`ToolOutputNormalizer`)
+- **ANSI Stripping:** Cleans terminal escape codes.
+- **Error Hoisting:** Automatically extracts and promotes stack traces and error messages into a dedicated summary header.
+- **Head/Tail Truncation:** Preserves initial command context and terminal exit status while collapsing repetitive intermediate loops (50–80% savings).
+
+

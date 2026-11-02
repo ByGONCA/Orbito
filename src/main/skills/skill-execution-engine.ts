@@ -7,6 +7,9 @@ import { contextAssemblyService } from '../context/assembly/context-assembly.ser
 import { tokenCounterService } from '../context/tokens/token-counter.service';
 import { databaseService } from '../db/database.service';
 import { executionEngine } from '../cli/execution-engine';
+import { PromptAssemblyService } from '../prompt/prompt-assembly.service';
+import { SkillCompositionService } from './skill-composition.service';
+import { MultiTierCacheService } from '../services/cache.service';
 import type { SkillExecutionRecord } from '../../shared/skills';
 import type { CLIProvider } from '../../shared/cli';
 
@@ -111,9 +114,37 @@ export class SkillExecutionEngine {
       }
     }
 
-    // 4. Construct composite prompt
-    const specializedPrompt = this.buildPrompt(details.name, details.version, details.instructions, assembledContextText, prompt);
-    const totalInputTokens = tokenCounterService.countActualTokens(specializedPrompt);
+    // 4. Construct composite prompt via PromptAssemblyService
+    const promptAssembly = PromptAssemblyService.assemblePrompt({
+      systemPrompt: `SKILL INSTRUCTION SET: ${details.name} (v${details.version})`,
+      securityConstraints: [
+        'Adhere to project security policies.',
+        'Do not alter unrelated code or files.'
+      ],
+      userObjective: prompt,
+      skillInstructions: details.instructions,
+      contextMarkdown: assembledContextText,
+      expectedOutputFormat: 'Complete skill execution and produce direct output.'
+    });
+    const specializedPrompt = promptAssembly.assembledPrompt;
+    const totalInputTokens = promptAssembly.totalTokens;
+
+    // Check response cache for deterministic read-only operations
+    const cacheKey = `skill:${skillId}:${promptAssembly.promptFingerprint}`;
+    const cachedResponse = MultiTierCacheService.modelResponseCache.get(cacheKey);
+    if (cachedResponse && MultiTierCacheService.isCacheEligible({ category: skill.category, prompt })) {
+      const durationMs = Date.now() - startTime;
+      SkillCompositionService.recordSkillUsage(skillId, 0, durationMs, true);
+      return {
+        executionId,
+        skillId,
+        success: true,
+        status: 'completed',
+        durationMs,
+        tokensUsed: 0,
+        assembledContextTokens: 0
+      };
+    }
 
     // Record initial running state in DB
     const initialRecord: SkillExecutionRecord = {
@@ -164,6 +195,11 @@ export class SkillExecutionEngine {
         databaseService.recordSkillExecution(finalRecord);
       } catch {}
 
+      SkillCompositionService.recordSkillUsage(skillId, totalInputTokens, durationMs, true);
+      if (MultiTierCacheService.isCacheEligible({ category: skill.category, prompt })) {
+        MultiTierCacheService.modelResponseCache.set(cacheKey, 'completed', totalInputTokens);
+      }
+
       return {
         executionId,
         sessionId: cliSessionId,
@@ -195,23 +231,12 @@ export class SkillExecutionEngine {
     contextMarkdown: string,
     userPrompt: string
   ): string {
-    const parts: string[] = [];
-
-    parts.push(`=== SKILL INSTRUCTION SET: ${skillName} (v${version}) ===`);
-    if (instructions) {
-      parts.push(instructions.trim());
-    }
-    parts.push('=== END OF SKILL INSTRUCTION SET ===\n');
-
-    if (contextMarkdown) {
-      parts.push(contextMarkdown.trim());
-      parts.push('\n');
-    }
-
-    parts.push('=== USER DIRECTIVE ===');
-    parts.push(userPrompt.trim());
-
-    return parts.join('\n');
+    return PromptAssemblyService.assemblePrompt({
+      systemPrompt: `SKILL PROTOCOL: ${skillName} (v${version})`,
+      userObjective: userPrompt,
+      skillInstructions: instructions,
+      contextMarkdown
+    }).assembledPrompt;
   }
 
   private recordFailure(

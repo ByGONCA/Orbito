@@ -29,6 +29,11 @@ import type {
   SearchResult,
   ContextAssemblyResult
 } from './context';
+import type {
+  ModelRoutingDecision,
+  PromptAssemblyResult,
+  ComposedSkillInstructions
+} from './intelligence';
 import {
   StartIndexingSchema,
   CancelIndexingSchema,
@@ -245,6 +250,43 @@ export const UpdateAirGapConfigSchema = z.object({
 export const ListLocalModelsSchema = z.object({}).optional();
 
 // ==========================================
+// Phase 8: Intelligence & Token Optimization Schemas
+// ==========================================
+
+export const RouteIntelligenceTaskSchema = z.object({
+  taskDescription: z.string(),
+  category: z.enum(['classification', 'summarization', 'code_generation', 'deep_reasoning', 'architecture', 'security_review', 'large_context', 'general']).optional(),
+  estimatedInputTokens: z.number().optional(),
+  requiresModifications: z.boolean().optional(),
+  requiresReasoning: z.boolean().optional(),
+  preferredProvider: z.enum(['claude', 'codex', 'gemini', 'ollama']).optional(),
+  optimizationMode: z.enum(['balanced', 'cost_efficient', 'max_quality']).optional()
+});
+
+export const AssemblePromptSchema = z.object({
+  systemPrompt: z.string().optional(),
+  securityConstraints: z.array(z.string()).optional(),
+  userObjective: z.string(),
+  acceptanceCriteria: z.array(z.string()).optional(),
+  skillInstructions: z.string().optional(),
+  contextMarkdown: z.string().optional(),
+  previousResults: z.string().optional(),
+  expectedOutputFormat: z.string().optional(),
+  maxTokens: z.number().optional(),
+  modelTarget: z.string().optional(),
+  mode: z.enum(['balanced', 'cost_efficient', 'max_quality']).optional()
+});
+
+export const ComposeSkillsSchema = z.object({
+  skillIds: z.array(z.string()),
+  level: z.enum(['metadata', 'summary', 'full']).optional(),
+  maxTokens: z.number().optional()
+});
+
+export const GetCacheStatsSchema = z.object({}).optional();
+export const ClearCacheSchema = z.object({}).optional();
+
+// ==========================================
 // Strongly-Typed IPC Interface Contract
 // ==========================================
 
@@ -344,4 +386,11 @@ export interface IElectronAPI {
   getAirGapConfig: () => Promise<AirGapConfig>;
   updateAirGapConfig: (params: z.input<typeof UpdateAirGapConfigSchema>) => Promise<AirGapConfig>;
   listLocalModels: () => Promise<{ models: string[]; isRunning: boolean }>;
+
+  // Intelligence & Token Optimization (Phase 8)
+  routeIntelligenceTask: (params: z.input<typeof RouteIntelligenceTaskSchema>) => Promise<ModelRoutingDecision>;
+  assemblePrompt: (params: z.input<typeof AssemblePromptSchema>) => Promise<PromptAssemblyResult>;
+  composeSkills: (params: z.input<typeof ComposeSkillsSchema>) => Promise<ComposedSkillInstructions>;
+  getIntelligenceCacheStats: () => Promise<any>;
+  clearIntelligenceCache: () => Promise<{ success: boolean }>;
 }

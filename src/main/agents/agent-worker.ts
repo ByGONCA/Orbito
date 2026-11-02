@@ -9,6 +9,8 @@ import { executionEngine } from '../cli/execution-engine';
 import { WorktreeManager } from './worktree-manager';
 import { ReviewerAgent } from './reviewer-agent';
 import { databaseService } from '../db/database.service';
+import { PromptAssemblyService } from '../prompt/prompt-assembly.service';
+import { ToolOutputNormalizer } from '../services/tool-output-normalizer';
 
 export interface WorkerExecutionResult {
   success: boolean;
@@ -104,7 +106,8 @@ export class AgentWorker {
 
       if (task.isModifying) {
         changedFiles = await WorktreeManager.getChangedFiles(targetDir);
-        diff = await WorktreeManager.getDiff(targetDir);
+        const rawDiff = await WorktreeManager.getDiff(targetDir);
+        diff = rawDiff ? ToolOutputNormalizer.normalizeDiff(rawDiff) : undefined;
         await WorktreeManager.commitWorktreeChanges(targetDir, `feat(${task.role}): ${task.title}`);
       }
 
@@ -273,35 +276,20 @@ export class AgentWorker {
     skillInstructions: string[];
     contextMarkdown: string;
   }): string {
-    const parts: string[] = [];
+    const assembled = PromptAssemblyService.assemblePrompt({
+      systemPrompt: params.specialist.systemPrompt,
+      securityConstraints: [
+        'Adhere to project security guidelines and local workspace boundaries.',
+        'Only modify files directly assigned to this task objective.',
+        'Preserve all unrelated comments, tests, and documentation.'
+      ],
+      userObjective: `${params.task.title}\n${params.task.description || ''}`,
+      acceptanceCriteria: params.task.acceptanceCriteria || [],
+      skillInstructions: params.skillInstructions.join('\n\n'),
+      contextMarkdown: params.contextMarkdown,
+      expectedOutputFormat: 'Complete the task directly. Report summary of actions and changed files.'
+    });
 
-    parts.push(`=== SPECIALIST PERSONA: ${params.specialist.title.toUpperCase()} ===`);
-    parts.push(params.specialist.systemPrompt);
-    parts.push('');
-
-    if (params.skillInstructions.length > 0) {
-      parts.push('=== BOUND DOMAIN SKILLS ===');
-      parts.push(params.skillInstructions.join('\n\n'));
-      parts.push('');
-    }
-
-    if (params.contextMarkdown) {
-      parts.push('=== RELEVANT CODEBASE CONTEXT ===');
-      parts.push(params.contextMarkdown);
-      parts.push('');
-    }
-
-    parts.push('=== ASSIGNED TASK ===');
-    parts.push(`Title: ${params.task.title}`);
-    parts.push(`Description: ${params.task.description}`);
-
-    if (params.task.acceptanceCriteria.length > 0) {
-      parts.push('Acceptance Criteria:');
-      for (const crit of params.task.acceptanceCriteria) {
-        parts.push(`- ${crit}`);
-      }
-    }
-
-    return parts.join('\n');
+    return assembled.assembledPrompt;
   }
 }

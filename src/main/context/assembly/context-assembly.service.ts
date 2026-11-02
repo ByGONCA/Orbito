@@ -179,8 +179,30 @@ export class ContextAssemblyService {
   }
 
   private mergeOverlappingFragments(fragments: ContextFragment[]): ContextFragment[] {
-    const byFile = new Map<string, ContextFragment[]>();
+    // 1. Content-based deduplication across identical snippets
+    const seenContentHashes = new Map<string, string>();
+    const deduplicatedByContent: ContextFragment[] = [];
+
     for (const frag of fragments) {
+      const normalizedContent = frag.content.replace(/\s+/g, ' ').trim();
+      if (normalizedContent.length > 80) {
+        const hash = Buffer.from(normalizedContent).toString('base64');
+        if (seenContentHashes.has(hash)) {
+          const earlierRef = seenContentHashes.get(hash);
+          deduplicatedByContent.push({
+            ...frag,
+            content: `// [Duplicate content omitted. Identical to ${earlierRef}]`,
+            tokenCount: 15
+          });
+          continue;
+        }
+        seenContentHashes.set(hash, `${frag.filePath}#L${frag.startLine}`);
+      }
+      deduplicatedByContent.push(frag);
+    }
+
+    const byFile = new Map<string, ContextFragment[]>();
+    for (const frag of deduplicatedByContent) {
       const list = byFile.get(frag.filePath) || [];
       list.push(frag);
       byFile.set(frag.filePath, list);
@@ -250,10 +272,16 @@ export class ContextAssemblyService {
       const fileUri = `file:///${absPath.replace(/\\/g, '/')}`;
       const ext = path.extname(frag.filePath).replace('.', '') || 'text';
 
+      // Semantic whitespace compression on code snippet
+      const compressedContent = frag.content
+        .replace(/[ \t]+$/gm, '')
+        .replace(/(\r?\n){3,}/g, '\n\n')
+        .trimEnd();
+
       parts.push(`## [${frag.filePath}#L${frag.startLine}-L${frag.endLine}](${fileUri}#L${frag.startLine}-L${frag.endLine})`);
       parts.push(`_Reason: ${frag.reason} ${frag.isLiveDiskRead ? '• [Live Disk Read]' : '• [Indexed]'}_\n`);
       parts.push(`\`\`\`${ext}`);
-      parts.push(frag.content.trimEnd());
+      parts.push(compressedContent);
       parts.push('```\n');
     }
 

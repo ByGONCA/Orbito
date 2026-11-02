@@ -27,8 +27,15 @@ import {
   ExportAnalyticsSchema,
   QueryAuditLogsSchema,
   ExportAuditLogsSchema,
-  UpdateAirGapConfigSchema
+  UpdateAirGapConfigSchema,
+  RouteIntelligenceTaskSchema,
+  AssemblePromptSchema,
+  ComposeSkillsSchema
 } from '../../shared/ipc';
+import { IntelligenceRouter } from '../services/intelligence-router.service';
+import { PromptAssemblyService } from '../prompt/prompt-assembly.service';
+import { SkillCompositionService } from '../skills/skill-composition.service';
+import { MultiTierCacheService } from '../services/cache.service';
 import {
   DetectCLIsSchema,
   CheckCLIAuthSchema,
@@ -509,5 +516,33 @@ export function registerIpcHandlers(): void {
     const isRunning = await ollamaAdapter.pingDaemon();
     const models = isRunning ? await ollamaAdapter.listLocalModels() : [];
     return { models, isRunning };
+  });
+
+  // ==========================================
+  // Phase 8: Intelligence & Optimization Engine
+  // ==========================================
+
+  ipcMain.handle('intelligence:routeTask', (_, args) => {
+    const validated = RouteIntelligenceTaskSchema.parse(args);
+    return IntelligenceRouter.routeTask(validated);
+  });
+
+  ipcMain.handle('intelligence:assemblePrompt', (_, args) => {
+    const validated = AssemblePromptSchema.parse(args);
+    return PromptAssemblyService.assemblePrompt(validated);
+  });
+
+  ipcMain.handle('intelligence:composeSkills', (_, args) => {
+    const validated = ComposeSkillsSchema.parse(args);
+    return SkillCompositionService.composeSkills(validated.skillIds, validated.level, validated.maxTokens);
+  });
+
+  ipcMain.handle('intelligence:getCacheStats', () => {
+    return MultiTierCacheService.getAggregatedStats();
+  });
+
+  ipcMain.handle('intelligence:clearCache', () => {
+    MultiTierCacheService.clearAll();
+    return { success: true };
   });
 }

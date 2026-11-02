@@ -121,7 +121,14 @@ const api: IElectronAPI = {
   // Local Model & Air-Gap Support (Phase 7)
   getAirGapConfig: () => ipcRenderer.invoke('airgap:getConfig'),
   updateAirGapConfig: (params) => ipcRenderer.invoke('airgap:updateConfig', params),
-  listLocalModels: () => ipcRenderer.invoke('airgap:listLocalModels')
+  listLocalModels: () => ipcRenderer.invoke('airgap:listLocalModels'),
+
+  // Intelligence & Token Optimization (Phase 8)
+  routeIntelligenceTask: (params) => ipcRenderer.invoke('intelligence:routeTask', params),
+  assemblePrompt: (params) => ipcRenderer.invoke('intelligence:assemblePrompt', params),
+  composeSkills: (params) => ipcRenderer.invoke('intelligence:composeSkills', params),
+  getIntelligenceCacheStats: () => ipcRenderer.invoke('intelligence:getCacheStats'),
+  clearIntelligenceCache: () => ipcRenderer.invoke('intelligence:clearCache')
 };
 
 contextBridge.exposeInMainWorld('api', api);

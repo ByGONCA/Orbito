@@ -221,6 +221,14 @@ Performance targets are treated as empirical benchmarks to be validated against 
 * **Reliability:** 100% of editor, search, workflow, and indexing works offline.
 * **Git Safety:** All autonomous code edits require worktree isolation or stash backup.
 
+### 4.4 Intelligence & Token Optimization Specifications (Phase 8)
+* **Average Token Reduction:** ≥ 40% reduction in end-to-end token consumption across typical development tasks.
+* **Progressive Skill Loading:** Tiered instruction loading (Level 1: metadata, Level 2: summary, Level 3: full) reducing skill prompt overhead by > 85%.
+* **Deterministic Caching:** Multi-tier LRU caching achieving 100% token savings on repeat deterministic queries.
+* **Air-Gap Compliance:** 100% local model override when Air-Gap is active with zero cloud network leakage.
+* **Prompt Assembly:** Canonical 8-section layout with zero degradation of mandatory security constraints.
+* **Tool Normalization:** Automatic error hoisting and head/tail preservation reducing terminal log tokens by > 50%.
+
 ---
 
 ## 5. UI/UX Specifications

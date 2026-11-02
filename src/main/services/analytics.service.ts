@@ -4,6 +4,7 @@ import type {
   ProviderCostMetrics
 } from '../../shared/analytics';
 import { databaseService } from '../db/database.service';
+import { MultiTierCacheService } from './cache.service';
 
 export class AnalyticsService {
   /**
@@ -84,7 +85,18 @@ export class AnalyticsService {
    * Get summarized analytics and token metrics.
    */
   public getSummary(options?: { projectId?: string; timeRangeMs?: number }): AnalyticsSummary {
-    return databaseService.getAnalyticsSummary(options);
+    const summary = databaseService.getAnalyticsSummary(options);
+    const cacheStats = MultiTierCacheService.getAggregatedStats();
+
+    summary.optimization = {
+      tokensSavedCaching: cacheStats.totalTokensSaved,
+      tokensSavedDeduplication: 0,
+      tokensSavedCompression: 0,
+      totalTokensSaved: cacheStats.totalTokensSaved,
+      estimatedCostSavedUsd: Number(((cacheStats.totalTokensSaved / 1_000_000) * 3.0).toFixed(4))
+    };
+
+    return summary;
   }
 
   /**

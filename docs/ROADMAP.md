@@ -166,3 +166,4 @@ All tests must execute and pass on:
 * **Phase 5 — Multi-Agent System:** Implement Coordinator DAG, Git worktree isolation, Reviewer diff validation, and approval modals.
 * **Phase 6 — Visual Automation:** React Flow canvas, natural language to DAG workflow generator, conditional nodes.
 * **Phase 7 — Ecosystem & Enterprise Hardening:** Complete custom extension SDK, local model (Ollama) air-gap network isolation, advanced analytics with model rate cards, and immutable SQLite enterprise audit logging.
+* **Phase 8 — Intelligence & Token Optimization Engine:** Centralized Prompt Assembly (`PromptAssemblyService`), progressive skill instruction levels (`SkillCompositionService`), intelligent capability and cost-policy model routing (`IntelligenceRouter`), multi-tier LRU caching (`MultiTierCacheService`), and tool/diff normalization (`ToolOutputNormalizer`) yielding 40–80% token savings across developer workflows.
