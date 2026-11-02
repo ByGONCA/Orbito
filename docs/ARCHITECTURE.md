@@ -1,7 +1,7 @@
 # System Architecture Specification — AI Workspace
 
-**Document Version:** 1.7.0  
-**Status:** Phases 1–6 Fully Implemented & Verified | Phase 7 Ecosystem & Hardening Next  
+**Document Version:** 1.8.0  
+**Status:** Phases 1–7 Fully Implemented & Verified | Production Ready  
 **Architecture Classification:** Local-First Multi-Process Desktop Application  
 
 ---
@@ -488,4 +488,27 @@ The engine provides 29 fully specified, sandboxed node types across five distinc
 - **Branch Skipping:** When conditional or switch nodes select a path, alternative unselected branches are flagged as `skipped`, cascading down the sub-DAG without consuming CPU cycles or throwing errors.
 - **Sandboxed Expression Evaluator:** Parses arithmetic, comparisons (`==`, `!=`, `<`, `>`, `<=`, `>=`), logical connectors (`&&`, `||`, `!`), and safe functions (`contains`, `startsWith`, `length`, `isEmpty`) without ever invoking JavaScript `eval()` or `Function()`.
 - **Crash Recovery:** Application restart detects in-flight workflows and marks them failed with informative recovery notices.
+
+---
+
+## 11. Phase 7 Architecture: Ecosystem, Air-Gap & Enterprise Hardening
+
+### 11.1 Local Model & Air-Gap Isolation Engine
+To support zero-trust air-gapped environments, national security, healthcare, and enterprise internal networks, Phase 7 deploys `AirGapManager`:
+- **Network Boundary:** Inspects all outbound network egress. When Air-Gap is active, outbound HTTP/HTTPS calls to remote services (e.g. `api.anthropic.com`, `api.openai.com`) throw `AirGapViolationException`. Loopback addresses (`127.0.0.1`, `localhost`, `::1`) remain open for local inference.
+- **Transparent Local Rerouting:** When Air-Gap is active and `enforceLocalModels` is enabled, any invocation of cloud providers (`claude`, `codex`, `gemini`) seamlessly routes to local `ollama` with a zero-cost local model (`llama3:latest`, `mistral`, `deepseek-r1`).
+- **Ollama Adapter & Streaming:** Native `OllamaAdapter` connects to the local Ollama daemon via HTTP (`/api/tags`, `/api/chat`) or CLI (`ollama run <model> --nowordwrap`). It streams tokens line-by-line via `OllamaStreamParser`.
+
+### 11.2 Custom Extension SDK & Sandboxed Lifecycle Engine
+Developers and enterprise teams can extend AI Workspace with custom plugins via the Extension SDK:
+- **Declarative Manifest (`extension.json`):** Strict Zod validation of plugin metadata, authors, versions, and requested permissions (`filesystem`, `network`, `shell`, `tools`).
+- **Dynamic Contributions:** Extensions can contribute custom React Flow nodes to the canvas (`registerCustomNode`) and custom domain skills to the Skills Engine (`registerLoadedSkill`).
+- **Security & Air-Gap Compliance:** Extensions requesting external network access are rejected at load time if Air-Gap mode is enabled.
+- **Directory Discovery & Persistence:** Installed in `.ai-workspace-data/extensions/<id>` and recorded in SQLite `extensions` table with SHA-256 folder integrity checksums.
+
+### 11.3 Advanced Analytics, Cost Attribution & Enterprise Audit
+- **Model Pricing Engine:** Calculates estimated and vendor-reported costs across Claude 3.5 Sonnet, GPT-4o, Gemini 1.5, and local Ollama ($0.00).
+- **Latency Percentiles:** Computes p50, p95, and p99 durations across execution histories.
+- **Immutable SQLite Audit Logging (`audit_logs`):** Automatically traps security violations (path traversal, compound command injection, air-gap egress blocks), extension lifecycle changes, and agent worktree merges.
+- **Zero-Cloud Export:** Data is exportable directly to local CSV or JSON files without remote telemetry transmission.
 

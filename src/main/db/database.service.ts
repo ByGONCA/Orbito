@@ -7,6 +7,15 @@ import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shar
 import type { SkillMetadata, SkillExecutionRecord, SkillManifest } from '../../shared/skills';
 import type { OrchestrationRecord, OrchestrationTask, ApprovalRequest } from '../../shared/agents';
 import type { WorkflowRecord, WorkflowExecutionRecord, NodeExecutionRecord } from '../../shared/workflows';
+import type { ExtensionRecord, ExtensionManifest } from '../../shared/extensions';
+import type {
+  AnalyticsEvent,
+  AnalyticsSummary,
+  ProviderCostMetrics,
+  AuditLogEntry,
+  AuditLogFilter,
+  AirGapConfig
+} from '../../shared/analytics';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -274,6 +283,66 @@ export class DatabaseService {
         FOREIGN KEY(execution_id) REFERENCES workflow_executions(id) ON DELETE CASCADE
       );
       CREATE INDEX IF NOT EXISTS idx_wf_node_exec ON workflow_node_executions(execution_id);
+
+      -- Phase 7: Audit Logs (Enterprise Hardening)
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        timestamp INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        severity TEXT NOT NULL CHECK(severity IN ('info', 'warning', 'error', 'critical')),
+        actor TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target TEXT,
+        details_json TEXT NOT NULL DEFAULT '{}',
+        project_path TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_logs(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_logs(event_type);
+      CREATE INDEX IF NOT EXISTS idx_audit_sev ON audit_logs(severity);
+
+      -- Phase 7: Analytics Events (Advanced Telemetry & Cost Tracking)
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id TEXT PRIMARY KEY,
+        timestamp INTEGER NOT NULL,
+        provider TEXT NOT NULL,
+        model TEXT NOT NULL,
+        tokens_in INTEGER NOT NULL DEFAULT 0,
+        tokens_out INTEGER NOT NULL DEFAULT 0,
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        cost_usd REAL NOT NULL DEFAULT 0.0,
+        status TEXT NOT NULL DEFAULT 'success',
+        feature TEXT NOT NULL,
+        details_json TEXT NOT NULL DEFAULT '{}'
+      );
+      CREATE INDEX IF NOT EXISTS idx_analytics_time ON analytics_events(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_analytics_prov ON analytics_events(provider);
+      CREATE INDEX IF NOT EXISTS idx_analytics_feat ON analytics_events(feature);
+
+      -- Phase 7: Custom Extensions
+      CREATE TABLE IF NOT EXISTS extensions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        version TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        author TEXT NOT NULL DEFAULT 'anonymous',
+        enabled INTEGER NOT NULL DEFAULT 1,
+        status TEXT NOT NULL DEFAULT 'active',
+        install_path TEXT NOT NULL,
+        checksum TEXT NOT NULL,
+        manifest_json TEXT NOT NULL,
+        error_message TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_ext_enabled ON extensions(enabled);
+
+      -- Phase 7: System Config (Air-gap mode, etc.)
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value_json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
     `);
 
     try {
@@ -358,6 +427,10 @@ export class DatabaseService {
   // ==========================================
   // App DB CRUD Operations
   // ==========================================
+
+  public isInitialized(): boolean {
+    return this.appDb !== null;
+  }
 
   public getAppDb(): Database.Database {
     if (!this.appDb) throw new Error('Database not initialized. Call initialize() first.');
@@ -1751,6 +1824,460 @@ export class DatabaseService {
       );
     }
     return { recoveredExecutions: active.length };
+  }
+
+  // ==========================================
+  // Phase 7: Audit Logging (Enterprise Hardening)
+  // ==========================================
+
+  public insertAuditLog(entry: Omit<AuditLogEntry, 'id' | 'timestamp'> & { id?: string; timestamp?: number }): AuditLogEntry {
+    const db = this.getAppDb();
+    const id = entry.id || `audit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const timestamp = entry.timestamp || Date.now();
+    const stmt = db.prepare(`
+      INSERT INTO audit_logs (id, timestamp, event_type, severity, actor, action, target, details_json, project_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(
+      id,
+      timestamp,
+      entry.eventType,
+      entry.severity,
+      entry.actor,
+      entry.action,
+      entry.target || null,
+      JSON.stringify(entry.details || {}),
+      entry.projectPath || null
+    );
+
+    return {
+      id,
+      timestamp,
+      eventType: entry.eventType,
+      severity: entry.severity,
+      actor: entry.actor,
+      action: entry.action,
+      target: entry.target,
+      details: entry.details || {},
+      projectPath: entry.projectPath
+    };
+  }
+
+  public queryAuditLogs(filter?: AuditLogFilter): AuditLogEntry[] {
+    const db = this.getAppDb();
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (filter?.eventType) {
+      conditions.push('event_type = ?');
+      params.push(filter.eventType);
+    }
+    if (filter?.severity) {
+      conditions.push('severity = ?');
+      params.push(filter.severity);
+    }
+    if (filter?.actor) {
+      conditions.push('actor = ?');
+      params.push(filter.actor);
+    }
+    if (filter?.startDate) {
+      conditions.push('timestamp >= ?');
+      params.push(filter.startDate);
+    }
+    if (filter?.endDate) {
+      conditions.push('timestamp <= ?');
+      params.push(filter.endDate);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limit = filter?.limit ?? 100;
+    const offset = filter?.offset ?? 0;
+
+    const rows = db.prepare(`
+      SELECT * FROM audit_logs
+      ${whereClause}
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, limit, offset) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      timestamp: r.timestamp,
+      eventType: r.event_type,
+      severity: r.severity,
+      actor: r.actor,
+      action: r.action,
+      target: r.target || undefined,
+      details: JSON.parse(r.details_json || '{}'),
+      projectPath: r.project_path || undefined
+    }));
+  }
+
+  public exportAuditLogs(format: 'json' | 'csv'): string {
+    const logs = this.queryAuditLogs({ limit: 5000 });
+    if (format === 'json') {
+      return JSON.stringify(logs, null, 2);
+    }
+
+    // CSV format
+    const header = 'id,timestamp,eventType,severity,actor,action,target,projectPath,details';
+    const lines = logs.map((l) => {
+      const detailsEscaped = `"${JSON.stringify(l.details).replace(/"/g, '""')}"`;
+      return `${l.id},${l.timestamp},"${l.eventType}","${l.severity}","${l.actor}","${l.action}","${l.target || ''}","${l.projectPath || ''}",${detailsEscaped}`;
+    });
+    return [header, ...lines].join('\n');
+  }
+
+  public clearAuditLogs(): void {
+    const db = this.getAppDb();
+    db.prepare('DELETE FROM audit_logs').run();
+  }
+
+  // ==========================================
+  // Phase 7: Analytics Events & Telemetry
+  // ==========================================
+
+  public insertAnalyticsEvent(event: Omit<AnalyticsEvent, 'id' | 'timestamp'> & { id?: string; timestamp?: number }): AnalyticsEvent {
+    const db = this.getAppDb();
+    const id = event.id || `ana_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const timestamp = event.timestamp || Date.now();
+
+    const stmt = db.prepare(`
+      INSERT INTO analytics_events (id, timestamp, provider, model, tokens_in, tokens_out, duration_ms, cost_usd, status, feature, details_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(
+      id,
+      timestamp,
+      event.provider,
+      event.model,
+      event.tokensIn,
+      event.tokensOut,
+      event.durationMs,
+      event.costUsd || 0.0,
+      event.status,
+      event.feature,
+      JSON.stringify(event.details || {})
+    );
+
+    return {
+      id,
+      timestamp,
+      provider: event.provider,
+      model: event.model,
+      tokensIn: event.tokensIn,
+      tokensOut: event.tokensOut,
+      durationMs: event.durationMs,
+      costUsd: event.costUsd || 0.0,
+      status: event.status,
+      feature: event.feature,
+      details: event.details
+    };
+  }
+
+  public getAnalyticsSummary(options?: { projectId?: string; timeRangeMs?: number }): AnalyticsSummary {
+    const db = this.getAppDb();
+    const now = Date.now();
+    const startTime = options?.timeRangeMs ? now - options.timeRangeMs : 0;
+
+    const rows = db.prepare(`
+      SELECT * FROM analytics_events
+      WHERE timestamp >= ?
+      ORDER BY timestamp ASC
+    `).all(startTime) as any[];
+
+    if (rows.length === 0) {
+      return {
+        totalCalls: 0,
+        totalTokensIn: 0,
+        totalTokensOut: 0,
+        totalCostUsd: 0,
+        avgDurationMs: 0,
+        p50DurationMs: 0,
+        p95DurationMs: 0,
+        p99DurationMs: 0,
+        byProvider: {},
+        byFeature: {},
+        timeline: []
+      };
+    }
+
+    let totalTokensIn = 0;
+    let totalTokensOut = 0;
+    let totalCostUsd = 0;
+    let totalDurationMs = 0;
+    const durations: number[] = [];
+
+    const byProvider: Record<string, { calls: number; tokensIn: number; tokensOut: number; costUsd: number }> = {};
+    const byFeature: Record<string, { calls: number; tokensIn: number; tokensOut: number; costUsd: number }> = {};
+    const dailyMap: Record<string, { calls: number; tokensIn: number; tokensOut: number; costUsd: number }> = {};
+
+    for (const r of rows) {
+      totalTokensIn += r.tokens_in;
+      totalTokensOut += r.tokens_out;
+      totalCostUsd += r.cost_usd;
+      totalDurationMs += r.duration_ms;
+      durations.push(r.duration_ms);
+
+      // By Provider
+      if (!byProvider[r.provider]) {
+        byProvider[r.provider] = { calls: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+      }
+      byProvider[r.provider].calls += 1;
+      byProvider[r.provider].tokensIn += r.tokens_in;
+      byProvider[r.provider].tokensOut += r.tokens_out;
+      byProvider[r.provider].costUsd += r.cost_usd;
+
+      // By Feature
+      if (!byFeature[r.feature]) {
+        byFeature[r.feature] = { calls: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+      }
+      byFeature[r.feature].calls += 1;
+      byFeature[r.feature].tokensIn += r.tokens_in;
+      byFeature[r.feature].tokensOut += r.tokens_out;
+      byFeature[r.feature].costUsd += r.cost_usd;
+
+      // Timeline (date YYYY-MM-DD)
+      const dateKey = new Date(r.timestamp).toISOString().split('T')[0];
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = { calls: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+      }
+      dailyMap[dateKey].calls += 1;
+      dailyMap[dateKey].tokensIn += r.tokens_in;
+      dailyMap[dateKey].tokensOut += r.tokens_out;
+      dailyMap[dateKey].costUsd += r.cost_usd;
+    }
+
+    durations.sort((a, b) => a - b);
+    const p50 = durations[Math.floor(durations.length * 0.5)] || 0;
+    const p95 = durations[Math.floor(durations.length * 0.95)] || 0;
+    const p99 = durations[Math.floor(durations.length * 0.99)] || 0;
+
+    const timeline = Object.entries(dailyMap).map(([date, data]) => ({
+      date,
+      calls: data.calls,
+      tokensIn: data.tokensIn,
+      tokensOut: data.tokensOut,
+      costUsd: Number(data.costUsd.toFixed(4))
+    }));
+
+    return {
+      totalCalls: rows.length,
+      totalTokensIn,
+      totalTokensOut,
+      totalCostUsd: Number(totalCostUsd.toFixed(4)),
+      avgDurationMs: Math.round(totalDurationMs / rows.length),
+      p50DurationMs: p50,
+      p95DurationMs: p95,
+      p99DurationMs: p99,
+      byProvider,
+      byFeature,
+      timeline
+    };
+  }
+
+  public getProviderCostMetrics(): ProviderCostMetrics[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT 
+        provider,
+        model,
+        COUNT(*) as total_calls,
+        SUM(tokens_in) as sum_tokens_in,
+        SUM(tokens_out) as sum_tokens_out,
+        SUM(cost_usd) as sum_cost_usd,
+        AVG(duration_ms) as avg_duration,
+        SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as failure_count
+      FROM analytics_events
+      GROUP BY provider, model
+      ORDER BY sum_cost_usd DESC
+    `).all() as any[];
+
+    return rows.map((r) => ({
+      provider: r.provider,
+      model: r.model,
+      totalCalls: r.total_calls,
+      tokensIn: r.sum_tokens_in || 0,
+      tokensOut: r.sum_tokens_out || 0,
+      totalCostUsd: Number((r.sum_cost_usd || 0).toFixed(4)),
+      avgDurationMs: Math.round(r.avg_duration || 0),
+      errorRate: r.total_calls > 0 ? Number((r.failure_count / r.total_calls).toFixed(3)) : 0
+    }));
+  }
+
+  public exportAnalyticsData(format: 'json' | 'csv'): string {
+    const db = this.getAppDb();
+    const rows = db.prepare(`SELECT * FROM analytics_events ORDER BY timestamp DESC`).all() as any[];
+    if (format === 'json') {
+      return JSON.stringify(rows, null, 2);
+    }
+
+    const header = 'id,timestamp,provider,model,tokens_in,tokens_out,duration_ms,cost_usd,status,feature';
+    const lines = rows.map(
+      (r) =>
+        `${r.id},${r.timestamp},"${r.provider}","${r.model}",${r.tokens_in},${r.tokens_out},${r.duration_ms},${r.cost_usd},"${r.status}","${r.feature}"`
+    );
+    return [header, ...lines].join('\n');
+  }
+
+  public clearAnalytics(): void {
+    const db = this.getAppDb();
+    db.prepare(`DELETE FROM analytics_events`).run();
+  }
+
+  // ==========================================
+  // Phase 7: Custom Extensions Storage
+  // ==========================================
+
+  public upsertExtension(record: ExtensionRecord): void {
+    const db = this.getAppDb();
+    const stmt = db.prepare(`
+      INSERT INTO extensions (id, name, display_name, version, description, author, enabled, status, install_path, checksum, manifest_json, error_message, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        display_name = excluded.display_name,
+        version = excluded.version,
+        description = excluded.description,
+        author = excluded.author,
+        enabled = excluded.enabled,
+        status = excluded.status,
+        install_path = excluded.install_path,
+        checksum = excluded.checksum,
+        manifest_json = excluded.manifest_json,
+        error_message = excluded.error_message,
+        updated_at = excluded.updated_at
+    `);
+
+    stmt.run(
+      record.id,
+      record.name,
+      record.displayName,
+      record.version,
+      record.description,
+      record.author,
+      record.enabled ? 1 : 0,
+      record.status,
+      record.installPath,
+      record.checksum,
+      JSON.stringify(record.manifest),
+      record.errorMessage || null,
+      record.createdAt,
+      record.updatedAt
+    );
+  }
+
+  public getExtension(id: string): ExtensionRecord | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM extensions WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      displayName: row.display_name,
+      version: row.version,
+      description: row.description,
+      author: row.author,
+      enabled: row.enabled === 1,
+      status: row.status,
+      installPath: row.install_path,
+      checksum: row.checksum,
+      manifest: JSON.parse(row.manifest_json),
+      errorMessage: row.error_message || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  public listExtensions(): ExtensionRecord[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`SELECT * FROM extensions ORDER BY name ASC`).all() as any[];
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      displayName: row.display_name,
+      version: row.version,
+      description: row.description,
+      author: row.author,
+      enabled: row.enabled === 1,
+      status: row.status,
+      installPath: row.install_path,
+      checksum: row.checksum,
+      manifest: JSON.parse(row.manifest_json),
+      errorMessage: row.error_message || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  public deleteExtension(id: string): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare(`DELETE FROM extensions WHERE id = ?`).run(id);
+    return res.changes > 0;
+  }
+
+  public setExtensionEnabled(id: string, enabled: boolean): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare(`UPDATE extensions SET enabled = ?, updated_at = ? WHERE id = ?`).run(
+      enabled ? 1 : 0,
+      Date.now(),
+      id
+    );
+    return res.changes > 0;
+  }
+
+  // ==========================================
+  // Phase 7: System Settings & Air-Gap Config
+  // ==========================================
+
+  public getAirGapConfig(): AirGapConfig {
+    if (!this.appDb) {
+      return {
+        enabled: false,
+        allowedHosts: ['127.0.0.1', 'localhost', '::1'],
+        blockExternalNetwork: true,
+        enforceLocalModels: true,
+        defaultLocalModel: 'llama3:latest',
+        localOllamaUrl: 'http://127.0.0.1:11434'
+      };
+    }
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT value_json FROM system_config WHERE key = 'airgap_config'`).get() as any;
+    if (!row) {
+      return {
+        enabled: false,
+        allowedHosts: ['127.0.0.1', 'localhost', '::1'],
+        blockExternalNetwork: true,
+        enforceLocalModels: true,
+        defaultLocalModel: 'llama3:latest',
+        localOllamaUrl: 'http://127.0.0.1:11434'
+      };
+    }
+    try {
+      return JSON.parse(row.value_json);
+    } catch {
+      return {
+        enabled: false,
+        allowedHosts: ['127.0.0.1', 'localhost', '::1'],
+        blockExternalNetwork: true,
+        enforceLocalModels: true,
+        defaultLocalModel: 'llama3:latest',
+        localOllamaUrl: 'http://127.0.0.1:11434'
+      };
+    }
+  }
+
+  public setAirGapConfig(config: AirGapConfig): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO system_config (key, value_json, updated_at)
+      VALUES ('airgap_config', ?, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        value_json = excluded.value_json,
+        updated_at = excluded.updated_at
+    `).run(JSON.stringify(config), Date.now());
   }
 
   // ==========================================

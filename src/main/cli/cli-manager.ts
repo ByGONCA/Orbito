@@ -7,6 +7,7 @@ import type { ICLIAdapter } from './adapter.interface';
 import { claudeCodeAdapter } from './adapters/claude-code.adapter';
 import { codexAdapter } from './adapters/codex.adapter';
 import { geminiAdapter } from './adapters/gemini.adapter';
+import { ollamaAdapter } from './adapters/ollama.adapter';
 
 export class CLIManager {
   private adapters: Map<CLIProvider, ICLIAdapter> = new Map();
@@ -15,6 +16,7 @@ export class CLIManager {
     this.registerAdapter(claudeCodeAdapter);
     this.registerAdapter(codexAdapter);
     this.registerAdapter(geminiAdapter);
+    this.registerAdapter(ollamaAdapter);
   }
 
   public registerAdapter(adapter: ICLIAdapter): void {

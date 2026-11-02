@@ -100,7 +100,28 @@ const api: IElectronAPI = {
     return () => {
       ipcRenderer.removeListener('workflows:event', handler);
     };
-  }
+  },
+
+  // Custom Extension SDK (Phase 7)
+  listExtensions: () => ipcRenderer.invoke('extensions:list'),
+  toggleExtension: (params) => ipcRenderer.invoke('extensions:toggle', params),
+  installExtension: (params) => ipcRenderer.invoke('extensions:install', params),
+  uninstallExtension: (params) => ipcRenderer.invoke('extensions:uninstall', params),
+
+  // Advanced Analytics & Telemetry (Phase 7)
+  getAnalyticsSummary: (params) => ipcRenderer.invoke('analytics:getSummary', params),
+  getProviderCostMetrics: () => ipcRenderer.invoke('analytics:getProviderCostMetrics'),
+  recordAnalyticsEvent: (params) => ipcRenderer.invoke('analytics:recordEvent', params),
+  exportAnalytics: (params) => ipcRenderer.invoke('analytics:export', params),
+
+  // Enterprise Hardening & Audit Logging (Phase 7)
+  queryAuditLogs: (params) => ipcRenderer.invoke('audit:queryLogs', params),
+  exportAuditLogs: (params) => ipcRenderer.invoke('audit:export', params),
+
+  // Local Model & Air-Gap Support (Phase 7)
+  getAirGapConfig: () => ipcRenderer.invoke('airgap:getConfig'),
+  updateAirGapConfig: (params) => ipcRenderer.invoke('airgap:updateConfig', params),
+  listLocalModels: () => ipcRenderer.invoke('airgap:listLocalModels')
 };
 
 contextBridge.exposeInMainWorld('api', api);

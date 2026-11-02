@@ -54,6 +54,13 @@ tests/
 │   ├── workflow-templates-and-nl.test.ts       # 10 production templates validation, NL DAG generator
 │   └── workflow-persistence.test.ts            # SQLite CRUD, execution metrics, crash recovery
 │
+├── Ecosystem & Enterprise Hardening Suites (Phase 7)
+│   ├── adapters/ollama-adapter.test.ts         # Ollama CLI/daemon detection, models query, stream parsing
+│   ├── air-gap-manager.test.ts                 # Loopback enforcement, egress blocking, cloud rerouting
+│   ├── extensions-engine.test.ts               # Manifest schema, SHA-256 integrity, contributions, Air-Gap
+│   ├── analytics-audit.test.ts                 # Rate card costs, latency percentiles, immutable audit logs
+│   └── phase7-integration.test.ts              # Phase 7 IPC validation, end-to-end Air-Gap state persistence
+│
 ├── Empirical Scale Benchmarks
 │   ├── performance-benchmark.test.ts           # SQLite batch write latency & base memory
 │   └── performance-benchmarks-scale.test.ts    # 1,000 files/chunks, FTS5 < 15ms, assembly < 50ms
@@ -72,7 +79,7 @@ Every code contribution must pass three non-negotiable verification gates:
 # Gate 1: Strict TypeScript Typechecking (zero any coercion, zero errors)
 npm run typecheck
 
-# Gate 2: Full Test Suite Execution (31 test suites, 146+ tests, zero failures)
+# Gate 2: Full Test Suite Execution (36 test suites, 190+ tests, zero failures)
 npm test
 
 # Gate 3: Production Build & Asset Packaging

@@ -628,3 +628,15 @@ export function createNodeData(
     ...overrides
   };
 }
+
+export function registerCustomNode(node: NodeDefinition): void {
+  NODE_REGISTRY[node.type] = node;
+}
+
+export function unregisterCustomNode(type: FlowNodeType): boolean {
+  if (NODE_REGISTRY[type]) {
+    delete NODE_REGISTRY[type];
+    return true;
+  }
+  return false;
+}

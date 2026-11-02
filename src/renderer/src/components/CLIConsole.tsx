@@ -138,7 +138,7 @@ export const CLIConsole: React.FC = () => {
 
           {/* Provider Selector Pill */}
           <div className="flex items-center gap-1 bg-secondary rounded p-0.5 border border-border ml-2">
-            {(['claude', 'codex', 'gemini'] as CLIProvider[]).map((p) => (
+            {(['claude', 'codex', 'gemini', 'ollama'] as CLIProvider[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setActiveProvider(p)}

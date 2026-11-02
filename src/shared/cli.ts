@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type CLIProvider = 'claude' | 'codex' | 'gemini';
+export type CLIProvider = 'claude' | 'codex' | 'gemini' | 'ollama';
 
 export type AuthType = 'oauth' | 'api-key' | 'adc' | 'missing';
 
@@ -80,12 +80,12 @@ export const DetectCLIsSchema = z.object({
 });
 
 export const CheckCLIAuthSchema = z.object({
-  provider: z.enum(['claude', 'codex', 'gemini']),
+  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']),
   customPath: z.string().optional()
 });
 
 export const ExecuteCLIPromptSchema = z.object({
-  provider: z.enum(['claude', 'codex', 'gemini']),
+  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']),
   prompt: z.string().min(1),
   projectId: z.string().optional(),
   workingDirectory: z.string().min(1),
@@ -100,7 +100,7 @@ export const CancelCLISessionSchema = z.object({
 
 export const ListCLISessionsSchema = z.object({
   projectId: z.string().optional(),
-  provider: z.enum(['claude', 'codex', 'gemini']).optional()
+  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']).optional()
 });
 
 export const GetSessionMessagesSchema = z.object({

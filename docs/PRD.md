@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD) — AI Workspace
 
-**Document Version:** 1.7.0  
-**Status:** Phases 1–6 Fully Implemented & Verified | Phase 7 Ecosystem & Hardening Next  
+**Document Version:** 1.8.0  
+**Status:** Phases 1–7 Fully Implemented & Verified | Production Ready  
 **Target:** Local-First Desktop AI Workspace  
 **Document Author:** Architecture Team  
 
@@ -142,7 +142,7 @@
 * **Unified Adapter Interface:**
   ```typescript
   interface CLIAdapter {
-    readonly provider: 'claude' | 'codex' | 'gemini';
+    readonly provider: 'claude' | 'codex' | 'gemini' | 'ollama';
     detectInstallation(): Promise<CLIInstallationStatus>;
     getAuthenticationStatus(): Promise<CLIAuthStatus>;
     getAvailableModels(): Promise<ModelDescriptor[]>;
@@ -155,6 +155,11 @@
   * **Claude Code (`@anthropic-ai/claude-code`):** Interactive Node.js terminal utility. Interfaced via `node-pty` for interactive human-in-the-loop sessions, or non-interactive batch prompt (`-p`) where authorized. Respects `~/.claude.json` and `ANTHROPIC_API_KEY`.
   * **OpenAI Codex CLI (`codex` / `openai`):** Command-line tool interfaced via child process stdout streaming. Respects `~/.codex/config.json` and `OPENAI_API_KEY`.
   * **Google Gemini CLI (`gemini` / Google GenAI):** Interfaced via child process streaming. Respects Application Default Credentials (ADC) or `GEMINI_API_KEY`.
+  * **Ollama (`ollama` Local Inference):** Local air-gapped inference daemon (Llama 3, Mistral, DeepSeek-R1, CodeLlama). Interfaced via local process spawn and REST API on `http://127.0.0.1:11434`. 100% offline, zero network egress, $0.00 marginal cost.
+* **Air-Gap Network Isolation Mode:**
+  * Strict boundary enforcement via `AirGapManager`.
+  * Rejects all outbound network egress outside local loopback (`127.0.0.1`, `localhost`, `::1`).
+  * Automatically reroutes cloud CLI invocations to local Ollama inference when Air-Gap is active.
 * **Zero-Credential Hijacking:** Does not intercept, alter, or proxy provider tokens. Sensitive keys added directly into AI Workspace are stored strictly in the OS native keychain via Electron `safeStorage`.
 * **Process Lifecycle & Error Recovery:** Process trees are cleanly terminated across Windows (`taskkill /T /F`) and POSIX (`SIGINT` -> `SIGTERM` -> `SIGKILL`). Exit codes are translated into clear, actionable UI recovery prompts. Outdated CLI versions are detected and surfaced with official update commands.
 
@@ -172,10 +177,18 @@
   * Active skill modules loaded.
   * *Strict Policy:* Explicitly labeled as observable process outputs, never claiming to expose private chain-of-thought tokens from third-party closed APIs.
 
-### 3.9 Module 9: Analytics & Performance Benchmarks
-* Tracks estimated token counts and API costs based on known model rate cards.
-* Flags metrics as **Vendor Reported** (exact from CLI stdout) vs **Locally Estimated** (heuristic token count).
-* Displays per-process CPU, RAM, and disk utilization of application, background worker threads, and spawned CLI agents.
+### 3.9 Module 9: Analytics, Cost Attribution & Enterprise Audit
+* **Token & Cost Tracking:** Captures input/output token metrics across CLI sessions, multi-agent runs, and workflows.
+* **Model Rate Cards:** Automated cost calculation based on published vendor pricing (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5, Ollama $0.00 local).
+* **Latency Percentiles:** Computes p50, p95, and p99 duration metrics across historical invocations.
+* **Enterprise Audit Trail:** Immutable SQLite audit logging (`audit_logs`) recording security violations, permission escalations, Air-Gap events, and extension activations.
+* **Local-First Privacy:** Zero remote telemetry transmission without opt-in; full CSV/JSON export to local disk.
+
+### 3.10 Module 10: Custom Extension SDK & Sandboxed Lifecycle Engine
+* **Extension Manifest (`extension.json`):** Declarative Zod schema specifying ID, name, version, author, and fine-grained permission scopes.
+* **Dynamic Contributions:** Extensions can contribute custom React Flow visual workflow nodes, specialized domain skills, and automation commands.
+* **Sandboxed Execution:** Script execution isolated with strict permission gates; prohibited from bypassing Air-Gap network constraints or accessing sensitive keys.
+* **Extensions Manager UI:** Visual dashboard in the application shell for browsable extensions catalog, install from local folder, status monitoring, and one-click toggle.
 
 ---
 

@@ -1,12 +1,13 @@
 import crypto from 'node:crypto';
 import type { OrchestrationTask, SpecialistRole } from '../../shared/agents';
+import type { CLIProvider } from '../../shared/cli';
 import { SPECIALIST_ROLES } from './specialist-roles';
 import { DAGValidator } from './dag-validator';
 
 export interface PlanOptions {
   orchestrationId: string;
   userGoal: string;
-  provider: 'claude' | 'codex' | 'gemini';
+  provider: CLIProvider;
   model?: string;
 }
 

@@ -4,6 +4,7 @@ import { fileWatcher } from './indexer/file-watcher';
 import { hybridSearchService } from './search/hybrid-search.service';
 import { contextRetrievalService } from './retrieval/context-retrieval.service';
 import { contextAssemblyService } from './assembly/context-assembly.service';
+import type { CLIProvider } from '../../shared/cli';
 import { databaseService } from '../db/database.service';
 import type {
   IndexStats,
@@ -67,7 +68,7 @@ export class ContextEngineService extends EventEmitter {
     taskDescription: string;
     activeFilePath?: string;
     maxTokens?: number;
-    modelTarget?: 'claude' | 'codex' | 'gemini';
+    modelTarget?: CLIProvider;
   }): Promise<ContextAssemblyResult> {
     const searchStartTime = Date.now();
 

@@ -71,6 +71,18 @@ import type {
   NLWorkflowGenerationResult
 } from './workflows';
 import { WorkflowRecordSchema } from './workflows';
+import type {
+  ExtensionRecord,
+  ExtensionManifest
+} from './extensions';
+import type {
+  AnalyticsEvent,
+  AnalyticsSummary,
+  ProviderCostMetrics,
+  AuditLogEntry,
+  AuditLogFilter,
+  AirGapConfig
+} from './analytics';
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -160,8 +172,77 @@ export const ListWorkflowExecutionsSchema = z.object({
 export const GenerateWorkflowFromPromptSchema = z.object({
   prompt: z.string().min(3),
   projectPath: z.string().min(1),
-  preferredProvider: z.enum(['claude', 'codex', 'gemini']).optional()
+  preferredProvider: z.enum(['claude', 'codex', 'gemini', 'ollama']).optional()
 });
+
+// Phase 7: Ecosystem & Enterprise Hardening Schemas
+export const ListExtensionsSchema = z.object({}).optional();
+export const ToggleExtensionSchema = z.object({
+  extensionId: z.string().min(1),
+  enabled: z.boolean()
+});
+export const InstallExtensionSchema = z.object({
+  directoryPath: z.string().min(1)
+});
+export const UninstallExtensionSchema = z.object({
+  extensionId: z.string().min(1)
+});
+
+export const GetAnalyticsSummarySchema = z
+  .object({
+    projectId: z.string().optional(),
+    timeRangeMs: z.number().optional()
+  })
+  .optional();
+
+export const GetProviderCostMetricsSchema = z
+  .object({
+    projectId: z.string().optional()
+  })
+  .optional();
+
+export const RecordAnalyticsEventSchema = z.object({
+  provider: z.string(),
+  model: z.string(),
+  tokensIn: z.number().nonnegative(),
+  tokensOut: z.number().nonnegative(),
+  durationMs: z.number().nonnegative(),
+  costUsd: z.number().nonnegative().optional(),
+  status: z.enum(['success', 'failure', 'timeout', 'cancelled']).default('success'),
+  feature: z.enum(['cli', 'workflow', 'orchestration', 'skill', 'chat']),
+  details: z.record(z.any()).optional()
+});
+
+export const ExportAnalyticsSchema = z.object({
+  format: z.enum(['json', 'csv'])
+});
+
+export const QueryAuditLogsSchema = z
+  .object({
+    eventType: z.string().optional(),
+    severity: z.enum(['info', 'warning', 'error', 'critical']).optional(),
+    actor: z.string().optional(),
+    limit: z.number().optional(),
+    offset: z.number().optional()
+  })
+  .optional();
+
+export const ExportAuditLogsSchema = z.object({
+  format: z.enum(['json', 'csv'])
+});
+
+export const GetAirGapConfigSchema = z.object({}).optional();
+
+export const UpdateAirGapConfigSchema = z.object({
+  enabled: z.boolean(),
+  allowedHosts: z.array(z.string()).optional(),
+  blockExternalNetwork: z.boolean().optional(),
+  enforceLocalModels: z.boolean().optional(),
+  defaultLocalModel: z.string().optional(),
+  localOllamaUrl: z.string().optional()
+});
+
+export const ListLocalModelsSchema = z.object({}).optional();
 
 // ==========================================
 // Strongly-Typed IPC Interface Contract
@@ -242,4 +323,25 @@ export interface IElectronAPI {
   listWorkflowExecutions: (params: z.input<typeof ListWorkflowExecutionsSchema>) => Promise<WorkflowExecutionRecord[]>;
   generateWorkflowFromPrompt: (params: z.input<typeof GenerateWorkflowFromPromptSchema>) => Promise<NLWorkflowGenerationResult>;
   onWorkflowEvent: (callback: (event: WorkflowEvent) => void) => () => void;
+
+  // Custom Extension SDK (Phase 7)
+  listExtensions: () => Promise<ExtensionRecord[]>;
+  toggleExtension: (params: z.input<typeof ToggleExtensionSchema>) => Promise<{ success: boolean }>;
+  installExtension: (params: z.input<typeof InstallExtensionSchema>) => Promise<{ success: boolean; extension?: ExtensionRecord; error?: string }>;
+  uninstallExtension: (params: z.input<typeof UninstallExtensionSchema>) => Promise<{ success: boolean }>;
+
+  // Advanced Analytics & Telemetry (Phase 7)
+  getAnalyticsSummary: (params?: z.input<typeof GetAnalyticsSummarySchema>) => Promise<AnalyticsSummary>;
+  getProviderCostMetrics: (params?: z.input<typeof GetProviderCostMetricsSchema>) => Promise<ProviderCostMetrics[]>;
+  recordAnalyticsEvent: (params: z.input<typeof RecordAnalyticsEventSchema>) => Promise<AnalyticsEvent>;
+  exportAnalytics: (params: z.input<typeof ExportAnalyticsSchema>) => Promise<string>;
+
+  // Enterprise Hardening & Audit Logging (Phase 7)
+  queryAuditLogs: (params?: z.input<typeof QueryAuditLogsSchema>) => Promise<AuditLogEntry[]>;
+  exportAuditLogs: (params: z.input<typeof ExportAuditLogsSchema>) => Promise<string>;
+
+  // Local Model & Air-Gap Support (Phase 7)
+  getAirGapConfig: () => Promise<AirGapConfig>;
+  updateAirGapConfig: (params: z.input<typeof UpdateAirGapConfigSchema>) => Promise<AirGapConfig>;
+  listLocalModels: () => Promise<{ models: string[]; isRunning: boolean }>;
 }

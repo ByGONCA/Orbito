@@ -104,3 +104,17 @@ To guarantee appropriate human oversight, three execution safety tiers are enfor
 - **Sandboxed Expression Grammar**: The `ExpressionEvaluator` rejects dynamic code execution (`eval`, `Function`, `setTimeout(code)`, etc.). It implements a custom recursive descent parser supporting only safe boolean logic, comparisons, and deterministic pure helper functions.
 - **Loop & Delay Resource Caps**: Loops are strictly bounded to $\le 50$ iterations, and delays are clamped to $\le 60,000\text{ ms}$, preventing denial-of-service or thread freezing.
 - **Automated Workflow Generation**: Workflows generated from natural language prompts are treated as untrusted drafts, strictly validated against `NODE_REGISTRY`, and never executed automatically without explicit human inspection and activation.
+
+### 2.9 Air-Gap Isolation & Network Egress Boundary
+- **Loopback-Only Enforcement**: Under active Air-Gap isolation mode, `AirGapManager.assertNetworkAllowed` blocks any outbound network connection to external domain names or remote IP addresses. Only localhost, 127.0.0.1, and ::1 loopback addresses are allowed.
+- **Rerouting Cloud to Local**: Attempts to invoke third-party closed-source cloud providers (`claude`, `codex`, `gemini`) under Air-Gap are intercepted; if `enforceLocalModels` is configured, requests are rerouted to the local Ollama daemon, preventing inadvertent token transmission.
+- **Violation Auditing**: Every blocked egress attempt or prohibited provider invocation immediately records a critical audit entry in `audit_logs`.
+
+### 2.10 Custom Extension Sandboxing & Permission Gate
+- **Static Schema Contract**: Extension manifests (`extension.json`) undergo strict Zod schema validation (`ExtensionManifestSchema`) before registration.
+- **Air-Gap Compliance Traps**: If an extension declares `permissions.network.allowExternal: true` while Air-Gap mode is enabled, the loader denies registration and records an audit security violation.
+- **Contribution Isolation**: Contributed nodes and skills are bound to their declared manifests and cannot escalate privileges or modify host settings.
+
+### 2.11 Immutable Enterprise Audit Logging
+- **Local Persistence**: Security violations, path traversal attempts, compound shell commands, and Air-Gap state changes are committed synchronously to SQLite `audit_logs`.
+- **Searchable Governance**: Provides filtering by severity (`info`, `warning`, `error`, `critical`), actor, event type, and timestamps, with local CSV/JSON export.

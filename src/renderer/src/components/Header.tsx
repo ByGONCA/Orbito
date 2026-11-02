@@ -11,7 +11,11 @@ import {
   Cpu,
   BrainCircuit,
   Bot,
-  Workflow
+  Workflow,
+  BarChart3,
+  Blocks,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 
@@ -27,6 +31,19 @@ export const Header: React.FC = () => {
     activeCenterTab,
     setActiveCenterTab
   } = useWorkspaceStore();
+
+  const [isAirGap, setIsAirGap] = React.useState(false);
+
+  React.useEffect(() => {
+    window.api.getAirGapConfig().then((cfg) => setIsAirGap(cfg.enabled)).catch(() => {});
+  }, []);
+
+  const handleToggleAirGap = async () => {
+    const next = !isAirGap;
+    await window.api.updateAirGapConfig({ enabled: next });
+    setIsAirGap(next);
+    addLog(`Air-Gap isolation mode: ${next ? 'ENABLED (Strict Local Offline)' : 'DISABLED'}`, next ? 'warn' : 'info');
+  };
 
   const handleOpenFolder = async () => {
     try {
@@ -165,10 +182,61 @@ export const Header: React.FC = () => {
           <Workflow className="w-3.5 h-3.5 text-violet-400" />
           <span>Flows</span>
         </button>
+
+        <button
+          onClick={() => setActiveCenterTab('analytics')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'analytics'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+          <span>Analytics</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCenterTab('extensions')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'extensions'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Blocks className="w-3.5 h-3.5 text-purple-400" />
+          <span>Extensions</span>
+        </button>
       </div>
 
       {/* Right Controls */}
       <div className="flex items-center gap-2">
+        {/* Air-Gap Isolation Toggle Button */}
+        <button
+          onClick={handleToggleAirGap}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded border transition-colors ${
+            isAirGap
+              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500'
+              : 'bg-secondary text-muted-foreground hover:text-foreground border-border'
+          }`}
+          title={
+            isAirGap
+              ? 'Air-Gap Mode Active: All external network blocked, local models enforced'
+              : 'Click to enable Air-Gap Mode (offline, local-only)'
+          }
+        >
+          {isAirGap ? (
+            <>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Air-Gap (Active)</span>
+            </>
+          ) : (
+            <>
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Air-Gap (Off)</span>
+            </>
+          )}
+        </button>
+
         <button
           onClick={handleOpenFolder}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded border border-border transition-colors"

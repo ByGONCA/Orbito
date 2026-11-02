@@ -16,6 +16,8 @@ import { ContextInspector } from './ContextInspector';
 import { SkillsManager } from './SkillsManager';
 import { AgentsWorkspace } from './AgentsWorkspace';
 import { FlowBuilderWorkspace } from './FlowBuilder/FlowBuilderWorkspace';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { ExtensionsManager } from './ExtensionsManager';
 
 export const CenterArea: React.FC = () => {
   const {
@@ -66,6 +68,14 @@ export const CenterArea: React.FC = () => {
 
   if (activeCenterTab === 'flows') {
     return <FlowBuilderWorkspace />;
+  }
+
+  if (activeCenterTab === 'analytics') {
+    return <AnalyticsDashboard />;
+  }
+
+  if (activeCenterTab === 'extensions') {
+    return <ExtensionsManager />;
   }
 
   if (activeFilePath && activeFileContent !== null) {

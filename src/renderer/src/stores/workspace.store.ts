@@ -65,8 +65,8 @@ interface WorkspaceState {
   setWorkflowExecutions: (execs: WorkflowExecutionRecord[]) => void;
 
   // UI View Tabs
-  activeCenterTab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents' | 'flows';
-  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents' | 'flows') => void;
+  activeCenterTab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents' | 'flows' | 'analytics' | 'extensions';
+  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents' | 'flows' | 'analytics' | 'extensions') => void;
 
   setProject: (project: ProjectDescriptor | null) => void;
   setFiles: (files: FileNode[]) => void;
@@ -122,7 +122,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   activeSessionId: null,
   sessionStatus: 'idle',
   streamOutput: '',
-  customPaths: { claude: '', codex: '', gemini: '' },
+  customPaths: { claude: '', codex: '', gemini: '', ollama: '' },
   sessionsHistory: [],
 
   // Skills Initial State

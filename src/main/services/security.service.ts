@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { PermissionLevel } from '../../shared/types';
+import { auditService } from './audit.service';
 
 export class SecurityViolationException extends Error {
   constructor(message: string) {
@@ -16,12 +17,16 @@ export class SecurityService {
    */
   public assertWithinWorkspace(targetPath: string, workspaceRoot: string): string {
     if (!targetPath || !workspaceRoot) {
-      throw new SecurityViolationException('Both targetPath and workspaceRoot are required for path validation.');
+      const err = 'Both targetPath and workspaceRoot are required for path validation.';
+      auditService.logSecurityViolation('security_kernel', 'path_validation_failed', err);
+      throw new SecurityViolationException(err);
     }
 
     const resolvedRoot = path.resolve(workspaceRoot);
     if (!fs.existsSync(resolvedRoot)) {
-      throw new SecurityViolationException(`Workspace root does not exist on disk: ${workspaceRoot}`);
+      const err = `Workspace root does not exist on disk: ${workspaceRoot}`;
+      auditService.logSecurityViolation('security_kernel', 'root_not_found', err, workspaceRoot);
+      throw new SecurityViolationException(err);
     }
 
     const canonicalRoot = fs.realpathSync(resolvedRoot);
@@ -48,9 +53,9 @@ export class SecurityService {
 
     // If relative starts with '..' or is absolute, target lies outside canonicalRoot
     if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      throw new SecurityViolationException(
-        `Path traversal attempt rejected. Target '${targetPath}' resolves to '${canonicalTarget}', outside authorized root '${canonicalRoot}'`
-      );
+      const err = `Path traversal attempt rejected. Target '${targetPath}' resolves to '${canonicalTarget}', outside authorized root '${canonicalRoot}'`;
+      auditService.logSecurityViolation('security_kernel', 'path_traversal_blocked', err, targetPath, canonicalRoot);
+      throw new SecurityViolationException(err);
     }
 
     return canonicalTarget;
@@ -61,9 +66,9 @@ export class SecurityService {
    */
   public assertFileOperationPermitted(operation: 'read' | 'write', level: PermissionLevel): void {
     if (operation === 'write' && level === 'restricted') {
-      throw new SecurityViolationException(
-        `File write rejected. Current workspace permission level is 'restricted' (read-only mode).`
-      );
+      const err = `File write rejected. Current workspace permission level is 'restricted' (read-only mode).`;
+      auditService.logSecurityViolation('permission_manager', 'file_write_restricted', err);
+      throw new SecurityViolationException(err);
     }
   }
 
@@ -73,17 +78,17 @@ export class SecurityService {
    */
   public validateCommandSafety(command: string, level: PermissionLevel): void {
     if (level === 'restricted') {
-      throw new SecurityViolationException(
-        `Command execution forbidden under 'restricted' permission tier.`
-      );
+      const err = `Command execution forbidden under 'restricted' permission tier.`;
+      auditService.logSecurityViolation('permission_manager', 'command_forbidden_restricted', err, command);
+      throw new SecurityViolationException(err);
     }
 
     // Dangerous shell chaining and redirection patterns
     const dangerousPattern = /[;&|`$<>]/;
     if (level === 'standard' && dangerousPattern.test(command)) {
-      throw new SecurityViolationException(
-        `Command contains dangerous shell operator characters. Full Access permission tier required to execute compound commands.`
-      );
+      const err = `Command contains dangerous shell operator characters. Full Access permission tier required to execute compound commands.`;
+      auditService.logSecurityViolation('permission_manager', 'compound_command_blocked', err, command);
+      throw new SecurityViolationException(err);
     }
   }
 }

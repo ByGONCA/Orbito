@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SkillPermissionsSchema, type SkillPermissions } from './skills';
+import type { CLIProvider } from './cli';
 
 export type SpecialistRole =
   | 'coordinator'
@@ -40,7 +41,7 @@ export interface OrchestrationTask {
   description: string;
   acceptanceCriteria: string[];
   role: SpecialistRole;
-  assignedProvider: 'claude' | 'codex' | 'gemini';
+  assignedProvider: CLIProvider;
   assignedModel?: string;
   dependencies: string[]; // Task IDs that must finish before this task
   requiredSkills: string[]; // Skill IDs from Skills Engine
@@ -133,7 +134,7 @@ export const StartOrchestrationSchema = z.object({
   projectPath: z.string().min(1),
   userGoal: z.string().min(5),
   mode: z.enum(['manual', 'supervised', 'autonomous']).default('supervised'),
-  provider: z.enum(['claude', 'codex', 'gemini']).default('claude'),
+  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']).default('claude'),
   model: z.string().optional()
 });
 

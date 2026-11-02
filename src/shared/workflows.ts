@@ -4,6 +4,8 @@ import { SkillPermissionsSchema, type SkillPermissions } from './skills';
 // --- Node Categories & Types ---
 export type NodeCategory = 'ai' | 'context' | 'logic' | 'io' | 'dev';
 
+import type { CLIProvider } from './cli';
+
 export type FlowNodeType =
   // AI Nodes
   | 'ai_agent'
@@ -226,7 +228,7 @@ export interface WorkflowEvent {
 export interface NLWorkflowPromptRequest {
   prompt: string;
   projectPath: string;
-  preferredProvider?: 'claude' | 'codex' | 'gemini';
+  preferredProvider?: CLIProvider;
 }
 
 export interface NLWorkflowGenerationResult {

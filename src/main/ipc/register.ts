@@ -17,7 +17,17 @@ import {
   CancelWorkflowSchema,
   GetWorkflowExecutionSchema,
   ListWorkflowExecutionsSchema,
-  GenerateWorkflowFromPromptSchema
+  GenerateWorkflowFromPromptSchema,
+  ToggleExtensionSchema,
+  InstallExtensionSchema,
+  UninstallExtensionSchema,
+  GetAnalyticsSummarySchema,
+  GetProviderCostMetricsSchema,
+  RecordAnalyticsEventSchema,
+  ExportAnalyticsSchema,
+  QueryAuditLogsSchema,
+  ExportAuditLogsSchema,
+  UpdateAirGapConfigSchema
 } from '../../shared/ipc';
 import {
   DetectCLIsSchema,
@@ -67,6 +77,11 @@ import { workflowEngine } from '../workflows/workflow-engine';
 import { WORKFLOW_TEMPLATES } from '../workflows/workflow-templates';
 import { WorkflowGenerator } from '../workflows/workflow-generator';
 import { workflowTriggerManager } from '../workflows/workflow-trigger-manager';
+import { extensionRegistry } from '../extensions/extension-registry';
+import { analyticsService } from '../services/analytics.service';
+import { auditService } from '../services/audit.service';
+import { airGapManager } from '../services/air-gap.manager';
+import { ollamaAdapter } from '../cli/adapters/ollama.adapter';
 import type { SystemResourceMetrics } from '../../shared/types';
 
 export function registerIpcHandlers(): void {
@@ -412,5 +427,87 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('workflows:generateFromPrompt', async (_, args) => {
     const validated = GenerateWorkflowFromPromptSchema.parse(args);
     return await WorkflowGenerator.generateFromPrompt(validated);
+  });
+
+  // ==========================================
+  // Phase 7: Custom Extensions
+  // ==========================================
+
+  ipcMain.handle('extensions:list', async () => {
+    await extensionRegistry.initialize();
+    return extensionRegistry.listExtensions();
+  });
+
+  ipcMain.handle('extensions:toggle', async (_, args) => {
+    const validated = ToggleExtensionSchema.parse(args);
+    const success = await extensionRegistry.toggleExtension(validated.extensionId, validated.enabled);
+    return { success };
+  });
+
+  ipcMain.handle('extensions:install', async (_, args) => {
+    const validated = InstallExtensionSchema.parse(args);
+    return await extensionRegistry.installFromDirectory(validated.directoryPath);
+  });
+
+  ipcMain.handle('extensions:uninstall', async (_, args) => {
+    const validated = UninstallExtensionSchema.parse(args);
+    const success = await extensionRegistry.uninstallExtension(validated.extensionId);
+    return { success };
+  });
+
+  // ==========================================
+  // Phase 7: Advanced Analytics & Cost Tracking
+  // ==========================================
+
+  ipcMain.handle('analytics:getSummary', (_, args) => {
+    const validated = GetAnalyticsSummarySchema.parse(args);
+    return analyticsService.getSummary(validated);
+  });
+
+  ipcMain.handle('analytics:getProviderCostMetrics', () => {
+    return analyticsService.getProviderCostMetrics();
+  });
+
+  ipcMain.handle('analytics:recordEvent', (_, args) => {
+    const validated = RecordAnalyticsEventSchema.parse(args);
+    return analyticsService.recordEvent(validated);
+  });
+
+  ipcMain.handle('analytics:export', (_, args) => {
+    const validated = ExportAnalyticsSchema.parse(args);
+    return analyticsService.exportData(validated.format);
+  });
+
+  // ==========================================
+  // Phase 7: Enterprise Audit Logging
+  // ==========================================
+
+  ipcMain.handle('audit:queryLogs', (_, args) => {
+    const validated = QueryAuditLogsSchema.parse(args);
+    return auditService.query(validated);
+  });
+
+  ipcMain.handle('audit:export', (_, args) => {
+    const validated = ExportAuditLogsSchema.parse(args);
+    return auditService.export(validated.format);
+  });
+
+  // ==========================================
+  // Phase 7: Air-Gap & Local Model Support
+  // ==========================================
+
+  ipcMain.handle('airgap:getConfig', () => {
+    return airGapManager.getConfig();
+  });
+
+  ipcMain.handle('airgap:updateConfig', (_, args) => {
+    const validated = UpdateAirGapConfigSchema.parse(args);
+    return airGapManager.updateConfig(validated);
+  });
+
+  ipcMain.handle('airgap:listLocalModels', async () => {
+    const isRunning = await ollamaAdapter.pingDaemon();
+    const models = isRunning ? await ollamaAdapter.listLocalModels() : [];
+    return { models, isRunning };
   });
 }

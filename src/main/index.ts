@@ -4,6 +4,7 @@ import { databaseService } from './db/database.service';
 import { registerIpcHandlers } from './ipc/register';
 import { skillRegistry } from './skills/skill-registry';
 import { agentOrchestrator } from './agents/agent-orchestrator';
+import { extensionRegistry } from './extensions/extension-registry';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -63,6 +64,7 @@ if (!gotTheLock) {
     databaseService.recoverWorkflowExecutionsOnStartup();
     skillRegistry.initialize();
     agentOrchestrator.initialize();
+    extensionRegistry.initialize();
 
     // 2. Set strict Content Security Policy (CSP)
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

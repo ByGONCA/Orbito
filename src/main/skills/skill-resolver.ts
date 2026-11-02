@@ -1,5 +1,6 @@
 import { skillRegistry } from './skill-registry';
 import type { SkillMetadata, SkillResolutionResult } from '../../shared/skills';
+import type { CLIProvider } from '../../shared/cli';
 
 interface SkillKeywordsRule {
   skillId: string;
@@ -77,7 +78,7 @@ export class SkillResolver {
    */
   public static resolve(
     prompt: string,
-    provider?: 'claude' | 'codex' | 'gemini'
+    provider?: CLIProvider
   ): SkillResolutionResult[] {
     const skills = skillRegistry.listSkills().filter((s) => s.enabled);
     const normalizedPrompt = prompt.toLowerCase().trim();

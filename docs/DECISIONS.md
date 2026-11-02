@@ -136,3 +136,30 @@ This document records the foundational architectural decisions, their context, a
 - **Context:** Visual nodes must represent real system capabilities across AI, context search, logic, I/O, and developer toolchains rather than simulated components.
 - **Decision:** Define a formal `NODE_REGISTRY` of 29 nodes across 5 categories. Each node defines explicit input/output port schemas and required permissions. Execution is managed exclusively in the Main Process by `WorkflowEngine`, reusing existing CLI, Context, and Multi-Agent services.
 - **Consequences:** Guarantees zero code duplication and ensures all operations respect host security boundaries and OS sandboxing.
+
+---
+
+### ADR-015: Local Model (Ollama) Air-Gap Isolation Architecture
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 7)  
+- **Context:** Enterprise, defense, healthcare, and air-gapped developers require strict guarantees that zero code fragments or prompts are transmitted outside the host machine.
+- **Decision:** Implement `AirGapManager` to enforce local loopback network containment (`127.0.0.1`, `localhost`, `::1`), reject external cloud endpoint egress with `AirGapViolationException`, and automatically route cloud CLI requests to the local `OllamaAdapter` when Air-Gap is active.
+- **Consequences:** Provides certified local-only operation with zero cloud API dependencies and $0.00 marginal inference cost, while maintaining seamless UX.
+
+---
+
+### ADR-016: Custom Extension SDK with Declarative Sandboxing
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 7)  
+- **Context:** The application needs extensibility for custom visual nodes and domain skills without opening arbitrary remote code execution or data exfiltration risks.
+- **Decision:** Define an `ExtensionManifestSchema` validated via Zod. Extensions declare capabilities, contributions (nodes, skills), and explicit permissions (`filesystem`, `network`, `shell`). The `ExtensionLoader` calculates SHA-256 integrity checksums, disables untrusted network egress under Air-Gap mode, and dynamically registers contributions in memory and SQLite.
+- **Consequences:** Enables a rich plugin ecosystem with bulletproof sandboxing and one-click toggle control.
+
+---
+
+### ADR-017: Multi-Tier Token Rate Cards, Heuristic Attribution & SQLite Audit Logging
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 7)  
+- **Context:** Organizations require visibility into AI spend, latency percentiles, and an immutable log of security events without relying on third-party telemetry services.
+- **Decision:** Implement local-first `AnalyticsService` and `AuditService` writing directly to SQLite (`analytics_events`, `audit_logs`). Model pricing rate cards compute exact or heuristic costs per invocation. Audit logs record security traps, worktree merges, and permission changes with zero cloud egress.
+- **Consequences:** Delivers enterprise-grade governance, cost transparency, and auditability while preserving 100% data sovereignty.

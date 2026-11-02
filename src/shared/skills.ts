@@ -53,7 +53,7 @@ export const SkillManifestSchema = z.object({
     'architecture'
   ]),
   tags: z.array(z.string()).default([]),
-  supportedProviders: z.array(z.enum(['claude', 'codex', 'gemini'])).min(1),
+  supportedProviders: z.array(z.enum(['claude', 'codex', 'gemini', 'ollama'])).min(1),
   requiredCapabilities: z.array(z.string()).default([]),
   requiredPermissions: SkillPermissionsSchema,
   contextRequirements: SkillContextRequirementsSchema.default({}),
@@ -75,7 +75,7 @@ export interface SkillMetadata {
   author: string;
   category: SkillCategory;
   tags: string[];
-  supportedProviders: ('claude' | 'codex' | 'gemini')[];
+  supportedProviders: ('claude' | 'codex' | 'gemini' | 'ollama')[];
   isBuiltIn: boolean;
   enabled: boolean;
   checksum: string;
@@ -119,7 +119,7 @@ export const ToggleSkillSchema = z.object({
 
 export const ResolveSkillSchema = z.object({
   prompt: z.string().min(1),
-  provider: z.enum(['claude', 'codex', 'gemini']).optional()
+  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']).optional()
 });
 
 export const ExecuteSkillSchema = z.object({
@@ -127,7 +127,7 @@ export const ExecuteSkillSchema = z.object({
   prompt: z.string().min(1),
   projectId: z.string().min(1),
   projectPath: z.string().min(1),
-  provider: z.enum(['claude', 'codex', 'gemini']),
+  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']),
   model: z.string().optional()
 });
 

@@ -12,13 +12,14 @@ import { CoordinatorAgent } from './coordinator-agent';
 import { AgentScheduler } from './agent-scheduler';
 import { WorktreeManager } from './worktree-manager';
 import { databaseService } from '../db/database.service';
+import type { CLIProvider } from '../../shared/cli';
 
 export interface StartOrchestrationParams {
   projectId: string;
   projectPath: string;
   userGoal: string;
   mode: ExecutionMode;
-  provider: 'claude' | 'codex' | 'gemini';
+  provider: CLIProvider;
   model?: string;
 }
 

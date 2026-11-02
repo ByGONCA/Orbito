@@ -10,6 +10,9 @@ import type {
 import { cliManager } from './cli-manager';
 import { databaseService } from '../db/database.service';
 import { securityService } from '../services/security.service';
+import { airGapManager } from '../services/air-gap.manager';
+import { auditService } from '../services/audit.service';
+import { analyticsService } from '../services/analytics.service';
 import { createStreamParser } from './parsers';
 
 interface ActiveSession {
@@ -18,6 +21,8 @@ interface ActiveSession {
   process: ChildProcess;
   timeoutTimer: NodeJS.Timeout;
   startTime: number;
+  prompt: string;
+  outputLength: number;
 }
 
 export class ExecutionEngine extends EventEmitter {
@@ -47,15 +52,18 @@ export class ExecutionEngine extends EventEmitter {
       resumeSessionId
     } = params;
 
+    // 0. Air-gap provider routing
+    const effectiveProvider = airGapManager.resolveProvider(provider);
+
     // 1. Security path validation
     const canonicalWorkDir = securityService.assertWithinWorkspace(workingDirectory, workingDirectory);
 
     // 2. Resolve adapter & binary
-    const adapter = cliManager.getAdapter(provider);
+    const adapter = cliManager.getAdapter(effectiveProvider);
     const detection = await adapter.detect(customPath);
 
     if (!detection.isInstalled || !detection.resolvedPath) {
-      throw new Error(`Cannot execute: ${provider} CLI is not installed on this system.`);
+      throw new Error(`Cannot execute: ${effectiveProvider} CLI is not installed on this system.`);
     }
 
     // 3. Build command spec
@@ -66,7 +74,7 @@ export class ExecutionEngine extends EventEmitter {
     const now = Date.now();
     const sessionRecord: CLISessionRecord = {
       id: sessionId,
-      provider,
+      provider: effectiveProvider,
       projectId,
       status: 'running',
       prompt,
@@ -80,6 +88,12 @@ export class ExecutionEngine extends EventEmitter {
       role: 'user',
       content: prompt,
       timestamp: now
+    });
+
+    auditService.logAccess('execution_engine', 'cli_execute_start', workingDirectory, projectId, 'info', {
+      sessionId,
+      provider: effectiveProvider,
+      promptLength: prompt.length
     });
 
     // 5. Spawn child process (strict shell: false for process isolation)
@@ -98,10 +112,12 @@ export class ExecutionEngine extends EventEmitter {
 
     const activeSession: ActiveSession = {
       id: sessionId,
-      provider,
+      provider: effectiveProvider,
       process: child,
       timeoutTimer,
-      startTime: now
+      startTime: now,
+      prompt,
+      outputLength: 0
     };
     this.activeSessions.set(sessionId, activeSession);
 
@@ -113,11 +129,12 @@ export class ExecutionEngine extends EventEmitter {
     });
 
     // 7. Instantiate provider-specific stream parser
-    const parser = createStreamParser(provider);
+    const parser = createStreamParser(effectiveProvider);
 
     // Handle stdout streaming with provider-specific parsing & deduplication
     child.stdout?.on('data', (chunk: Buffer) => {
       const rawText = chunk.toString('utf8');
+      activeSession.outputLength += rawText.length;
       const lines = rawText.split(/\r?\n/);
       let textToEmit = '';
 
@@ -288,6 +305,32 @@ export class ExecutionEngine extends EventEmitter {
 
     databaseService.updateCLISession(sessionId, finalStatus, exitCode, duration);
     this.activeSessions.delete(sessionId);
+
+    // Record local analytics
+    analyticsService.recordEvent({
+      provider: session.provider,
+      model: session.provider === 'ollama' ? 'llama3:latest' : `${session.provider}-cli`,
+      tokensIn: Math.ceil(session.prompt.length / 4),
+      tokensOut: Math.max(1, Math.ceil(session.outputLength / 4)),
+      durationMs: duration,
+      status: finalStatus === 'completed' ? 'success' : 'failure',
+      feature: 'cli',
+      details: { sessionId, exitCode }
+    });
+
+    // Record audit log
+    auditService.logAccess(
+      'execution_engine',
+      'cli_execute_exit',
+      sessionId,
+      undefined,
+      finalStatus === 'completed' ? 'info' : 'warning',
+      {
+        provider: session.provider,
+        durationMs: duration,
+        exitCode
+      }
+    );
 
     this.emitEvent({
       sessionId,

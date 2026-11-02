@@ -8,13 +8,14 @@ import { tokenCounterService } from '../context/tokens/token-counter.service';
 import { databaseService } from '../db/database.service';
 import { executionEngine } from '../cli/execution-engine';
 import type { SkillExecutionRecord } from '../../shared/skills';
+import type { CLIProvider } from '../../shared/cli';
 
 export interface ExecuteSkillOptions {
   skillId: string;
   prompt: string;
   projectId: string;
   projectPath: string;
-  provider: 'claude' | 'codex' | 'gemini';
+  provider: CLIProvider;
   model?: string;
   permissionTier?: WorkspacePermissionTier;
 }

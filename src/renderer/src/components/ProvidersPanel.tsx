@@ -38,6 +38,12 @@ const PROVIDERS: ProviderCardProps[] = [
     name: 'Google Gemini CLI',
     tagline: 'Multimodal and code intelligence via Google GenAI developer CLI',
     badgeColor: 'border-blue-500/30 bg-blue-500/10 text-blue-500'
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama (Local Models)',
+    tagline: 'Local air-gapped LLM inference (Llama 3, Mistral, DeepSeek-R1)',
+    badgeColor: 'border-purple-500/30 bg-purple-500/10 text-purple-500'
   }
 ];
 
@@ -65,7 +71,7 @@ export const ProvidersPanel: React.FC = () => {
       setCLIStatuses(statuses);
 
       const auths: any = {};
-      for (const p of ['claude', 'codex', 'gemini'] as CLIProvider[]) {
+      for (const p of ['claude', 'codex', 'gemini', 'ollama'] as CLIProvider[]) {
         if (statuses[p]?.isInstalled) {
           auths[p] = await window.api.checkCLIAuth({
             provider: p,
