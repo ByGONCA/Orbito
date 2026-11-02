@@ -60,6 +60,7 @@ if (!gotTheLock) {
     // 1. Initialize Dual SQLite databases
     const appDataPath = path.join(app.getPath('userData'), 'data');
     databaseService.initialize();
+    databaseService.recoverWorkflowExecutionsOnStartup();
     skillRegistry.initialize();
     agentOrchestrator.initialize();
 

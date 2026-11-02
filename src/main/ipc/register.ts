@@ -7,7 +7,17 @@ import {
   StoreSecretSchema,
   GetSecretSchema,
   SaveMemorySchema,
-  DeleteMemorySchema
+  DeleteMemorySchema,
+  ListWorkflowsSchema,
+  GetWorkflowSchema,
+  SaveWorkflowSchema,
+  DeleteWorkflowSchema,
+  DuplicateWorkflowSchema,
+  ExecuteWorkflowSchema,
+  CancelWorkflowSchema,
+  GetWorkflowExecutionSchema,
+  ListWorkflowExecutionsSchema,
+  GenerateWorkflowFromPromptSchema
 } from '../../shared/ipc';
 import {
   DetectCLIsSchema,
@@ -53,6 +63,10 @@ import { SkillResolver } from '../skills/skill-resolver';
 import { CustomSkillsService } from '../skills/custom-skills.service';
 import { skillExecutionEngine } from '../skills/skill-execution-engine';
 import { agentOrchestrator } from '../agents/agent-orchestrator';
+import { workflowEngine } from '../workflows/workflow-engine';
+import { WORKFLOW_TEMPLATES } from '../workflows/workflow-templates';
+import { WorkflowGenerator } from '../workflows/workflow-generator';
+import { workflowTriggerManager } from '../workflows/workflow-trigger-manager';
 import type { SystemResourceMetrics } from '../../shared/types';
 
 export function registerIpcHandlers(): void {
@@ -329,5 +343,74 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('orchestration:getPendingApprovals', (_, orchestrationId?: string) => {
     return databaseService.getPendingApprovals(orchestrationId);
+  });
+
+  // ==========================================
+  // Phase 6: Visual Automation & Workflows Handlers
+  // ==========================================
+
+  ipcMain.handle('workflows:list', (_, args) => {
+    const validated = ListWorkflowsSchema.parse(args || {});
+    return databaseService.listWorkflows(validated.projectId || 'default');
+  });
+
+  ipcMain.handle('workflows:get', (_, args) => {
+    const validated = GetWorkflowSchema.parse(args);
+    return databaseService.getWorkflow(validated.id);
+  });
+
+  ipcMain.handle('workflows:save', (_, args) => {
+    const validated = SaveWorkflowSchema.parse(args);
+    databaseService.upsertWorkflow(validated.workflow);
+    return { success: true };
+  });
+
+  ipcMain.handle('workflows:delete', (_, args) => {
+    const validated = DeleteWorkflowSchema.parse(args);
+    const success = databaseService.deleteWorkflow(validated.id);
+    return { success };
+  });
+
+  ipcMain.handle('workflows:duplicate', (_, args) => {
+    const validated = DuplicateWorkflowSchema.parse(args);
+    return databaseService.duplicateWorkflow(validated.id);
+  });
+
+  ipcMain.handle('workflows:getTemplates', () => {
+    return WORKFLOW_TEMPLATES;
+  });
+
+  ipcMain.handle('workflows:execute', async (_, args) => {
+    const validated = ExecuteWorkflowSchema.parse(args);
+    const workflow = databaseService.getWorkflow(validated.workflowId);
+    if (!workflow) {
+      throw new Error(`Workflow not found: "${validated.workflowId}"`);
+    }
+    return await workflowEngine.executeWorkflow(
+      workflow,
+      validated.initialInputs || {},
+      validated.projectPath
+    );
+  });
+
+  ipcMain.handle('workflows:cancel', async (_, args) => {
+    const validated = CancelWorkflowSchema.parse(args);
+    const success = await workflowEngine.cancelWorkflow(validated.executionId);
+    return { success };
+  });
+
+  ipcMain.handle('workflows:getExecution', (_, args) => {
+    const validated = GetWorkflowExecutionSchema.parse(args);
+    return databaseService.getWorkflowExecution(validated.id);
+  });
+
+  ipcMain.handle('workflows:listExecutions', (_, args) => {
+    const validated = ListWorkflowExecutionsSchema.parse(args);
+    return databaseService.listWorkflowExecutions(validated.workflowId);
+  });
+
+  ipcMain.handle('workflows:generateFromPrompt', async (_, args) => {
+    const validated = GenerateWorkflowFromPromptSchema.parse(args);
+    return await WorkflowGenerator.generateFromPrompt(validated);
   });
 }

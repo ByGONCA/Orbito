@@ -109,3 +109,30 @@ This document records the foundational architectural decisions, their context, a
   2. `supervised`: Specialist tasks run autonomously in worktrees; branch merges and system operations require human sign-off with unified diff preview.
   3. `autonomous`: Verified tasks merge automatically when quality gates pass; halts only on unresolvable defects or security anomalies.
 - **Consequences:** Gives users full control over agent autonomy without sacrificing development velocity.
+
+---
+
+### ADR-012: Visual Workflow Canvas via React Flow (`@xyflow/react`)
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 6)  
+- **Context:** Need an interactive, responsive infinite canvas for DAG workflow creation and execution monitoring that scales cleanly without UI freezing.
+- **Decision:** Use `@xyflow/react` with custom-themed node components, typed handles, animated dataflow edges, and collapsible drawer monitors.
+- **Consequences:** Delivers a fluid 60 FPS visual programming experience with zoom/pan/minimap controls, while maintaining strict isolation between visual graph state and backend execution.
+
+---
+
+### ADR-013: Sandboxed Restricted Grammar for Expression Evaluation
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 6)  
+- **Context:** Condition and switch nodes require evaluating expressions against dynamic inputs and workflow variables without opening Remote Code Execution (RCE) vectors.
+- **Decision:** Implement a custom recursive descent parser (`ExpressionEvaluator`) supporting comparison operators, boolean logic, and pure helper functions (`contains`, `startsWith`, `length`, `isEmpty`), strictly forbidding `eval()`, `Function()`, and prototype pollution.
+- **Consequences:** Completely eliminates script injection vulnerabilities in user-defined or imported workflow expressions.
+
+---
+
+### ADR-014: Unified 29-Node Categorized Registry with Main Process Execution
+- **Date:** 2026-11-02  
+- **Status:** Accepted & Implemented (Phase 6)  
+- **Context:** Visual nodes must represent real system capabilities across AI, context search, logic, I/O, and developer toolchains rather than simulated components.
+- **Decision:** Define a formal `NODE_REGISTRY` of 29 nodes across 5 categories. Each node defines explicit input/output port schemas and required permissions. Execution is managed exclusively in the Main Process by `WorkflowEngine`, reusing existing CLI, Context, and Multi-Agent services.
+- **Consequences:** Guarantees zero code duplication and ensures all operations respect host security boundaries and OS sandboxing.

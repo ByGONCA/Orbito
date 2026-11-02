@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.11.2",
+    "@xyflow/react": "^12.12.1",
     "better-sqlite3": "^11.8.0",
     "chokidar": "^6.0.0",
     "clsx": "^2.1.1",

@@ -97,3 +97,10 @@ To guarantee appropriate human oversight, three execution safety tiers are enfor
 1. **Manual Mode**: Every single task transition, command execution, and file modification requires explicit human approval in the Approval Center.
 2. **Supervised Mode (Default)**: Specialist workers execute read and worktree write operations autonomously; merges into the main branch, system package installations, or high-risk commands pause for human approval with side-by-side diff inspection.
 3. **Autonomous Mode**: Safe workflow execution where tasks that pass automated `ReviewerAgent` gates (typecheck + test suite passes) merge automatically. High-risk system actions or failed verification gates still escalate to human intervention.
+
+### 2.8 Visual Workflow & Expression Evaluation Security Guardrails
+- **Main Process Authority**: The visual canvas in the Renderer has zero execution privileges. Workflow graph structures are treated as untrusted data, parsed and validated by `WorkflowValidator` and `WorkflowEngine` in the Main Process.
+- **Node Permission Pre-Check**: Before executing any node handler, `SkillPermissionManager.evaluate` validates that the node's declared permissions do not exceed workspace security policy limits.
+- **Sandboxed Expression Grammar**: The `ExpressionEvaluator` rejects dynamic code execution (`eval`, `Function`, `setTimeout(code)`, etc.). It implements a custom recursive descent parser supporting only safe boolean logic, comparisons, and deterministic pure helper functions.
+- **Loop & Delay Resource Caps**: Loops are strictly bounded to $\le 50$ iterations, and delays are clamped to $\le 60,000\text{ ms}$, preventing denial-of-service or thread freezing.
+- **Automated Workflow Generation**: Workflows generated from natural language prompts are treated as untrusted drafts, strictly validated against `NODE_REGISTRY`, and never executed automatically without explicit human inspection and activation.

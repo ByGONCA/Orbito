@@ -47,6 +47,13 @@ tests/
 │   ├── agents-state-persistence.test.ts        # SQLite orchestration schema, task updates, crash recovery
 │   └── agents-orchestrator-integration.test.ts # End-to-end multi-agent orchestration lifecycle & IPC
 │
+├── Visual Automation & Flow Builder Suites (Phase 6)
+│   ├── workflow-validator.test.ts              # DAG connectivity, Kahn cycle detection, port types
+│   ├── workflow-expression-evaluator.test.ts   # Safe expression grammar, comparisons, injection safety
+│   ├── workflow-engine-execution.test.ts       # Topological execution, branching, skipping, variables
+│   ├── workflow-templates-and-nl.test.ts       # 10 production templates validation, NL DAG generator
+│   └── workflow-persistence.test.ts            # SQLite CRUD, execution metrics, crash recovery
+│
 ├── Empirical Scale Benchmarks
 │   ├── performance-benchmark.test.ts           # SQLite batch write latency & base memory
 │   └── performance-benchmarks-scale.test.ts    # 1,000 files/chunks, FTS5 < 15ms, assembly < 50ms
@@ -65,7 +72,7 @@ Every code contribution must pass three non-negotiable verification gates:
 # Gate 1: Strict TypeScript Typechecking (zero any coercion, zero errors)
 npm run typecheck
 
-# Gate 2: Full Test Suite Execution (26 test suites, 126+ tests, zero failures)
+# Gate 2: Full Test Suite Execution (31 test suites, 146+ tests, zero failures)
 npm test
 
 # Gate 3: Production Build & Asset Packaging

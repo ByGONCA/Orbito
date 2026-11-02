@@ -6,6 +6,7 @@ import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider
 import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shared/context';
 import type { SkillMetadata, SkillExecutionRecord, SkillManifest } from '../../shared/skills';
 import type { OrchestrationRecord, OrchestrationTask, ApprovalRequest } from '../../shared/agents';
+import type { WorkflowRecord, WorkflowExecutionRecord, NodeExecutionRecord } from '../../shared/workflows';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -211,6 +212,68 @@ export class DatabaseService {
         FOREIGN KEY(orchestration_id) REFERENCES orchestrations(id) ON DELETE CASCADE
       );
       CREATE INDEX IF NOT EXISTS idx_approval_orch ON approval_requests(orchestration_id);
+
+      CREATE TABLE IF NOT EXISTS workflows (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        nodes_json TEXT NOT NULL,
+        edges_json TEXT NOT NULL,
+        variables_json TEXT NOT NULL DEFAULT '{}',
+        trigger_json TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'ready',
+        version INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_workflows_proj ON workflows(project_id);
+
+      CREATE TABLE IF NOT EXISTS workflow_versions (
+        id TEXT PRIMARY KEY,
+        workflow_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        nodes_json TEXT NOT NULL,
+        edges_json TEXT NOT NULL,
+        variables_json TEXT NOT NULL DEFAULT '{}',
+        description TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_wf_versions_wf ON workflow_versions(workflow_id);
+
+      CREATE TABLE IF NOT EXISTS workflow_executions (
+        id TEXT PRIMARY KEY,
+        workflow_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        trigger_type TEXT NOT NULL,
+        inputs_json TEXT NOT NULL DEFAULT '{}',
+        outputs_json TEXT NOT NULL DEFAULT '{}',
+        variables_json TEXT NOT NULL DEFAULT '{}',
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        error_message TEXT,
+        created_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        FOREIGN KEY(workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_wf_exec_wf ON workflow_executions(workflow_id);
+
+      CREATE TABLE IF NOT EXISTS workflow_node_executions (
+        id TEXT PRIMARY KEY,
+        execution_id TEXT NOT NULL,
+        node_id TEXT NOT NULL,
+        node_type TEXT NOT NULL,
+        status TEXT NOT NULL,
+        inputs_json TEXT NOT NULL DEFAULT '{}',
+        outputs_json TEXT NOT NULL DEFAULT '{}',
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        error_message TEXT,
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        FOREIGN KEY(execution_id) REFERENCES workflow_executions(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_wf_node_exec ON workflow_node_executions(execution_id);
     `);
 
     try {
@@ -1426,6 +1489,268 @@ export class DatabaseService {
       recoveredOrchestrations: activeOrchs.length,
       recoveredTasks: activeTasks.length
     };
+  }
+
+  // ==========================================
+  // Phase 6: Workflow Persistence & Executions
+  // ==========================================
+
+  public upsertWorkflow(workflow: WorkflowRecord): void {
+    const db = this.getAppDb();
+    const stmt = db.prepare(`
+      INSERT INTO workflows (
+        id, project_id, name, description, nodes_json, edges_json,
+        variables_json, trigger_json, status, version, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        nodes_json = excluded.nodes_json,
+        edges_json = excluded.edges_json,
+        variables_json = excluded.variables_json,
+        trigger_json = excluded.trigger_json,
+        status = excluded.status,
+        version = excluded.version,
+        updated_at = excluded.updated_at
+    `);
+
+    stmt.run(
+      workflow.id,
+      workflow.projectId,
+      workflow.name,
+      workflow.description,
+      JSON.stringify(workflow.nodes),
+      JSON.stringify(workflow.edges),
+      JSON.stringify(workflow.variables || {}),
+      JSON.stringify(workflow.trigger),
+      workflow.status,
+      workflow.version,
+      workflow.createdAt,
+      workflow.updatedAt
+    );
+  }
+
+  public getWorkflow(id: string): WorkflowRecord | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM workflows WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      name: row.name,
+      description: row.description,
+      nodes: JSON.parse(row.nodes_json),
+      edges: JSON.parse(row.edges_json),
+      variables: JSON.parse(row.variables_json || '{}'),
+      trigger: JSON.parse(row.trigger_json),
+      status: row.status,
+      version: row.version,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  public listWorkflows(projectId: string): WorkflowRecord[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`SELECT * FROM workflows WHERE project_id = ? OR project_id = 'default' ORDER BY updated_at DESC`).all(projectId) as any[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      projectId: row.project_id,
+      name: row.name,
+      description: row.description,
+      nodes: JSON.parse(row.nodes_json),
+      edges: JSON.parse(row.edges_json),
+      variables: JSON.parse(row.variables_json || '{}'),
+      trigger: JSON.parse(row.trigger_json),
+      status: row.status,
+      version: row.version,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  public deleteWorkflow(id: string): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare(`DELETE FROM workflows WHERE id = ?`).run(id);
+    return res.changes > 0;
+  }
+
+  public duplicateWorkflow(id: string): WorkflowRecord | null {
+    const original = this.getWorkflow(id);
+    if (!original) return null;
+
+    const newId = `wf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const duplicated: WorkflowRecord = {
+      ...original,
+      id: newId,
+      name: `${original.name} (Copy)`,
+      version: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    this.upsertWorkflow(duplicated);
+    return duplicated;
+  }
+
+  public createWorkflowExecution(exec: WorkflowExecutionRecord): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO workflow_executions (
+        id, workflow_id, project_id, status, trigger_type,
+        inputs_json, outputs_json, variables_json, duration_ms,
+        error_message, created_at, completed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      exec.id,
+      exec.workflowId,
+      exec.projectId,
+      exec.status,
+      exec.triggerType,
+      JSON.stringify(exec.inputs || {}),
+      JSON.stringify(exec.outputs || {}),
+      JSON.stringify(exec.variables || {}),
+      exec.durationMs,
+      exec.errorMessage || null,
+      exec.createdAt,
+      exec.completedAt || null
+    );
+  }
+
+  public updateWorkflowExecution(exec: WorkflowExecutionRecord): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      UPDATE workflow_executions SET
+        status = ?,
+        outputs_json = ?,
+        variables_json = ?,
+        duration_ms = ?,
+        error_message = ?,
+        completed_at = ?
+      WHERE id = ?
+    `).run(
+      exec.status,
+      JSON.stringify(exec.outputs || {}),
+      JSON.stringify(exec.variables || {}),
+      exec.durationMs,
+      exec.errorMessage || null,
+      exec.completedAt || null,
+      exec.id
+    );
+  }
+
+  public updateWorkflowExecutionStatus(id: string, status: string): void {
+    const db = this.getAppDb();
+    db.prepare(`UPDATE workflow_executions SET status = ?, completed_at = ? WHERE id = ?`).run(
+      status,
+      Date.now(),
+      id
+    );
+  }
+
+  public getWorkflowExecution(id: string): WorkflowExecutionRecord | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM workflow_executions WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      workflowId: row.workflow_id,
+      projectId: row.project_id,
+      status: row.status,
+      triggerType: row.trigger_type,
+      inputs: JSON.parse(row.inputs_json || '{}'),
+      outputs: JSON.parse(row.outputs_json || '{}'),
+      variables: JSON.parse(row.variables_json || '{}'),
+      durationMs: row.duration_ms,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+      completedAt: row.completed_at
+    };
+  }
+
+  public listWorkflowExecutions(workflowId: string): WorkflowExecutionRecord[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`SELECT * FROM workflow_executions WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 50`).all(workflowId) as any[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      workflowId: row.workflow_id,
+      projectId: row.project_id,
+      status: row.status,
+      triggerType: row.trigger_type,
+      inputs: JSON.parse(row.inputs_json || '{}'),
+      outputs: JSON.parse(row.outputs_json || '{}'),
+      variables: JSON.parse(row.variables_json || '{}'),
+      durationMs: row.duration_ms,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+      completedAt: row.completed_at
+    }));
+  }
+
+  public recordNodeExecution(record: NodeExecutionRecord): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO workflow_node_executions (
+        id, execution_id, node_id, node_type, status,
+        inputs_json, outputs_json, duration_ms, error_message,
+        started_at, completed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      record.id,
+      record.executionId,
+      record.nodeId,
+      record.nodeType,
+      record.status,
+      JSON.stringify(record.inputs || {}),
+      JSON.stringify(record.outputs || {}),
+      record.durationMs,
+      record.errorMessage || null,
+      record.startedAt,
+      record.completedAt || null
+    );
+  }
+
+  public updateNodeExecution(
+    executionId: string,
+    nodeId: string,
+    updates: Partial<NodeExecutionRecord>
+  ): void {
+    const db = this.getAppDb();
+    const existing = db.prepare(`SELECT * FROM workflow_node_executions WHERE execution_id = ? AND node_id = ? ORDER BY started_at DESC LIMIT 1`).get(executionId, nodeId) as any;
+    if (!existing) return;
+
+    db.prepare(`
+      UPDATE workflow_node_executions SET
+        status = COALESCE(?, status),
+        outputs_json = COALESCE(?, outputs_json),
+        duration_ms = COALESCE(?, duration_ms),
+        error_message = COALESCE(?, error_message),
+        completed_at = COALESCE(?, completed_at)
+      WHERE id = ?
+    `).run(
+      updates.status || null,
+      updates.outputs ? JSON.stringify(updates.outputs) : null,
+      updates.durationMs ?? null,
+      updates.errorMessage || null,
+      updates.completedAt || null,
+      existing.id
+    );
+  }
+
+  public recoverWorkflowExecutionsOnStartup(): { recoveredExecutions: number } {
+    const db = this.getAppDb();
+    const active = db.prepare(`SELECT id FROM workflow_executions WHERE status = 'running'`).all() as any[];
+    for (const exec of active) {
+      db.prepare(`UPDATE workflow_executions SET status = 'failed', error_message = 'Interrupted by application restart', completed_at = ? WHERE id = ?`).run(
+        Date.now(),
+        exec.id
+      );
+    }
+    return { recoveredExecutions: active.length };
   }
 
   // ==========================================

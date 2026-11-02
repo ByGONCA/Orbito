@@ -1,7 +1,7 @@
 # Product & Engineering Roadmap — AI Workspace
 
-**Document Version:** 1.6.0  
-**Status:** Phases 1–5 Fully Implemented & Verified | Phase 6 Visual Automation Next  
+**Document Version:** 1.7.0  
+**Status:** Phases 1–6 Fully Implemented & Verified | Phase 7 Ecosystem & Hardening Next  
 **Execution Strategy:** Iterative Milestone Releases (Phases 1 to 7)  
 
 ---
@@ -29,8 +29,8 @@
   Coordinator DAG, Git Worktree Isolation, Specialist/Reviewer Agents, Diff Approval Gate, Agents Workspace UI
        │
        ▼
-[Phase 6: Visual Automation & Flow Builder] (PLANNED)
-  React Flow Canvas, Natural Language DAG Generation, Conditional Nodes, Triggers
+[Phase 6: Visual Automation & Flow Builder] (COMPLETED)
+  React Flow Canvas (@xyflow/react), 29 Built-in Nodes, Bounded WorkflowEngine, NL DAG Generator, 10 Templates
        │
        ▼
 [Phase 7: Ecosystem & Enterprise Hardening] (PLANNED)
@@ -86,6 +86,16 @@ Phase 5: Multi-Agent Orchestration [COMPLETED]
 ├── WP 5.5: Human-in-the-Loop Approval Center (Manual, Supervised, Autonomous modes, diff viewer) [DONE]
 ├── WP 5.6: Agents Workspace UI (Visual DAG, Agent Monitor, Approval Center, Run History) [DONE]
 └── WP 5.7: Multi-Agent Test Suite (6 dedicated test suites, 26 test files, 126 tests passing) [DONE]
+
+Phase 6: Visual Automation & Flow Builder [COMPLETED]
+├── WP 6.1: Flow Canvas Architecture (@xyflow/react, zoom/pan/minimap, theme badges) [DONE]
+├── WP 6.2: 29-Node Categorized Registry (AI, Context, Logic, IO, Dev contracts) [DONE]
+├── WP 6.3: Bounded Workflow Engine (Kahn topological scheduler, parallel tiers, branch skipping) [DONE]
+├── WP 6.4: Sandboxed Expression Evaluator (Comparisons, boolean logic, helper functions, zero eval) [DONE]
+├── WP 6.5: Natural Language DAG Generator (Prompt intent classifier, permission estimation) [DONE]
+├── WP 6.6: Event-Driven Trigger Architecture (Manual, startup, file change, git events, scheduled) [DONE]
+├── WP 6.7: 10 Built-in Production Templates (Security audit, PR prep, testing, onboarding, etc.) [DONE]
+└── WP 6.8: Workflow Test Suite (5 dedicated test suites, 31 total test files, 146 tests passing) [DONE]
 ```
 
 ---

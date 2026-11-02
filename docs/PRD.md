@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD) — AI Workspace
 
-**Document Version:** 1.6.0  
-**Status:** Phases 1–5 Fully Implemented & Verified | Phase 6 Visual Automation Next  
+**Document Version:** 1.7.0  
+**Status:** Phases 1–6 Fully Implemented & Verified | Phase 7 Ecosystem & Hardening Next  
 **Target:** Local-First Desktop AI Workspace  
 **Document Author:** Architecture Team  
 

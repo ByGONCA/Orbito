@@ -3,6 +3,7 @@ import type { ProjectDescriptor, FileNode, UIMode, SystemResourceMetrics } from 
 import type { IndexStats } from '../../../shared/context';
 import type { SkillMetadata, SkillExecutionRecord } from '../../../shared/skills';
 import type { OrchestrationRecord, ApprovalRequest } from '../../../shared/agents';
+import type { WorkflowRecord, WorkflowExecutionRecord } from '../../../shared/workflows';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -53,9 +54,19 @@ interface WorkspaceState {
   pendingApprovals: ApprovalRequest[];
   setPendingApprovals: (approvals: ApprovalRequest[]) => void;
 
+  // Visual Automation & Workflows State (Phase 6)
+  workflows: WorkflowRecord[];
+  setWorkflows: (workflows: WorkflowRecord[]) => void;
+  activeWorkflow: WorkflowRecord | null;
+  setActiveWorkflow: (wf: WorkflowRecord | null) => void;
+  workflowTemplates: WorkflowRecord[];
+  setWorkflowTemplates: (templates: WorkflowRecord[]) => void;
+  workflowExecutions: WorkflowExecutionRecord[];
+  setWorkflowExecutions: (execs: WorkflowExecutionRecord[]) => void;
+
   // UI View Tabs
-  activeCenterTab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents';
-  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents') => void;
+  activeCenterTab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents' | 'flows';
+  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context' | 'skills' | 'agents' | 'flows') => void;
 
   setProject: (project: ProjectDescriptor | null) => void;
   setFiles: (files: FileNode[]) => void;
@@ -129,6 +140,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setOrchestrationsHistory: (orchestrationsHistory) => set({ orchestrationsHistory }),
   pendingApprovals: [],
   setPendingApprovals: (pendingApprovals) => set({ pendingApprovals }),
+
+  // Visual Automation & Workflows Initial State (Phase 6)
+  workflows: [],
+  setWorkflows: (workflows) => set({ workflows }),
+  activeWorkflow: null,
+  setActiveWorkflow: (activeWorkflow) => set({ activeWorkflow }),
+  workflowTemplates: [],
+  setWorkflowTemplates: (workflowTemplates) => set({ workflowTemplates }),
+  workflowExecutions: [],
+  setWorkflowExecutions: (workflowExecutions) => set({ workflowExecutions }),
 
   activeCenterTab: 'code',
   setActiveCenterTab: (activeCenterTab) => set({ activeCenterTab }),

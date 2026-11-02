@@ -64,6 +64,13 @@ import {
   RetryTaskSchema,
   GetWorktreeDiffSchema
 } from './agents';
+import type {
+  WorkflowRecord,
+  WorkflowExecutionRecord,
+  WorkflowEvent,
+  NLWorkflowGenerationResult
+} from './workflows';
+import { WorkflowRecordSchema } from './workflows';
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -106,6 +113,54 @@ export const SaveMemorySchema = z.object({
 
 export const DeleteMemorySchema = z.object({
   id: z.string().min(1)
+});
+
+// ==========================================
+// Phase 6: Visual Automation & Workflows Schemas
+// ==========================================
+
+export const ListWorkflowsSchema = z.object({
+  projectId: z.string().optional()
+});
+
+export const GetWorkflowSchema = z.object({
+  id: z.string().min(1)
+});
+
+export const SaveWorkflowSchema = z.object({
+  workflow: WorkflowRecordSchema
+});
+
+export const DeleteWorkflowSchema = z.object({
+  id: z.string().min(1)
+});
+
+export const DuplicateWorkflowSchema = z.object({
+  id: z.string().min(1)
+});
+
+export const ExecuteWorkflowSchema = z.object({
+  workflowId: z.string().min(1),
+  initialInputs: z.record(z.any()).optional(),
+  projectPath: z.string().min(1)
+});
+
+export const CancelWorkflowSchema = z.object({
+  executionId: z.string().min(1)
+});
+
+export const GetWorkflowExecutionSchema = z.object({
+  id: z.string().min(1)
+});
+
+export const ListWorkflowExecutionsSchema = z.object({
+  workflowId: z.string().min(1)
+});
+
+export const GenerateWorkflowFromPromptSchema = z.object({
+  prompt: z.string().min(3),
+  projectPath: z.string().min(1),
+  preferredProvider: z.enum(['claude', 'codex', 'gemini']).optional()
 });
 
 // ==========================================
@@ -173,4 +228,18 @@ export interface IElectronAPI {
   getWorktreeDiff: (params: z.input<typeof GetWorktreeDiffSchema>) => Promise<string>;
   getPendingApprovals: (orchestrationId?: string) => Promise<ApprovalRequest[]>;
   onOrchestrationEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
+
+  // Visual Automation & Workflows (Phase 6)
+  listWorkflows: (params?: z.input<typeof ListWorkflowsSchema>) => Promise<WorkflowRecord[]>;
+  getWorkflow: (params: z.input<typeof GetWorkflowSchema>) => Promise<WorkflowRecord | null>;
+  saveWorkflow: (params: z.input<typeof SaveWorkflowSchema>) => Promise<{ success: boolean }>;
+  deleteWorkflow: (params: z.input<typeof DeleteWorkflowSchema>) => Promise<{ success: boolean }>;
+  duplicateWorkflow: (params: z.input<typeof DuplicateWorkflowSchema>) => Promise<WorkflowRecord | null>;
+  getWorkflowTemplates: () => Promise<WorkflowRecord[]>;
+  executeWorkflow: (params: z.input<typeof ExecuteWorkflowSchema>) => Promise<WorkflowExecutionRecord>;
+  cancelWorkflow: (params: z.input<typeof CancelWorkflowSchema>) => Promise<{ success: boolean }>;
+  getWorkflowExecution: (params: z.input<typeof GetWorkflowExecutionSchema>) => Promise<WorkflowExecutionRecord | null>;
+  listWorkflowExecutions: (params: z.input<typeof ListWorkflowExecutionsSchema>) => Promise<WorkflowExecutionRecord[]>;
+  generateWorkflowFromPrompt: (params: z.input<typeof GenerateWorkflowFromPromptSchema>) => Promise<NLWorkflowGenerationResult>;
+  onWorkflowEvent: (callback: (event: WorkflowEvent) => void) => () => void;
 }

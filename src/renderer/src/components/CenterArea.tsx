@@ -15,6 +15,7 @@ import { CLIConsole } from './CLIConsole';
 import { ContextInspector } from './ContextInspector';
 import { SkillsManager } from './SkillsManager';
 import { AgentsWorkspace } from './AgentsWorkspace';
+import { FlowBuilderWorkspace } from './FlowBuilder/FlowBuilderWorkspace';
 
 export const CenterArea: React.FC = () => {
   const {
@@ -61,6 +62,10 @@ export const CenterArea: React.FC = () => {
 
   if (activeCenterTab === 'agents') {
     return <AgentsWorkspace />;
+  }
+
+  if (activeCenterTab === 'flows') {
+    return <FlowBuilderWorkspace />;
   }
 
   if (activeFilePath && activeFileContent !== null) {

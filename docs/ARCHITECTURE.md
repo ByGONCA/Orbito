@@ -1,7 +1,7 @@
 # System Architecture Specification — AI Workspace
 
-**Document Version:** 1.6.0  
-**Status:** Phases 1–5 Fully Implemented & Verified | Phase 6 Visual Automation Next  
+**Document Version:** 1.7.0  
+**Status:** Phases 1–6 Fully Implemented & Verified | Phase 7 Ecosystem & Hardening Next  
 **Architecture Classification:** Local-First Multi-Process Desktop Application  
 
 ---
@@ -446,4 +446,46 @@ A dedicated dashboard provides full visual transparency:
 - **Agent Monitor:** Displays real-time worker logs, active terminal outputs, and assigned roles.
 - **Approval Center:** Inspects unified git diffs, review results, and allows 1-click approvals, rejections, or targeted feedback.
 - **History & Metrics:** Tracks orchestration run times, task counts, and success rates.
+
+---
+
+## 10. Visual Automation & Flow Builder Architecture (Phase 6 Completed)
+
+### 10.1 System Architecture
+The Flow Builder provides an interactive, visual programming canvas that unites the Context Engine, Skills Engine, CLI Engine, and Multi-Agent Orchestrator into reusable DAG automations.
+
+```
++-------------------------------------------------------------------------+
+| RENDERER (FlowBuilderWorkspace.tsx)                                     |
+|  - @xyflow/react canvas with custom themed nodes                        |
+|  - Draggable 29-node library & search                                   |
+|  - Natural language prompt-to-workflow modal                            |
+|  - Real-time execution event visualizer & live logs                     |
++-------------------------------------------------------------------------+
+                                    │
+                                    ▼ IPC Bridge (Typed Zod Schemas)
++-------------------------------------------------------------------------+
+| MAIN PROCESS (WorkflowEngine.ts)                                        |
+|  - WorkflowValidator: Kahn's cycle detection & port compatibility       |
+|  - Topological level scheduler (parallel tier execution)                |
+|  - NodeExecutorRegistry: Real handlers for AI, Context, Logic, IO, Dev  |
+|  - Sandboxed ExpressionEvaluator: Zero eval() grammar                   |
+|  - WorkflowTriggerManager: Event-driven file/git/cron triggers          |
+|  - SQLite persistence in app.sqlite (workflows, executions, node logs)  |
++-------------------------------------------------------------------------+
+```
+
+### 10.2 Node Architecture & Categories
+The engine provides 29 fully specified, sandboxed node types across five distinct categories:
+1. **AI Nodes (6):** `ai_agent`, `multi_agent_task`, `ai_prompt`, `ai_review`, `ai_transform`, `ai_classifier`
+2. **Context Nodes (5):** `search_workspace`, `read_file`, `search_files`, `get_project_info`, `build_context`
+3. **Logic Nodes (6):** `condition`, `switch`, `merge`, `loop`, `delay`, `parallel`
+4. **Input / Output Nodes (6):** `manual_trigger`, `text_input`, `file_input`, `variable`, `output`, `notification`
+5. **Development Nodes (6):** `run_tests`, `run_typecheck`, `run_build`, `git_status`, `git_diff`, `create_git_commit`
+
+### 10.3 Execution Semantics & Data Mapping
+- **Handle Mapping:** Output values from source handles are automatically injected into corresponding input handles of connected downstream nodes.
+- **Branch Skipping:** When conditional or switch nodes select a path, alternative unselected branches are flagged as `skipped`, cascading down the sub-DAG without consuming CPU cycles or throwing errors.
+- **Sandboxed Expression Evaluator:** Parses arithmetic, comparisons (`==`, `!=`, `<`, `>`, `<=`, `>=`), logical connectors (`&&`, `||`, `!`), and safe functions (`contains`, `startsWith`, `length`, `isEmpty`) without ever invoking JavaScript `eval()` or `Function()`.
+- **Crash Recovery:** Application restart detects in-flight workflows and marks them failed with informative recovery notices.
 

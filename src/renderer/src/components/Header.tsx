@@ -10,7 +10,8 @@ import {
   Code2,
   Cpu,
   BrainCircuit,
-  Bot
+  Bot,
+  Workflow
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 
@@ -151,6 +152,18 @@ export const Header: React.FC = () => {
         >
           <Bot className="w-3.5 h-3.5 text-emerald-400" />
           <span>Agents</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCenterTab('flows')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'flows'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Workflow className="w-3.5 h-3.5 text-violet-400" />
+          <span>Flows</span>
         </button>
       </div>
 

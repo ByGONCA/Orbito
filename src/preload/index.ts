@@ -80,6 +80,26 @@ const api: IElectronAPI = {
     return () => {
       ipcRenderer.removeListener('agents:orchestration-event', handler);
     };
+  },
+
+  // Visual Automation & Workflows (Phase 6)
+  listWorkflows: (params) => ipcRenderer.invoke('workflows:list', params),
+  getWorkflow: (params) => ipcRenderer.invoke('workflows:get', params),
+  saveWorkflow: (params) => ipcRenderer.invoke('workflows:save', params),
+  deleteWorkflow: (params) => ipcRenderer.invoke('workflows:delete', params),
+  duplicateWorkflow: (params) => ipcRenderer.invoke('workflows:duplicate', params),
+  getWorkflowTemplates: () => ipcRenderer.invoke('workflows:getTemplates'),
+  executeWorkflow: (params) => ipcRenderer.invoke('workflows:execute', params),
+  cancelWorkflow: (params) => ipcRenderer.invoke('workflows:cancel', params),
+  getWorkflowExecution: (params) => ipcRenderer.invoke('workflows:getExecution', params),
+  listWorkflowExecutions: (params) => ipcRenderer.invoke('workflows:listExecutions', params),
+  generateWorkflowFromPrompt: (params) => ipcRenderer.invoke('workflows:generateFromPrompt', params),
+  onWorkflowEvent: (callback) => {
+    const handler = (_: any, event: any) => callback(event);
+    ipcRenderer.on('workflows:event', handler);
+    return () => {
+      ipcRenderer.removeListener('workflows:event', handler);
+    };
   }
 };
 
