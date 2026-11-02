@@ -1,0 +1,31 @@
+{
+  "id": "security-review",
+  "name": "Security & Vulnerability Auditor",
+  "description": "Performs comprehensive security audits identifying OWASP vulnerabilities, injection vectors, hardcoded secrets, and permission flaws.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "security",
+  "tags": ["security-review", "owasp", "vulnerability-audit", "secrets-detection", "injection-defense", "path-traversal"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": false
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 20000
+  },
+  "executionConstraints": {
+    "timeoutMs": 150000,
+    "maxRetries": 0
+  }
+}

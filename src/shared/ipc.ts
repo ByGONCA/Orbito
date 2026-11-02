@@ -36,6 +36,19 @@ import {
   SearchContextSchema,
   AssembleContextSchema
 } from './context';
+import type {
+  SkillMetadata,
+  SkillDetails,
+  SkillResolutionResult,
+  SkillExecutionRecord
+} from './skills';
+import {
+  ToggleSkillSchema,
+  ResolveSkillSchema,
+  ExecuteSkillSchema,
+  ImportCustomSkillSchema,
+  DeleteCustomSkillSchema
+} from './skills';
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -124,4 +137,14 @@ export interface IElectronAPI {
   assembleContext: (params: z.input<typeof AssembleContextSchema>) => Promise<ContextAssemblyResult>;
   onIndexingProgress: (callback: (progress: { current: number; total: number; currentFile: string }) => void) => () => void;
   onIndexingStatus: (callback: (status: { isIndexing: boolean; isWatching: boolean }) => void) => () => void;
+
+  // Skills Engine (Phase 4)
+  listSkills: () => Promise<SkillMetadata[]>;
+  getSkillDetails: (skillId: string) => Promise<SkillDetails | null>;
+  toggleSkill: (params: z.input<typeof ToggleSkillSchema>) => Promise<{ success: boolean }>;
+  resolveSkillForPrompt: (params: z.input<typeof ResolveSkillSchema>) => Promise<SkillResolutionResult[]>;
+  executeSkill: (params: z.input<typeof ExecuteSkillSchema>) => Promise<{ executionId: string; sessionId?: string; success: boolean }>;
+  importCustomSkill: (params: z.input<typeof ImportCustomSkillSchema>) => Promise<{ success: boolean; skill?: SkillMetadata; error?: string; securityNotice?: string }>;
+  deleteCustomSkill: (params: z.input<typeof DeleteCustomSkillSchema>) => Promise<{ success: boolean }>;
+  listSkillExecutions: (projectId?: string) => Promise<SkillExecutionRecord[]>;
 }

@@ -25,6 +25,13 @@ import {
   SearchContextSchema,
   AssembleContextSchema
 } from '../../shared/context';
+import {
+  ToggleSkillSchema,
+  ResolveSkillSchema,
+  ExecuteSkillSchema,
+  ImportCustomSkillSchema,
+  DeleteCustomSkillSchema
+} from '../../shared/skills';
 import { workspaceService } from '../services/workspace.service';
 import { databaseService } from '../db/database.service';
 import { safeStorageService } from '../services/safe-storage.service';
@@ -32,6 +39,10 @@ import { securityService } from '../services/security.service';
 import { cliManager } from '../cli/cli-manager';
 import { executionEngine } from '../cli/execution-engine';
 import { contextEngineService } from '../context/context-engine.service';
+import { skillRegistry } from '../skills/skill-registry';
+import { SkillResolver } from '../skills/skill-resolver';
+import { CustomSkillsService } from '../skills/custom-skills.service';
+import { skillExecutionEngine } from '../skills/skill-execution-engine';
 import type { SystemResourceMetrics } from '../../shared/types';
 
 export function registerIpcHandlers(): void {
@@ -205,5 +216,53 @@ export function registerIpcHandlers(): void {
       maxTokens: validated.maxTokens,
       modelTarget: validated.modelTarget
     });
+  });
+
+  // 8. Skills Engine (Phase 4)
+  ipcMain.handle('skills:list', () => {
+    return skillRegistry.listSkills();
+  });
+
+  ipcMain.handle('skills:getDetails', (_, skillId: string) => {
+    return skillRegistry.getSkillDetails(skillId);
+  });
+
+  ipcMain.handle('skills:toggle', (_, args) => {
+    const validated = ToggleSkillSchema.parse(args);
+    const success = skillRegistry.toggleSkill(validated.skillId, validated.enabled);
+    return { success };
+  });
+
+  ipcMain.handle('skills:resolve', (_, args) => {
+    const validated = ResolveSkillSchema.parse(args);
+    return SkillResolver.resolve(validated.prompt, validated.provider);
+  });
+
+  ipcMain.handle('skills:execute', async (_, args) => {
+    const validated = ExecuteSkillSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    return await skillExecutionEngine.execute({
+      skillId: validated.skillId,
+      prompt: validated.prompt,
+      projectId: validated.projectId,
+      projectPath: canonical,
+      provider: validated.provider,
+      model: validated.model
+    });
+  });
+
+  ipcMain.handle('skills:importCustom', (_, args) => {
+    const validated = ImportCustomSkillSchema.parse(args);
+    return CustomSkillsService.importFromFolder(validated.sourceDirectory);
+  });
+
+  ipcMain.handle('skills:deleteCustom', (_, args) => {
+    const validated = DeleteCustomSkillSchema.parse(args);
+    const success = skillRegistry.removeCustomSkill(validated.skillId);
+    return { success };
+  });
+
+  ipcMain.handle('skills:listExecutions', (_, projectId?: string) => {
+    return databaseService.listSkillExecutions(projectId);
   });
 }

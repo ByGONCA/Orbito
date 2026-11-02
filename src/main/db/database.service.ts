@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import type { ProjectDescriptor, WorkspaceConfig, MemoryRecord, MemoryTier } from '../../shared/types';
 import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider } from '../../shared/cli';
 import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shared/context';
+import type { SkillMetadata, SkillExecutionRecord, SkillManifest } from '../../shared/skills';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -107,6 +108,40 @@ export class DatabaseService {
         timestamp INTEGER NOT NULL,
         FOREIGN KEY(session_id) REFERENCES cli_sessions(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS skills (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        version TEXT NOT NULL,
+        author TEXT NOT NULL,
+        category TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        supported_providers TEXT NOT NULL DEFAULT '[]',
+        is_builtin INTEGER NOT NULL DEFAULT 1,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        manifest_json TEXT NOT NULL,
+        instructions_path TEXT NOT NULL,
+        checksum TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS skill_executions (
+        id TEXT PRIMARY KEY,
+        skill_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        model TEXT,
+        status TEXT NOT NULL,
+        input_summary TEXT NOT NULL,
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        tokens_used INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        error_message TEXT,
+        FOREIGN KEY(skill_id) REFERENCES skills(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_skill_exec_skill ON skill_executions(skill_id);
+      CREATE INDEX IF NOT EXISTS idx_skill_exec_proj ON skill_executions(project_id);
     `);
 
     try {
@@ -697,6 +732,180 @@ export class DatabaseService {
       endLine: r.end_line,
       containerName: r.container_name || undefined,
       signature: r.signature || undefined
+    }));
+  }
+
+  // ==========================================
+  // Skills Engine Persistence
+  // ==========================================
+
+  public upsertSkill(skill: {
+    id: string;
+    name: string;
+    description: string;
+    version: string;
+    author: string;
+    category: string;
+    tags: string[];
+    supportedProviders: string[];
+    isBuiltIn: boolean;
+    enabled: boolean;
+    manifestJson: string;
+    instructionsPath: string;
+    checksum: string;
+  }): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO skills (
+        id, name, description, version, author, category, tags,
+        supported_providers, is_builtin, enabled, manifest_json,
+        instructions_path, checksum, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        version = excluded.version,
+        author = excluded.author,
+        category = excluded.category,
+        tags = excluded.tags,
+        supported_providers = excluded.supported_providers,
+        manifest_json = excluded.manifest_json,
+        instructions_path = excluded.instructions_path,
+        checksum = excluded.checksum,
+        updated_at = excluded.updated_at
+    `).run(
+      skill.id,
+      skill.name,
+      skill.description,
+      skill.version,
+      skill.author,
+      skill.category,
+      JSON.stringify(skill.tags),
+      JSON.stringify(skill.supportedProviders),
+      skill.isBuiltIn ? 1 : 0,
+      skill.enabled ? 1 : 0,
+      skill.manifestJson,
+      skill.instructionsPath,
+      skill.checksum,
+      Date.now()
+    );
+  }
+
+  public listSkills(): SkillMetadata[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`SELECT * FROM skills ORDER BY is_builtin DESC, name ASC`).all() as any[];
+    return rows.map((r) => {
+      const manifest: SkillManifest = JSON.parse(r.manifest_json);
+      return {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        version: r.version,
+        author: r.author,
+        category: r.category,
+        tags: JSON.parse(r.tags),
+        supportedProviders: JSON.parse(r.supported_providers),
+        isBuiltIn: r.is_builtin === 1,
+        enabled: r.enabled === 1,
+        checksum: r.checksum,
+        manifestPath: '',
+        instructionsPath: r.instructions_path,
+        permissions: manifest.requiredPermissions,
+        contextRequirements: manifest.contextRequirements
+      };
+    });
+  }
+
+  public getSkill(id: string): (SkillMetadata & { manifestJson: string }) | null {
+    const db = this.getAppDb();
+    const r = db.prepare(`SELECT * FROM skills WHERE id = ?`).get(id) as any;
+    if (!r) return null;
+    const manifest: SkillManifest = JSON.parse(r.manifest_json);
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      version: r.version,
+      author: r.author,
+      category: r.category,
+      tags: JSON.parse(r.tags),
+      supportedProviders: JSON.parse(r.supported_providers),
+      isBuiltIn: r.is_builtin === 1,
+      enabled: r.enabled === 1,
+      checksum: r.checksum,
+      manifestPath: '',
+      instructionsPath: r.instructions_path,
+      permissions: manifest.requiredPermissions,
+      contextRequirements: manifest.contextRequirements,
+      manifestJson: r.manifest_json
+    };
+  }
+
+  public toggleSkill(id: string, enabled: boolean): void {
+    const db = this.getAppDb();
+    db.prepare(`UPDATE skills SET enabled = ?, updated_at = ? WHERE id = ?`).run(
+      enabled ? 1 : 0,
+      Date.now(),
+      id
+    );
+  }
+
+  public deleteSkill(id: string): void {
+    const db = this.getAppDb();
+    db.prepare(`DELETE FROM skills WHERE id = ? AND is_builtin = 0`).run(id);
+  }
+
+  public recordSkillExecution(record: SkillExecutionRecord): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO skill_executions (
+        id, skill_id, project_id, provider, model, status,
+        input_summary, duration_ms, tokens_used, created_at, error_message
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        duration_ms = excluded.duration_ms,
+        tokens_used = excluded.tokens_used,
+        error_message = excluded.error_message
+    `).run(
+      record.id,
+      record.skillId,
+      record.projectId,
+      record.provider,
+      record.model || null,
+      record.status,
+      record.inputSummary,
+      record.durationMs,
+      record.tokensUsed,
+      record.createdAt,
+      record.errorMessage || null
+    );
+  }
+
+  public listSkillExecutions(projectId?: string, limit = 50): SkillExecutionRecord[] {
+    const db = this.getAppDb();
+    let query = `SELECT * FROM skill_executions`;
+    const params: any[] = [];
+    if (projectId) {
+      query += ` WHERE project_id = ?`;
+      params.push(projectId);
+    }
+    query += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const rows = db.prepare(query).all(...params) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      skillId: r.skill_id,
+      projectId: r.project_id,
+      provider: r.provider,
+      model: r.model || undefined,
+      status: r.status,
+      inputSummary: r.input_summary,
+      durationMs: r.duration_ms,
+      tokensUsed: r.tokens_used,
+      createdAt: r.created_at,
+      errorMessage: r.error_message || undefined
     }));
   }
 

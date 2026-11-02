@@ -1,0 +1,31 @@
+{
+  "id": "bug-investigation",
+  "name": "Bug Investigator & Diagnostics",
+  "description": "Performs deep root-cause analysis on stack traces, unexpected behaviors, and regression reports to identify the exact origin of failures.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "debugging",
+  "tags": ["bug-investigation", "debugging", "root-cause", "diagnostics", "stack-trace", "reproduction"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": false
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 20000
+  },
+  "executionConstraints": {
+    "timeoutMs": 150000,
+    "maxRetries": 0
+  }
+}

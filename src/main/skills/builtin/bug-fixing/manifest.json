@@ -1,0 +1,31 @@
+{
+  "id": "bug-fixing",
+  "name": "Surgical Bug Fixer",
+  "description": "Applies minimal, surgical code patches to resolve defects while preserving existing interfaces, behavior contracts, and backwards compatibility.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "debugging",
+  "tags": ["bug-fixing", "patch", "surgical-fix", "regression-prevention", "hotfix"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": true
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 16000
+  },
+  "executionConstraints": {
+    "timeoutMs": 120000,
+    "maxRetries": 0
+  }
+}

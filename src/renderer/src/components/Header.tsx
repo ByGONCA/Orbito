@@ -127,6 +127,18 @@ export const Header: React.FC = () => {
           <BrainCircuit className="w-3.5 h-3.5 text-primary" />
           <span>Context</span>
         </button>
+
+        <button
+          onClick={() => setActiveCenterTab('skills')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'skills'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <span>Skills</span>
+        </button>
       </div>
 
       {/* Right Controls */}

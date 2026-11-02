@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { ProjectDescriptor, FileNode, UIMode, SystemResourceMetrics } from '../../../shared/types';
 import type { IndexStats } from '../../../shared/context';
+import type { SkillMetadata, SkillExecutionRecord } from '../../../shared/skills';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -35,9 +36,17 @@ interface WorkspaceState {
   customPaths: Record<CLIProvider, string>;
   sessionsHistory: CLISessionRecord[];
 
+  // Skills Engine State (Phase 4)
+  skills: SkillMetadata[];
+  setSkills: (skills: SkillMetadata[]) => void;
+  selectedSkillId: string | null;
+  setSelectedSkillId: (id: string | null) => void;
+  skillExecutions: SkillExecutionRecord[];
+  setSkillExecutions: (execs: SkillExecutionRecord[]) => void;
+
   // UI View Tabs
-  activeCenterTab: 'code' | 'providers' | 'console' | 'context';
-  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context') => void;
+  activeCenterTab: 'code' | 'providers' | 'console' | 'context' | 'skills';
+  setActiveCenterTab: (tab: 'code' | 'providers' | 'console' | 'context' | 'skills') => void;
 
   setProject: (project: ProjectDescriptor | null) => void;
   setFiles: (files: FileNode[]) => void;
@@ -95,6 +104,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   streamOutput: '',
   customPaths: { claude: '', codex: '', gemini: '' },
   sessionsHistory: [],
+
+  // Skills Initial State
+  skills: [],
+  setSkills: (skills) => set({ skills }),
+  selectedSkillId: null,
+  setSelectedSkillId: (selectedSkillId) => set({ selectedSkillId }),
+  skillExecutions: [],
+  setSkillExecutions: (skillExecutions) => set({ skillExecutions }),
 
   activeCenterTab: 'code',
   setActiveCenterTab: (activeCenterTab) => set({ activeCenterTab }),

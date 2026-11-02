@@ -1,0 +1,31 @@
+{
+  "id": "refactoring",
+  "name": "Refactoring & Clean Code Engineer",
+  "description": "Restructures existing code to enhance readability, decoupling, testability, and performance without changing external behavior.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "refactoring",
+  "tags": ["refactoring", "clean-code", "decoupling", "solid", "dry", "yagni", "dead-code"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": true
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 20000
+  },
+  "executionConstraints": {
+    "timeoutMs": 150000,
+    "maxRetries": 0
+  }
+}

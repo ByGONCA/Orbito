@@ -1,0 +1,31 @@
+{
+  "id": "documentation",
+  "name": "Technical Documentation Specialist",
+  "description": "Generates clear, accurate JSDoc/TSDoc type annotations, API references, architecture guides, and developer documentation.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "documentation",
+  "tags": ["documentation", "jsdoc", "tsdoc", "readme", "api-docs", "markdown", "architecture-guides"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": true
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 16000
+  },
+  "executionConstraints": {
+    "timeoutMs": 120000,
+    "maxRetries": 0
+  }
+}

@@ -13,6 +13,7 @@ import { useWorkspaceStore } from '../stores/workspace.store';
 import { ProvidersPanel } from './ProvidersPanel';
 import { CLIConsole } from './CLIConsole';
 import { ContextInspector } from './ContextInspector';
+import { SkillsManager } from './SkillsManager';
 
 export const CenterArea: React.FC = () => {
   const {
@@ -51,6 +52,10 @@ export const CenterArea: React.FC = () => {
 
   if (activeCenterTab === 'context') {
     return <ContextInspector />;
+  }
+
+  if (activeCenterTab === 'skills') {
+    return <SkillsManager />;
   }
 
   if (activeFilePath && activeFileContent !== null) {

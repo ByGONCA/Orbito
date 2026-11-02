@@ -53,7 +53,17 @@ const api: IElectronAPI = {
     return () => {
       ipcRenderer.removeListener('context:indexing-status', handler);
     };
-  }
+  },
+
+  // Skills Engine (Phase 4)
+  listSkills: () => ipcRenderer.invoke('skills:list'),
+  getSkillDetails: (skillId) => ipcRenderer.invoke('skills:getDetails', skillId),
+  toggleSkill: (params) => ipcRenderer.invoke('skills:toggle', params),
+  resolveSkillForPrompt: (params) => ipcRenderer.invoke('skills:resolve', params),
+  executeSkill: (params) => ipcRenderer.invoke('skills:execute', params),
+  importCustomSkill: (params) => ipcRenderer.invoke('skills:importCustom', params),
+  deleteCustomSkill: (params) => ipcRenderer.invoke('skills:deleteCustom', params),
+  listSkillExecutions: (projectId) => ipcRenderer.invoke('skills:listExecutions', projectId)
 };
 
 contextBridge.exposeInMainWorld('api', api);

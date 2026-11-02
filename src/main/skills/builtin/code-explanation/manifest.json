@@ -1,0 +1,31 @@
+{
+  "id": "code-explanation",
+  "name": "Code Explainer & Mental Model Builder",
+  "description": "Translates complex source code into intuitive, plain-language walkthroughs with visual diagrams and conceptual analogies.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "analysis",
+  "tags": ["code-explanation", "plain-english", "conceptual-breakdown", "beginner-friendly", "visual-mental-models", "walkthrough"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": false
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 16000
+  },
+  "executionConstraints": {
+    "timeoutMs": 120000,
+    "maxRetries": 0
+  }
+}

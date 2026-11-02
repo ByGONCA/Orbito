@@ -1,0 +1,31 @@
+{
+  "id": "project-understanding",
+  "name": "Project Architecture & Onboarding Guide",
+  "description": "Analyzes project structure, dependency graphs, core domain models, and key execution paths to provide quick codebase mastery.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "architecture",
+  "tags": ["project-understanding", "codebase-onboarding", "architecture-mapping", "dependency-graph", "topology"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": false
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 24000
+  },
+  "executionConstraints": {
+    "timeoutMs": 150000,
+    "maxRetries": 0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "performance-analysis",
+  "name": "Performance & Bottleneck Analyst",
+  "description": "Evaluates computational complexity, memory allocation patterns, I/O bottlenecks, and database query latency to recommend optimizations.",
+  "version": "1.0.0",
+  "author": "Orc AI Workspace",
+  "category": "analysis",
+  "tags": ["performance-analysis", "algorithmic-complexity", "memory-profiling", "latency", "bottlenecks", "io-optimization", "query-optimization"],
+  "supportedProviders": ["claude", "codex", "gemini"],
+  "requiredCapabilities": ["context-retrieval", "ast-awareness"],
+  "requiredPermissions": {
+    "filesystem": {
+      "read": true,
+      "write": false
+    },
+    "terminal": {
+      "execute": false
+    },
+    "network": {
+      "allowed": false
+    }
+  },
+  "contextRequirements": {
+    "indexingNeeded": true,
+    "maxContextTokens": 18000
+  },
+  "executionConstraints": {
+    "timeoutMs": 120000,
+    "maxRetries": 0
+  }
+}
