@@ -198,4 +198,46 @@ describe('Context Retrieval & Assembly Engine (Live Disk Reads, Deduplication, T
     expect(Number.isInteger(counts.actualTokens)).toBe(true);
     expect(Number.isInteger(counts.estimatedTokens)).toBe(true);
   });
+
+  it('calculates provider-specific context budgets with safety margin buffer', () => {
+    const claudeBudget = tokenCounterService.calculateAvailableContextBudget('claude');
+    const codexBudget = tokenCounterService.calculateAvailableContextBudget('codex');
+    const geminiBudget = tokenCounterService.calculateAvailableContextBudget('gemini');
+
+    // Claude: (200k - 8k - 4k) * 0.9 = 169,027 tokens approx
+    expect(claudeBudget).toBeGreaterThan(160000);
+    expect(claudeBudget).toBeLessThan(200000);
+
+    // Codex: (128k - 16k - 4k) * 0.9 = 96,854 tokens approx
+    expect(codexBudget).toBeGreaterThan(90000);
+    expect(codexBudget).toBeLessThan(128000);
+
+    // Gemini: (1M - 8k - 4k) * 0.9 = 889k tokens approx
+    expect(geminiBudget).toBeGreaterThan(800000);
+    expect(geminiBudget).toBeLessThan(1000000);
+  });
+
+  it('safely handles missing or truncated files during live disk read without crashing', async () => {
+    const nonExistentFrag = {
+      id: 'frag-ghost',
+      filePath: 'does_not_exist_on_disk.ts',
+      startLine: 1,
+      endLine: 10,
+      content: '// fallback cached content',
+      reason: 'test ghost file',
+      priority: 5,
+      tokenCount: 15,
+      isLiveDiskRead: false
+    };
+
+    const res = await contextAssemblyService.assemble({
+      projectPath: TEST_DIR,
+      fragments: [nonExistentFrag],
+      maxTokens: 500
+    });
+
+    expect(res.fragments.length).toBe(1);
+    expect(res.fragments[0].content).toBe('// fallback cached content');
+    expect(res.fragments[0].isLiveDiskRead).toBe(false);
+  });
 });

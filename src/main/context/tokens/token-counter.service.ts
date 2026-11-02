@@ -5,6 +5,38 @@ export interface TokenCountResult {
   estimatedTokens: number;
 }
 
+export interface ModelWindowConfig {
+  provider: 'claude' | 'codex' | 'gemini' | 'custom';
+  contextWindow: number;
+  maxOutputTokens: number;
+  reservedSystemTokens: number;
+  safetyMarginRatio: number; // e.g. 0.10 for 10% safety buffer
+}
+
+export const MODEL_WINDOW_CONFIGS: Record<'claude' | 'codex' | 'gemini', ModelWindowConfig> = {
+  claude: {
+    provider: 'claude',
+    contextWindow: 200000, // 200k context (Claude 3.5 / 3.7)
+    maxOutputTokens: 8192,
+    reservedSystemTokens: 4000,
+    safetyMarginRatio: 0.1 // 10% safety margin buffer
+  },
+  codex: {
+    provider: 'codex',
+    contextWindow: 128000, // 128k context (GPT-4o / Codex)
+    maxOutputTokens: 16384,
+    reservedSystemTokens: 4000,
+    safetyMarginRatio: 0.1
+  },
+  gemini: {
+    provider: 'gemini',
+    contextWindow: 1000000, // 1M context (Gemini 1.5 / 2.0)
+    maxOutputTokens: 8192,
+    reservedSystemTokens: 4000,
+    safetyMarginRatio: 0.1
+  }
+};
+
 export class TokenCounterService {
   private encoding: Tiktoken | null = null;
 
@@ -51,19 +83,44 @@ export class TokenCounterService {
   }
 
   /**
-   * Model target token limits reference.
+   * Retrieves context window specifications for a target model/provider.
    */
-  public getModelMaxBudget(modelTarget: 'claude' | 'codex' | 'gemini'): number {
-    switch (modelTarget) {
-      case 'gemini':
-        return 1000000; // 1M context
-      case 'claude':
-        return 200000; // 200k context
-      case 'codex':
-        return 128000; // 128k context
-      default:
-        return 8000;
-    }
+  public getModelConfig(modelTarget: 'claude' | 'codex' | 'gemini' | string): ModelWindowConfig {
+    const key = modelTarget.toLowerCase();
+    if (key.includes('gemini')) return MODEL_WINDOW_CONFIGS.gemini;
+    if (key.includes('codex') || key.includes('openai') || key.includes('gpt')) return MODEL_WINDOW_CONFIGS.codex;
+    if (key.includes('claude') || key.includes('anthropic')) return MODEL_WINDOW_CONFIGS.claude;
+
+    // Default conservative fallback
+    return {
+      provider: 'custom',
+      contextWindow: 32000,
+      maxOutputTokens: 4096,
+      reservedSystemTokens: 2000,
+      safetyMarginRatio: 0.1
+    };
+  }
+
+  /**
+   * Calculates safe usable context budget for retrieval assembly, subtracting
+   * max output, reserved system prompt, and applying a protective safety margin buffer.
+   */
+  public calculateAvailableContextBudget(
+    modelTarget: 'claude' | 'codex' | 'gemini' | string,
+    customSafetyMarginRatio?: number
+  ): number {
+    const config = this.getModelConfig(modelTarget);
+    const margin = customSafetyMarginRatio !== undefined ? customSafetyMarginRatio : config.safetyMarginRatio;
+    const grossBudget = config.contextWindow - config.maxOutputTokens - config.reservedSystemTokens;
+    if (grossBudget <= 0) return 4000;
+    return Math.floor(grossBudget * (1 - margin));
+  }
+
+  /**
+   * Model target token limits reference (for backward compatibility).
+   */
+  public getModelMaxBudget(modelTarget: 'claude' | 'codex' | 'gemini' | string): number {
+    return this.calculateAvailableContextBudget(modelTarget);
   }
 }
 

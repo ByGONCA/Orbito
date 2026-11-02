@@ -8,10 +8,52 @@ export interface AssemblyOptions {
   projectPath: string;
   fragments: ContextFragment[];
   maxTokens?: number;
-  modelTarget?: 'claude' | 'codex' | 'gemini';
+  modelTarget?: 'claude' | 'codex' | 'gemini' | string;
+  safetyMarginRatio?: number;
 }
 
 export class ContextAssemblyService {
+  /**
+   * Safely reads file contents handling race conditions, concurrent truncations, and locks.
+   */
+  private readLiveFileSafely(fullPath: string): { content: string; success: boolean } {
+    let fd: number | null = null;
+    try {
+      if (!fs.existsSync(fullPath)) {
+        return { content: '', success: false };
+      }
+
+      // Open with read-only flag
+      fd = fs.openSync(fullPath, 'r');
+      const stats = fs.fstatSync(fd);
+
+      // Guard against excessively huge files or empty files
+      if (stats.size === 0) {
+        return { content: '', success: true };
+      }
+      if (stats.size > 20 * 1024 * 1024) { // 20 MB ceiling
+        return { content: '', success: false };
+      }
+
+      const buffer = Buffer.alloc(stats.size);
+      const bytesRead = fs.readSync(fd, buffer, 0, stats.size, 0);
+      const content = buffer.toString('utf8', 0, bytesRead);
+
+      return { content, success: true };
+    } catch {
+      // In case of EBUSY, EPERM, or race condition file truncation
+      return { content: '', success: false };
+    } finally {
+      if (fd !== null) {
+        try {
+          fs.closeSync(fd);
+        } catch {
+          // Ignore close errors
+        }
+      }
+    }
+  }
+
   /**
    * Assembles prioritized fragments, performs live disk reads on modified files,
    * merges overlapping ranges, and strictly enforces the token budget.
@@ -20,9 +62,11 @@ export class ContextAssemblyService {
     const startTime = Date.now();
     const { projectPath, fragments, modelTarget = 'claude' } = options;
 
-    const tokenBudget = options.maxTokens || tokenCounterService.getModelMaxBudget(modelTarget);
+    const tokenBudget =
+      options.maxTokens ||
+      tokenCounterService.calculateAvailableContextBudget(modelTarget, options.safetyMarginRatio);
 
-    // 1. Check for modified files and perform Live Disk Reads
+    // 1. Check for modified files and perform Live Disk Reads safely
     let liveReadsCount = 0;
     const verifiedFragments: ContextFragment[] = [];
 
@@ -41,16 +85,18 @@ export class ContextAssemblyService {
 
           // If modified since last indexed, or if cached is missing, perform live read
           if (!cached || Math.abs(stat.mtimeMs - cached.mtimeMs) > 10) {
-            const raw = fs.readFileSync(fullPath, 'utf8');
-            const lines = raw.split(/\r?\n/);
-            const start = Math.max(1, frag.startLine);
-            const end = Math.min(lines.length, frag.endLine);
-            content = lines.slice(start - 1, end).join('\n');
-            isLiveDiskRead = true;
-            liveReadsCount++;
+            const liveResult = this.readLiveFileSafely(fullPath);
+            if (liveResult.success) {
+              const lines = liveResult.content.split(/\r?\n/);
+              const start = Math.max(1, frag.startLine);
+              const end = Math.min(lines.length, frag.endLine);
+              content = lines.slice(start - 1, end).join('\n');
+              isLiveDiskRead = true;
+              liveReadsCount++;
+            }
           }
         } catch {
-          // Keep cached content if file cannot be read
+          // Keep cached content if stat or read fails
         }
       }
 
@@ -142,7 +188,7 @@ export class ContextAssemblyService {
 
     const merged: ContextFragment[] = [];
 
-    for (const [filePath, list] of byFile) {
+    for (const [, list] of byFile) {
       if (list.length === 1) {
         merged.push(list[0]);
         continue;
