@@ -1,7 +1,7 @@
 # Product & Engineering Roadmap — AI Workspace
 
-**Document Version:** 1.2.0  
-**Status:** Approved for Implementation Planning  
+**Document Version:** 1.5.0  
+**Status:** Phases 1–4 Completed | Phase 5 Specified & Ready for Implementation  
 **Execution Strategy:** Iterative Milestone Releases (Phases 1 to 7)  
 
 ---
@@ -9,89 +9,81 @@
 ## 1. Roadmap Overview & Strategic Phases
 
 ```
-[Phase 1: Foundation & Benchmarking]
+[Phase 1: Foundation & Benchmarking] (COMPLETED)
   Electron 34 Shell, React 19 UI, Vite 6, Dual SQLite (app/index), Secure IPC, Performance Harness
-       |
-       v
-[Phase 2: CLI Engine & Terminal Infrastructure]
-  node-pty ConPTY/OpenPTY, xterm.js WebGL, Multi-Strategy CLI Detection, Claude/Codex/Gemini Adapters
-       |
-       v
-[Phase 3: Context Intelligence Engine]
-  Indexer Worker Thread, Tree-sitter AST, SQLite FTS5 BM25 Search, 5-Tier Memory, Opt-in Embeddings
-       |
-       v
-[Phase 4: Skills Engine & AI Experience Layer]
-  Dynamic Skill Loader, Permission Scopes Manifest, Intent Classification, Plan Evaluator
-       |
-       v
-[Phase 5: Multi-Agent Orchestration]
-  Coordinator DAG, Git Worktree Isolation, Specialist/Reviewer Agents, Diff Approval
-       |
-       v
-[Phase 6: Visual Automation & Flow Builder]
+       │
+       ▼
+[Phase 2: CLI Engine & Terminal Infrastructure] (COMPLETED)
+  node-pty ConPTY/OpenPTY, ExecutionEngine, Multi-Strategy CLI Detection, Claude/Codex/Gemini Adapters
+       │
+       ▼
+[Phase 3: Context Intelligence Engine] (COMPLETED)
+  Incremental Indexer, Tree-sitter WASM ABI 14 AST, SQLite FTS5 BM25, Race-Resilient Live Disk Reads
+       │
+       ▼
+[Phase 4: Skills Engine & AI Experience Layer] (COMPLETED)
+  Dynamic Skill Loader, Zod Manifests, 10 Built-in Skills, Permission Manager, Skills Manager UI
+       │
+       ▼
+[Phase 5: Multi-Agent Orchestration] (SPECIFIED / NEXT)
+  Coordinator DAG, Git Worktree Isolation, Specialist/Reviewer Agents, Diff Approval Gate
+       │
+       ▼
+[Phase 6: Visual Automation & Flow Builder] (PLANNED)
   React Flow Canvas, Natural Language DAG Generation, Conditional Nodes, Triggers
-       |
-       v
-[Phase 7: Ecosystem & Enterprise Hardening]
+       │
+       ▼
+[Phase 7: Ecosystem & Enterprise Hardening] (PLANNED)
   Custom Extension SDK, Local Model (Ollama) Air-Gap Support, Advanced Analytics
 ```
 
 ---
 
-## 2. Phase 1 Implementation Plan & Work Packages
+## 2. Phase Execution Status & Work Packages
 
 ```
-Phase 1: Foundation & Benchmarking (COMPLETED)
+Phase 1: Foundation & Benchmarking [COMPLETED]
 ├── WP 1.1: Project Scaffolding & Native Toolchain Configuration [DONE]
 ├── WP 1.2: IPC Contract & Security Architecture [DONE]
 ├── WP 1.3: Dual SQLite Persistence & Credential Keyring [DONE]
 ├── WP 1.4: Workspace & Project Management Engine [DONE]
 ├── WP 1.5: UI Shell & Core Components [DONE]
 └── WP 1.6: Verification & Automated Performance Benchmarks [DONE]
-```
 
-### 2.1 Phase 2 Implementation Plan & Work Packages (IN PROGRESS)
+Phase 2: CLI Engine & Provider Adapters [COMPLETED]
+├── WP 2.1: Domain Types & Unified Contract (@shared/cli) [DONE]
+├── WP 2.2: Provider Adapters (Claude Code, OpenAI Codex, Google Gemini) [DONE]
+├── WP 2.3: Process Execution Engine (Subprocess spawn, stream, recursive kill) [DONE]
+├── WP 2.4: Session Manager & SQLite Persistence (cli_sessions, messages) [DONE]
+├── WP 2.5: UI AI Providers Panel & Stream Console [DONE]
+└── WP 2.6: Test Suite (Adapter tests, execution mocks, stream parsers) [DONE]
 
-```
-Phase 2: CLI Engine & Provider Adapters
-├── WP 2.1: Domain Types & Unified Contract (@shared/cli)
-│   ├── Provider identifier types ('claude' | 'codex' | 'gemini')
-│   ├── Installation, auth status, and capability schemas
-│   ├── Normalized stream event types ('stdout', 'stderr', 'status', 'token_usage', 'exit')
-│   └── Typed IPC channels for detection, execution, streaming, and session history
-│
-├── WP 2.2: Provider Adapters (Decoupled & Normalized)
-│   ├── ICLIAdapter base contract & helper utilities (path lookup, semver probe)
-│   ├── ClaudeCodeAdapter (@anthropic-ai/claude-code, ~/.claude.json, resume support)
-│   ├── CodexAdapter (codex/openai CLI, API key, stdin/exec piping)
-│   └── GeminiAdapter (gemini/gcloud CLI, ADC/API key detection)
-│
-├── WP 2.3: Process Execution Engine
-│   ├── Process spawn with shell: false and clean argument arrays
-│   ├── Process tree clean termination (taskkill /pid /T /F on Win, process groups on POSIX)
-│   ├── Real-time stdout/stderr stream parsing and IPC broadcast
-│   ├── Configurable execution timeouts & cancellation tokens
-│   └── Session isolation (preventing cross-session environment or state leakage)
-│
-├── WP 2.4: Session Manager & SQLite Persistence
-│   ├── Schema migration: cli_sessions and cli_session_messages tables in app.sqlite
-│   ├── Association with workspaceId and currentProjectId
-│   ├── Execution history tracking (status, exit code, duration, token metrics)
-│   └── Capability-gated session resumption (only enabled when supported by provider)
-│
-├── WP 2.5: UI AI Providers Panel & Stream Console
-│   ├── Providers overview tab in UI showing detection, version, and auth status
-│   ├── Custom executable path configuration inputs per provider
-│   ├── Active provider selector
-│   ├── Real-time execution stream console with auto-scroll and status pills
-│   └── Actionable, human-readable error banners for missing binaries or auth failures
-│
-└── WP 2.6: Test Suite (Mocks & Integration)
-    ├── Unit tests with process mocks for Claude Code, Codex, and Gemini adapters
-    ├── Execution engine tests (streaming, timeout, clean tree kill, error normalization)
-    ├── SQLite session persistence & history querying tests
-    └── Integration test harness separating mocked runs from live binary checks
+Phase 3: Context Intelligence Engine [COMPLETED]
+├── WP 3.1: Incremental Indexer & Content Hashing [DONE]
+├── WP 3.2: Tree-sitter WASM ABI 14 AST Parser (Functions, Classes, Methods) [DONE]
+├── WP 3.3: SQLite FTS5 Full-Text Search with BM25 Ranking [DONE]
+├── WP 3.4: Three-Tier Context Freshness (Race-Resilient Live Disk Reads) [DONE]
+├── WP 3.5: Token Counter & Provider Context Window Calibration (Claude 200k, Codex 128k, Gemini 1M) [DONE]
+├── WP 3.6: Context Inspector UI & Retrieval Explorer [DONE]
+└── WP 3.7: Scale Benchmarks (Synthetic 1,000 files, FTS5 < 15ms, assembly < 50ms) [DONE]
+
+Phase 4: Skills Engine & Capabilities Layer [COMPLETED]
+├── WP 4.1: Declarative Manifest Specification & Zod Validation [DONE]
+├── WP 4.2: 10 Built-in Skills Catalog (Review, Bug, Refactor, Docs, Tests, Security, etc.) [DONE]
+├── WP 4.3: Progressive Dynamic Loader & In-Memory Registry [DONE]
+├── WP 4.4: Skill Permission Manager (Filesystem, Terminal, Network Guardrails) [DONE]
+├── WP 4.5: Skill Resolver (Intent Matching & Progressive Disclosure) [DONE]
+├── WP 4.6: Custom User Skills Import (Validation, Safe Defaults, Integrity Checksum) [DONE]
+├── WP 4.7: Skill Execution Engine (Context Assembly + Specialized Prompting + DB History) [DONE]
+├── WP 4.8: Skills Manager UI (Simple Mode Cards & Advanced Mode Permissions/History) [DONE]
+└── WP 4.9: Skills Test Suite (5 dedicated test suites, 20 test files total) [DONE]
+
+Phase 5: Multi-Agent Orchestration [SPECIFIED / READY FOR IMPLEMENTATION]
+├── WP 5.1: Coordinator DAG Engine (Task decomposition, topological scheduling, cascades) [SPEC DONE]
+├── WP 5.2: Specialist Agent Personas (Architect, Backend, Frontend, Test Engineer) [SPEC DONE]
+├── WP 5.3: Git Worktree Isolation (.worktrees/wt-task-<id>, dedicated task branches) [SPEC DONE]
+├── WP 5.4: Reviewer Agent & Quality Gates (Automated test runner, OWASP scan, diff audit) [SPEC DONE]
+└── WP 5.5: Human-in-the-Loop Merge Gate (Side-by-side diff modal, 1-click merge) [SPEC DONE]
 ```
 
 ---

@@ -1,7 +1,7 @@
 # System Architecture Specification — AI Workspace
 
-**Document Version:** 1.2.0  
-**Status:** Approved for Phase 1 Implementation  
+**Document Version:** 1.5.0  
+**Status:** Phases 1–4 Fully Implemented & Verified | Phase 5 Multi-Agent Orchestration Specified  
 **Architecture Classification:** Local-First Multi-Process Desktop Application  
 
 ---
@@ -356,3 +356,36 @@ All performance specifications are empirical targets validated against the **Sta
 * **Total Application RSS (Resident Set Size):** The sum of physical RAM mapped by all operating system processes belonging to the application:
   $$\text{RAM}_{\text{total}} = \text{RSS}_{\text{Main}} + \text{RSS}_{\text{Renderer}} + \text{RSS}_{\text{GPU}} + \text{RSS}_{\text{Workers}}$$
 * **CI Cross-Platform Status:** Cross-platform matrix is formally defined in `.github/workflows/test.yml` (Windows, macOS, Linux). Real cross-platform compatibility is officially recorded as **Configured & Awaiting Remote Multi-Runner Execution**, avoiding premature claims before remote cloud logs exist.
+
+---
+
+## 8. Skills Engine Architecture (Phase 4 Completed)
+
+### 8.1 Progressive Dynamic Loading
+To keep application startup fast (≤ 3.0s) and idle RAM low (≤ 50 MB for the core process), the Skills Engine decouples metadata from heavy instructions:
+1. **Startup Discovery:** Scans built-in directory (`src/main/skills/builtin/`) and custom directory (`.ai-workspace-data/custom-skills/`). Only `manifest.json` is parsed and validated using Zod.
+2. **On-Demand Loading:** Markdown instruction files (`instructions.md`) and AST contexts are read from disk strictly when a skill is inspected or executed.
+3. **Database Caching:** Manifest metadata and user enabled/disabled states are mirrored in `app.sqlite` across `skills` and `skill_executions` tables.
+
+### 8.2 Declarative Security & Permissions Gate
+The `SkillPermissionManager` applies fine-grained policy tiers before invoking skills:
+- **Filesystem Guard:** Distinguishes read-only analysis from mutations (`write: true`). Strict mode forbids write operations.
+- **Terminal Guard:** Disables arbitrary command execution in strict and standard tiers; requires explicit permission in permissive tier.
+- **Network Egress Guard:** Prohibits unauthorized outbound sockets in strict mode.
+
+---
+
+## 9. Multi-Agent Orchestration Architecture (Phase 5 Specification)
+
+### 9.1 Coordinator DAG Planner
+Complex user goals are compiled into a Directed Acyclic Graph (DAG) with dependency ordering and topological scheduling:
+- **Task Decomposition:** Analyzes scope, partitions concerns (Architecture, Backend, Frontend, Testing), and produces tasks with required skills.
+- **Concurrency Cap:** Up to 3 parallel specialist workers with memory and CPU monitoring.
+- **Cancellation Cascades:** Parent task cancellation immediately issues process tree termination to all descendant nodes.
+
+### 9.2 Git Worktree Sandboxing
+To avoid file write collisions, concurrent workers execute inside isolated Git Worktrees:
+- Worker path: `.worktrees/wt-task-<id>` on branch `agent/task-<id>`.
+- Zero lock contention on the main working tree.
+- Changes are verified by the **Reviewer Agent** (running automated test suites and OWASP audits) before human-in-the-loop merge approval.
+
