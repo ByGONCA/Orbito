@@ -35,13 +35,15 @@ Prompts are assembled strictly in order of priority (100 down to 50):
 
 When an assembly request specifies a `maxTokens` limit (or when computing against model limits via `TokenCounterService`):
 
-1. **Calculate Total Section Tokens**: Computes BPE token count for each section using `js-tiktoken`.
-2. **Mandatory Budget Reservation**: Verifies that mandatory sections (`system`, `security`, `objective`) fit within budget.
+1. **Calculate Total Section Tokens**: Computes model-aware BPE token count for each section using `TokenCounterService` (`o200k_base` / `cl100k_base` / calibrated).
+2. **Mandatory Budget Validation (`MandatoryBudgetExceededError`)**:
+   - Calculates the sum of mandatory sections (`system`, `security`, `objective`).
+   - If mandatory sections alone exceed `totalCapacity`, the service **refuses to silently truncate core constraints** and throws `MandatoryBudgetExceededError` containing `mandatoryTokens`, `totalCapacity`, and `sectionBreakdown`.
 3. **Ascending Priority Trimming**: If total tokens exceed `maxTokens`, the algorithm iterates over non-mandatory sections in ascending order of priority (Section 8 first, then 7, then 6):
    - If the section tokens are smaller than or equal to the excess, the entire section is omitted.
    - If the section can fit partially in the remaining budget, it is trimmed cleanly with a marker:
      `[... Section truncated to fit token budget ...]`.
-4. **Zero Safety Regression**: Security constraints (`priority: 95`) and user tasks (`priority: 90`) are never compromised.
+4. **Zero Safety Regression**: Security constraints (`priority: 95`) and user tasks (`priority: 90`) are never dropped or compromised.
 
 ---
 

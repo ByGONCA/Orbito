@@ -114,6 +114,20 @@ export class LRUCache<T> {
   }
 }
 
+export interface ModelResponseKeyParams {
+  workspacePath?: string;
+  provider: string;
+  model: string;
+  modelVersion?: string;
+  permissionTier?: string;
+  airGapEnabled?: boolean;
+  temperature?: number;
+  promptFingerprint: string;
+  outputFormat?: string;
+  systemInstructionHash?: string;
+  skillsHash?: string;
+}
+
 export class MultiTierCacheService {
   // 1. Context Cache: Parsed file ASTs and extracted symbol metadata
   public static contextCache = new LRUCache<any>(1000, 1800000); // 30 mins
@@ -135,41 +149,134 @@ export class MultiTierCacheService {
   }
 
   /**
-   * Asserts whether a model response is eligible for caching.
-   * Prohibits caching of requests containing sensitive tokens, passwords, or modifying commands.
+   * Generates a namespaced cache key from prefix and object.
    */
-  public static isCacheEligible(params: {
-    category: string;
+  public static generateKey(prefix: string, payload: any): string {
+    const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    return `${prefix}:${this.hash(str)}`;
+  }
+
+  /**
+   * Constructs an all-inclusive deterministic cache key for model responses.
+   * Prevents cross-workspace leakage, permission-change leakage, and Air-Gap state bleed.
+   */
+  public static buildModelResponseKey(params: ModelResponseKeyParams): string {
+    const normalizedWs = (params.workspacePath || 'global').replace(/\\/g, '/').toLowerCase();
+    const payload = [
+      normalizedWs,
+      params.provider,
+      params.model,
+      params.modelVersion || 'default',
+      params.permissionTier || 'standard',
+      params.airGapEnabled ? 'airgap:1' : 'airgap:0',
+      params.temperature !== undefined ? `temp:${params.temperature}` : 'temp:0',
+      params.promptFingerprint,
+      params.outputFormat || 'standard',
+      params.systemInstructionHash || '',
+      params.skillsHash || ''
+    ].join('|');
+
+    return `resp:${this.hash(payload)}`;
+  }
+
+  /**
+   * Asserts whether a model response is eligible for caching with detailed reason.
+   */
+  public static isEligibleForResponseCache(params: {
+    category?: string;
     isModifying?: boolean;
     containsSecrets?: boolean;
-    prompt: string;
-  }): boolean {
-    if (params.isModifying) return false;
-    if (params.containsSecrets) return false;
+    prompt?: string;
+    userPrompt?: string;
+    temperature?: number;
+    workspacePath?: string;
+  }): { eligible: boolean; reason?: string } {
+    if (params.temperature !== undefined && params.temperature > 0) {
+      return { eligible: false, reason: 'Temperature > 0 is non-deterministic' };
+    }
 
-    // Reject volatile or stateful categories
-    const nonCacheableCategories = ['bug_fixing', 'code_modification', 'git_commit', 'terminal_command'];
-    if (nonCacheableCategories.includes(params.category.toLowerCase())) {
-      return false;
+    const effectivePrompt = params.prompt || params.userPrompt || '';
+
+    if (params.isModifying || /\b(delete|drop|remove|truncate|rm -rf|overwrite|destroy)\b/i.test(effectivePrompt)) {
+      return { eligible: false, reason: 'Modifying/destructive operations are non-cacheable' };
     }
 
     // Secret pattern heuristic
     const sensitiveRegex = /(api[_-]?key|password|secret|bearer\s+|private[_-]?key|auth[_-]?token)/i;
-    if (sensitiveRegex.test(params.prompt)) {
-      return false;
+    if (params.containsSecrets || sensitiveRegex.test(effectivePrompt)) {
+      return { eligible: false, reason: 'Request contains sensitive secrets or credentials' };
     }
 
-    return true;
+    // Reject volatile or stateful categories
+    const nonCacheableCategories = ['bug_fixing', 'code_modification', 'git_commit', 'terminal_command', 'file_write'];
+    if (params.category && nonCacheableCategories.includes(params.category.toLowerCase())) {
+      return { eligible: false, reason: `Category "${params.category}" is state-mutating` };
+    }
+
+    return { eligible: true };
   }
 
   /**
-   * Invalidates caches for a modified workspace file.
+   * Asserts whether a model response is eligible for caching (boolean shorthand).
    */
-  public static onFileModified(filePath: string): void {
+  public static isCacheEligible(params: {
+    category?: string;
+    isModifying?: boolean;
+    containsSecrets?: boolean;
+    prompt?: string;
+    userPrompt?: string;
+    temperature?: number;
+    workspacePath?: string;
+  }): boolean {
+    return this.isEligibleForResponseCache(params).eligible;
+  }
+
+  /**
+   * Invalidates caches when a workspace file is modified.
+   */
+  public static onFileModified(filePath: string, workspacePath?: string): void {
     const normalized = filePath.replace(/\\/g, '/');
     this.contextCache.invalidateMatching((k) => k.includes(normalized));
     this.promptCache.invalidateMatching((k) => k.includes(normalized));
     this.modelResponseCache.invalidateMatching((k) => k.includes(normalized));
+
+    if (workspacePath) {
+      const normalizedWs = workspacePath.replace(/\\/g, '/').toLowerCase();
+      this.modelResponseCache.invalidateMatching((k) => k.includes(normalizedWs));
+    }
+  }
+
+  /**
+   * Invalidates caches when a domain skill is updated or toggled.
+   */
+  public static onSkillModified(skillId: string): void {
+    this.skillCache.invalidateMatching((k) => k.includes(skillId));
+    this.modelResponseCache.invalidateMatching((k) => k.includes(skillId));
+    this.promptCache.clear();
+  }
+
+  /**
+   * Invalidates model responses and prompts when Air-Gap Mode is toggled.
+   * Strictly prevents local offline model outputs from bleeding into cloud executions or vice versa.
+   */
+  public static onAirGapToggled(_enabled: boolean): void {
+    this.modelResponseCache.clear();
+    this.promptCache.clear();
+  }
+
+  /**
+   * Invalidates model responses when workspace permission tier changes.
+   */
+  public static onPermissionTierChanged(): void {
+    this.modelResponseCache.clear();
+  }
+
+  /**
+   * Invalidates workspace-specific context when active workspace changes.
+   */
+  public static onWorkspaceSwitched(workspacePath: string): void {
+    const normalized = workspacePath.replace(/\\/g, '/').toLowerCase();
+    this.contextCache.invalidateMatching((k) => k.includes(normalized));
   }
 
   /**
@@ -181,18 +288,28 @@ export class MultiTierCacheService {
     prompts: CacheStats;
     modelResponses: CacheStats;
     totalTokensSaved: number;
+    totalRequests: number;
+    totalHits: number;
+    overallHitRatio: number;
   } {
     const ctx = this.contextCache.getStats();
     const skl = this.skillCache.getStats();
     const pmt = this.promptCache.getStats();
     const mdl = this.modelResponseCache.getStats();
 
+    const totalHits = ctx.hits + skl.hits + pmt.hits + mdl.hits;
+    const totalMisses = ctx.misses + skl.misses + pmt.misses + mdl.misses;
+    const totalRequests = totalHits + totalMisses;
+
     return {
       context: ctx,
       skills: skl,
       prompts: pmt,
       modelResponses: mdl,
-      totalTokensSaved: ctx.tokensSaved + skl.tokensSaved + pmt.tokensSaved + mdl.tokensSaved
+      totalTokensSaved: ctx.tokensSaved + skl.tokensSaved + pmt.tokensSaved + mdl.tokensSaved,
+      totalRequests,
+      totalHits,
+      overallHitRatio: totalRequests > 0 ? Number((totalHits / totalRequests).toFixed(3)) : 0
     };
   }
 

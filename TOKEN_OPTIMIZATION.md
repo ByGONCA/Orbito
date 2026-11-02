@@ -57,36 +57,40 @@ The engine maintains a normalized clause index:
 - Eliminates duplicate occurrences from lower-priority sections (Skills, Context, Format).
 - Measures and reports `deduplicationSavingsTokens` in the assembly metadata.
 
-### 4. Multi-Tier Intelligent Caching
+### 4. Multi-Tier Intelligent Caching & Security Boundary
 `MultiTierCacheService` provides four specialized LRU caches:
 1. **Context Cache** (Capacity: 1,000 entries, TTL: 30 min): Caches parsed AST symbols, import trees, and search results.
 2. **Skill Cache** (Capacity: 200 entries, TTL: 60 min): Caches composed and deduplicated multi-skill instruction blocks.
 3. **Prompt Cache** (Capacity: 500 entries, TTL: 15 min): Caches assembled prompt structures keyed by SHA-256 fingerprint.
 4. **Model Response Cache** (Capacity: 300 entries, TTL: 60 min): Caches responses for pure, deterministic read-only operations (`classification`, `summarization`, `code-explanation`).
 
-#### Cache Invalidation & Safety
-- **Workspace File Changes**: Any filesystem modification automatically purges matching entries from context, prompt, and model caches via `MultiTierCacheService.onFileModified(filePath)`.
+#### Cache Invalidation, Workspace Isolation & Safety
+- **Cross-Workspace Isolation**: Model response cache keys (`buildModelResponseKey`) strictly bind the normalized `workspacePath`, preventing cache pollution across different repositories.
+- **Permission Tier Binding**: Cache keys bind the caller's active permission tier (`read_only`, `standard`, `elevated`, `admin`). Elevating permissions invalidates prior lower-tier entries via `onPermissionTierChanged`.
+- **Air-Gap Boundary**: Toggling Air-Gap mode (`onAirGapToggled`) immediately purges model response and prompt caches to prevent remote/local data bleed.
+- **Workspace File Changes**: Filesystem modification automatically purges matching entries from context, prompt, and model caches via `onFileModified(filePath, workspacePath)`.
 - **Secret Protection**: Inputs containing API keys, bearer tokens, passwords, or private keys are categorically ineligible for caching.
-- **Stateful Mutation Prohibition**: Any modifying commands (`isModifying: true`, file writes, git commits) bypass the response cache completely.
+- **Stateful Mutation Prohibition**: Any modifying commands (`isModifying: true`, destructive keywords, file writes, git commits) or calls with `temperature > 0` bypass the response cache completely.
 
-### 5. Tool Output Normalization
+### 5. Tool Output Normalization & Balanced Multi-File Diffs
 Terminal commands, test runners, and unified git diffs can easily generate thousands of tokens of redundant log noise.
 
 `ToolOutputNormalizer` processes raw outputs:
 - **ANSI Stripping**: Strips terminal escape codes (`\u001b[...]`).
 - **Error Extraction**: Automatically scans for error patterns (`Error:`, `Fatal:`, `panic:`, `TypeError:`, stack traces) and hoists them into a `--- [DETECTED ERROR HIGHLIGHTS] ---` header.
 - **Head/Tail Truncation**: Retains 35% of the line budget at the head (invoking command and setup) and 65% at the tail (failure location and exit code), truncating intermediate loops.
-- **Diff Collapsing**: Normalizes unified git diffs by retaining file header markers while truncating oversized hunks.
-- **Savings**: Yields 50–85% token reduction on verbose command failures.
+- **Raw Audit Store**: Full un-truncated logs are stored in a bounded in-memory audit store and retrievable via `ToolOutputNormalizer.getRawOutput(rawOutputId)`.
+- **Balanced Multi-File Diff Preservation**: `normalizeDiff` segments diffs across all modified files, allocating proportional line budgets to each file block so no single file starves others of change context.
+- **Savings**: Yields 50–75% token reduction on verbose command failures.
 
 ---
 
 ## Token Analytics & Accounting
 
-All token consumption is tracked and distinguished across two metrics:
-1. **Actual Tokens (BPE)**: Computed via `js-tiktoken` using the canonical `cl100k_base` vocabulary.
+All token consumption is tracked and distinguished across three mechanisms:
+1. **Model-Aware BPE Tokenization**: Computed via `js-tiktoken` using `o200k_base` for GPT-4o / GPT-4o-mini and `cl100k_base` for legacy OpenAI/embeddings, with calibrated multipliers for Claude (~1.06x) and Gemini (~0.96x). Every evaluation reports explicit method and confidence metadata (`exact_bpe`, `calibrated_estimate`, `heuristic_estimate`).
 2. **Estimated Tokens**: Fast character-ratio calculation (`Math.ceil(chars / 4)`) used for pre-flight budgeting.
-3. **Provider Reported Tokens**: Actual usage reported in provider completions headers, recorded into `AnalyticsService`.
+3. **Provider Reported Tokens & Reconciliation**: Actual usage reported in provider completions headers is recorded into `AnalyticsService` and reconciled with local estimates via `reconcileWithProviderUsage`.
 
 The `AnalyticsService` persists:
 - `cacheHits` & `cacheTokensSaved`: Zero-token executions serviced directly from LRU tiers.

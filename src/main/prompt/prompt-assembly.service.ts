@@ -23,28 +23,76 @@ export interface PromptAssemblyOptions {
   providerFormat?: 'markdown' | 'xml_tags' | 'standard';
 }
 
+export class MandatoryBudgetExceededError extends Error {
+  public readonly mandatoryTokens: number;
+  public readonly totalCapacity: number;
+  public readonly sectionBreakdown: Record<string, number>;
+
+  constructor(
+    message: string,
+    mandatoryTokens: number,
+    totalCapacity: number,
+    sectionBreakdown: Record<string, number>
+  ) {
+    super(message);
+    this.name = 'MandatoryBudgetExceededError';
+    this.mandatoryTokens = mandatoryTokens;
+    this.totalCapacity = totalCapacity;
+    this.sectionBreakdown = sectionBreakdown;
+  }
+}
+
 export class PromptAssemblyService {
   /**
-   * Compresses redundant whitespace while preserving code formatting and markdown tables.
+   * Compresses redundant whitespace while preserving code formatting, indented blocks, and markdown tables.
    */
   public static compressWhitespace(text: string): string {
     if (!text) return '';
 
-    // Split into code block and non-code block regions
+    // Split by fenced code blocks (```...```) to protect them completely
     const parts = text.split(/(```[\s\S]*?```)/g);
-    return parts
+    const compressed = parts
       .map((part) => {
         if (part.startsWith('```')) {
-          // Inside code block: only collapse 3+ consecutive newlines to 2, trim trailing space
-          return part.replace(/\r?\n\s*\r?\n\s*\r?\n+/g, '\n\n');
+          // Inside fenced code block: collapse 3+ consecutive newlines to 2, keep exact indentation
+          return part.replace(/(\r?\n){3,}/g, '\n\n');
         }
-        // Outside code block: collapse multiple blank lines, clean trailing whitespace
-        return part
-          .replace(/[ \t]+$/gm, '') // Remove trailing spaces per line
-          .replace(/(\r?\n){3,}/g, '\n\n') // Max 2 consecutive newlines
-          .trim();
+
+        // Outside fenced code blocks: process line by line to respect indented code (4+ spaces or tabs) and tables (| ... |)
+        const lines = part.split(/\r?\n/);
+        const processedLines: string[] = [];
+        let consecutiveBlankLines = 0;
+
+        for (const line of lines) {
+          const isTableLine = /^\s*\|.*\|\s*$/.test(line);
+          const isIndentedCode = /^( {4,}|\t+)/.test(line);
+
+          if (isTableLine || isIndentedCode) {
+            // Preserve exact spacing for table formatting and indented code
+            processedLines.push(line);
+            consecutiveBlankLines = 0;
+            continue;
+          }
+
+          const trimmedEnd = line.replace(/[ \t]+$/, '');
+          if (trimmedEnd === '') {
+            consecutiveBlankLines++;
+            // Maximum 1 consecutive blank line (i.e. \n\n)
+            if (consecutiveBlankLines <= 1) {
+              processedLines.push('');
+            }
+          } else {
+            consecutiveBlankLines = 0;
+            processedLines.push(trimmedEnd);
+          }
+        }
+
+        return processedLines.join('\n').trim();
       })
-      .join('\n');
+      .filter((p) => p.length > 0)
+      .join('\n\n');
+
+    return compressed.replace(/(\r?\n){3,}/g, '\n\n').trim();
   }
 
   /**
@@ -221,6 +269,23 @@ export class PromptAssemblyService {
     const totalCapacity =
       maxTokens ||
       tokenCounterService.calculateAvailableContextBudget(modelTarget, 0.1);
+
+    // Validate mandatory budget safety: system, security, and objective are mandatory
+    const mandatorySections = deduplicatedSections.filter((s) => s.mandatory);
+    const mandatoryTokens = mandatorySections.reduce((sum, s) => sum + s.tokens, 0);
+
+    if (mandatoryTokens > totalCapacity) {
+      const sectionBreakdown: Record<string, number> = {};
+      for (const s of mandatorySections) {
+        sectionBreakdown[s.type] = s.tokens;
+      }
+      throw new MandatoryBudgetExceededError(
+        `Mandatory prompt sections (${mandatoryTokens} tokens) exceed total token capacity (${totalCapacity} tokens). Cannot safely assemble prompt without violating core constraints.`,
+        mandatoryTokens,
+        totalCapacity,
+        sectionBreakdown
+      );
+    }
 
     // Budget enforcement: sort non-mandatory sections by priority, trim lowest if over budget
     let currentTotalTokens = deduplicatedSections.reduce((sum, s) => sum + s.tokens, 0);

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import type { CLIProvider } from '../../shared/cli';
 import type { SkillMetadata } from '../../shared/skills';
 import type {
   SkillLoadingLevel,
@@ -161,6 +162,62 @@ export class SkillCompositionService {
   }
 
   /**
+   * Validates whether requested skills support the target CLI provider.
+   */
+  public static validateProviderCompatibility(
+    skillIds: string[],
+    provider: CLIProvider
+  ): {
+    compatible: string[];
+    incompatible: Array<{ id: string; name: string; supportedProviders: string[]; reason: string }>;
+  } {
+    const compatible: string[] = [];
+    const incompatible: Array<{ id: string; name: string; supportedProviders: string[]; reason: string }> = [];
+
+    for (const id of skillIds) {
+      const skill = skillRegistry.getSkill(id);
+      if (!skill) {
+        compatible.push(id);
+        continue;
+      }
+
+      if (skill.supportedProviders && skill.supportedProviders.length > 0) {
+        if (skill.supportedProviders.includes(provider)) {
+          compatible.push(id);
+        } else {
+          incompatible.push({
+            id: skill.id,
+            name: skill.name,
+            supportedProviders: skill.supportedProviders,
+            reason: `Skill "${skill.name}" does not support provider "${provider}". Supported: [${skill.supportedProviders.join(', ')}]`
+          });
+        }
+      } else {
+        compatible.push(id);
+      }
+    }
+
+    return { compatible, incompatible };
+  }
+
+  /**
+   * Detects output format directive conflicts between primary and supporting skills.
+   */
+  private static detectOutputDirective(text: string): 'json' | 'diff' | 'prose' | null {
+    const lower = text.toLowerCase();
+    if (/(pure json|json schema|valid json|json only|json object|json array)/i.test(lower)) {
+      return 'json';
+    }
+    if (/(unified diff|diff format|patch format|\.patch|diff only)/i.test(lower)) {
+      return 'diff';
+    }
+    if (/(prose|markdown explanation|conversational|detailed walkthrough)/i.test(lower)) {
+      return 'prose';
+    }
+    return null;
+  }
+
+  /**
    * Composes multiple active skills into a unified, deduplicated instruction block.
    */
   public static composeSkills(
@@ -202,6 +259,9 @@ export class SkillCompositionService {
       };
     }
 
+    // Determine primary output directive for schema conflict resolution
+    const primaryFormatDirective = this.detectOutputDirective(loadedSkills[0].content);
+
     // Deduplicate common instructions and overlapping guidelines
     const seenClauses = new Set<string>();
     const composedSections: string[] = [];
@@ -223,6 +283,22 @@ export class SkillCompositionService {
 
       for (const line of lines) {
         const trimmed = line.trim();
+
+        // Multi-skill output schema conflict resolution:
+        // If supporting skill conflicts with primary skill's output format, primary takes precedence
+        if (!isPrimary && primaryFormatDirective) {
+          const lineDirective = this.detectOutputDirective(line);
+          if (lineDirective && lineDirective !== primaryFormatDirective) {
+            conflictsResolved.push(
+              `Resolved format conflict: Primary skill "${loadedSkills[0].name}" dictates [${primaryFormatDirective.toUpperCase()}] output. Overrode conflicting [${lineDirective.toUpperCase()}] constraint in "${skill.name}".`
+            );
+            filteredLines.push(
+              `<!-- [Directive overridden by Primary Skill (${loadedSkills[0].name})]: Follow primary ${primaryFormatDirective.toUpperCase()} format specification -->`
+            );
+            continue;
+          }
+        }
+
         // Skip repetitive generic boilerplate lines across multiple skills
         const normalized = trimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -249,10 +325,10 @@ export class SkillCompositionService {
 
     let composedText = composedSections.join('\n');
 
-    // If max token budget provided and exceeded, condense supporting skills
+    // Progressive detail selection: cascade down levels if budget exceeded
     let finalTokens = tokenCounterService.countActualTokens(composedText);
     if (maxTokens && finalTokens > maxTokens) {
-      // Re-compose with Level 2 summaries for supporting skills
+      // Pass 1: Demote supporting skills to Level 2 (summary)
       const condensed: string[] = [];
       condensed.push(`### Composed Skill Protocol [Primary: ${loadedSkills[0].name}]`);
       condensed.push(`\n#### ${loadedSkills[0].name} (Primary Full Instructions)`);
@@ -267,6 +343,43 @@ export class SkillCompositionService {
       }
       composedText = condensed.join('\n');
       finalTokens = tokenCounterService.countActualTokens(composedText);
+
+      // Pass 2: If still over budget, demote supporting skills to Level 1 (metadata)
+      if (finalTokens > maxTokens) {
+        const metaCondensed: string[] = [];
+        metaCondensed.push(`### Composed Skill Protocol [Primary: ${loadedSkills[0].name}]`);
+        metaCondensed.push(`\n#### ${loadedSkills[0].name} (Primary Full Instructions)`);
+        metaCondensed.push(loadedSkills[0].content);
+
+        for (let i = 1; i < loadedSkills.length; i++) {
+          const meta = this.getSkillAtLevel(loadedSkills[i].id, 'metadata');
+          if (meta) {
+            metaCondensed.push(`\n#### ${meta.name} (Supporting Metadata)`);
+            metaCondensed.push(meta.content);
+          }
+        }
+        composedText = metaCondensed.join('\n');
+        finalTokens = tokenCounterService.countActualTokens(composedText);
+      }
+
+      // Pass 3: If still over budget, demote primary skill to summary
+      if (finalTokens > maxTokens) {
+        const primarySum = this.getSkillAtLevel(loadedSkills[0].id, 'summary');
+        if (primarySum) {
+          const ultraCompact: string[] = [
+            `### Composed Skill Protocol [Primary: ${primarySum.name} (Summary)]`,
+            primarySum.content
+          ];
+          for (let i = 1; i < loadedSkills.length; i++) {
+            const meta = this.getSkillAtLevel(loadedSkills[i].id, 'metadata');
+            if (meta) {
+              ultraCompact.push(`- ${meta.content}`);
+            }
+          }
+          composedText = ultraCompact.join('\n');
+          finalTokens = tokenCounterService.countActualTokens(composedText);
+        }
+      }
     }
 
     const tokensSaved = Math.max(0, rawTotalTokens - finalTokens);
