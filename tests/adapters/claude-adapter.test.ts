@@ -18,10 +18,11 @@ describe('ClaudeCodeAdapter Unit Tests (Mocked)', () => {
     vi.restoreAllMocks();
   });
 
-  it('reports capabilities correctly (streaming, resume, headless prompt, json output)', () => {
+  it('reports capabilities correctly (streaming, resume, continue, headless prompt, json output)', () => {
     expect(adapter.provider).toBe('claude');
     expect(adapter.capabilities.supportsStreaming).toBe(true);
     expect(adapter.capabilities.supportsResume).toBe(true);
+    expect(adapter.capabilities.supportsContinue).toBe(true);
     expect(adapter.capabilities.supportsHeadlessPrompt).toBe(true);
     expect(adapter.capabilities.supportsJsonOutput).toBe(true);
   });
@@ -32,7 +33,7 @@ describe('ClaudeCodeAdapter Unit Tests (Mocked)', () => {
     expect(cmd.args).toEqual(['-p', 'Explain architecture', '--output-format', 'stream-json', '--verbose']);
   });
 
-  it('builds resume command spec when resumeSessionId is supplied', () => {
+  it('builds resume command spec when specific resumeSessionId is supplied', () => {
     const cmd = adapter.buildCommand('Follow-up message', 'C:/my-project', 'session-xyz-123');
     expect(cmd.executable).toBe('claude');
     expect(cmd.args).toEqual([
@@ -46,15 +47,25 @@ describe('ClaudeCodeAdapter Unit Tests (Mocked)', () => {
     ]);
   });
 
-  it('builds resume command spec with --resume when resumeSessionId is --last', () => {
-    const cmd = adapter.buildCommand('Follow-up message', 'C:/my-project', '--last');
-    expect(cmd.args).toEqual([
+  it('builds continue command spec with --continue when resumeSessionId is --continue or --last', () => {
+    const cmd1 = adapter.buildCommand('Follow-up message', 'C:/my-project', '--continue');
+    expect(cmd1.args).toEqual([
       '-p',
       'Follow-up message',
       '--output-format',
       'stream-json',
       '--verbose',
-      '--resume'
+      '--continue'
+    ]);
+
+    const cmd2 = adapter.buildCommand('Follow-up message', 'C:/my-project', '--last');
+    expect(cmd2.args).toEqual([
+      '-p',
+      'Follow-up message',
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--continue'
     ]);
   });
 

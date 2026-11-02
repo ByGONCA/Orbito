@@ -15,6 +15,7 @@ export class CodexAdapter implements ICLIAdapter {
   public readonly capabilities: CLICapabilities = {
     supportsStreaming: true,
     supportsResume: true, // Official support via "codex exec resume <ID>"
+    supportsContinue: true, // Official support via "codex exec resume --last"
     supportsHeadlessPrompt: true,
     supportsJsonOutput: true // Official support via "--json"
   };

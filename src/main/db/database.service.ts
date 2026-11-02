@@ -88,6 +88,7 @@ export class DatabaseService {
       CREATE TABLE IF NOT EXISTS cli_sessions (
         id TEXT PRIMARY KEY,
         provider TEXT NOT NULL,
+        provider_session_id TEXT,
         project_id TEXT,
         status TEXT NOT NULL DEFAULT 'idle',
         prompt TEXT NOT NULL,
@@ -106,6 +107,12 @@ export class DatabaseService {
         FOREIGN KEY(session_id) REFERENCES cli_sessions(id) ON DELETE CASCADE
       );
     `);
+
+    try {
+      db.exec(`ALTER TABLE cli_sessions ADD COLUMN provider_session_id TEXT`);
+    } catch {
+      // Column already exists
+    }
   }
 
   private migrateIndexSchema(db: Database.Database): void {
@@ -319,11 +326,12 @@ export class DatabaseService {
   public createCLISession(session: CLISessionRecord): void {
     const db = this.getAppDb();
     db.prepare(`
-      INSERT INTO cli_sessions (id, provider, project_id, status, prompt, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO cli_sessions (id, provider, provider_session_id, project_id, status, prompt, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       session.id,
       session.provider,
+      session.providerSessionId || null,
       session.projectId || null,
       session.status,
       session.prompt,
@@ -332,13 +340,27 @@ export class DatabaseService {
     );
   }
 
-  public updateCLISession(sessionId: string, status: CLISessionStatus, exitCode?: number, durationMs?: number): void {
+  public updateCLISession(
+    sessionId: string,
+    status: CLISessionStatus,
+    exitCode?: number,
+    durationMs?: number,
+    providerSessionId?: string
+  ): void {
     const db = this.getAppDb();
-    db.prepare(`
-      UPDATE cli_sessions
-      SET status = ?, exit_code = ?, duration_ms = ?, updated_at = ?
-      WHERE id = ?
-    `).run(status, exitCode !== undefined ? exitCode : null, durationMs !== undefined ? durationMs : null, Date.now(), sessionId);
+    if (providerSessionId) {
+      db.prepare(`
+        UPDATE cli_sessions
+        SET status = ?, exit_code = ?, duration_ms = ?, provider_session_id = ?, updated_at = ?
+        WHERE id = ?
+      `).run(status, exitCode !== undefined ? exitCode : null, durationMs !== undefined ? durationMs : null, providerSessionId, Date.now(), sessionId);
+    } else {
+      db.prepare(`
+        UPDATE cli_sessions
+        SET status = ?, exit_code = ?, duration_ms = ?, updated_at = ?
+        WHERE id = ?
+      `).run(status, exitCode !== undefined ? exitCode : null, durationMs !== undefined ? durationMs : null, Date.now(), sessionId);
+    }
   }
 
   public addCLISessionMessage(msg: CLISessionMessage): void {
@@ -372,6 +394,7 @@ export class DatabaseService {
     return rows.map((r) => ({
       id: r.id,
       provider: r.provider,
+      providerSessionId: r.provider_session_id || undefined,
       projectId: r.project_id || undefined,
       status: r.status,
       prompt: r.prompt,
@@ -389,6 +412,7 @@ export class DatabaseService {
     return {
       id: r.id,
       provider: r.provider,
+      providerSessionId: r.provider_session_id || undefined,
       projectId: r.project_id || undefined,
       status: r.status,
       prompt: r.prompt,

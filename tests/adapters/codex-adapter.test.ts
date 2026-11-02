@@ -18,10 +18,11 @@ describe('CodexAdapter Unit Tests (Mocked)', () => {
     vi.restoreAllMocks();
   });
 
-  it('reports capabilities correctly (streaming, resume, headless prompt, json output)', () => {
+  it('reports capabilities correctly (streaming, resume, continue, headless prompt, json output)', () => {
     expect(adapter.provider).toBe('codex');
     expect(adapter.capabilities.supportsStreaming).toBe(true);
     expect(adapter.capabilities.supportsResume).toBe(true);
+    expect(adapter.capabilities.supportsContinue).toBe(true);
     expect(adapter.capabilities.supportsHeadlessPrompt).toBe(true);
     expect(adapter.capabilities.supportsJsonOutput).toBe(true);
   });

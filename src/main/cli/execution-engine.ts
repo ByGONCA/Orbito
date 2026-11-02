@@ -10,6 +10,7 @@ import type {
 import { cliManager } from './cli-manager';
 import { databaseService } from '../db/database.service';
 import { securityService } from '../services/security.service';
+import { createStreamParser } from './parsers';
 
 interface ActiveSession {
   id: string;
@@ -111,58 +112,65 @@ export class ExecutionEngine extends EventEmitter {
       timestamp: Date.now()
     });
 
-    // 7. Handle stdout streaming (with JSONL and raw text parsing)
+    // 7. Instantiate provider-specific stream parser
+    const parser = createStreamParser(provider);
+
+    // Handle stdout streaming with provider-specific parsing & deduplication
     child.stdout?.on('data', (chunk: Buffer) => {
       const rawText = chunk.toString('utf8');
       const lines = rawText.split(/\r?\n/);
-      let parsedDisplay = '';
+      let textToEmit = '';
 
       for (const line of lines) {
         if (!line.trim()) continue;
-        try {
-          const parsed = JSON.parse(line.trim());
-          // Extract session ID if reported by CLI JSON stream
-          if (parsed.session_id || parsed.sessionId || (parsed.type === 'session' && parsed.id)) {
-            const providerSessionId = parsed.session_id || parsed.sessionId || parsed.id;
-            databaseService.updateCLISession(sessionId, 'running', undefined, undefined);
-          }
+        const parsed = parser.parseLine(line);
+        if (!parsed) continue;
 
-          // Extract message text from Claude stream-json, Codex --json or Gemini stream-json
-          if (parsed.delta?.text) {
-            parsedDisplay += parsed.delta.text;
-          } else if (parsed.content && typeof parsed.content === 'string') {
-            parsedDisplay += parsed.content;
-          } else if (parsed.response && typeof parsed.response === 'string') {
-            parsedDisplay += parsed.response;
-          } else if (parsed.message?.content) {
-            parsedDisplay += parsed.message.content;
-          } else if (parsed.type === 'error' || parsed.error) {
-            parsedDisplay += `\n[Error] ${JSON.stringify(parsed.error || parsed)}\n`;
-          } else {
-            parsedDisplay += `${line}\n`;
-          }
-        } catch {
-          // Plain text line
-          parsedDisplay += `${line}\n`;
+        // If providerSessionId was captured, persist it in SQLite
+        if (parsed.sessionId) {
+          databaseService.updateCLISession(sessionId, 'running', undefined, undefined, parsed.sessionId);
+        }
+
+        // If error detected in stream (e.g. auth error, quota error)
+        if (parsed.isError) {
+          const errText = parsed.errorMessage || 'CLI Stream Error';
+          databaseService.addCLISessionMessage({
+            id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-err`,
+            sessionId,
+            role: 'error',
+            content: errText,
+            timestamp: Date.now()
+          });
+          this.emitEvent({
+            sessionId,
+            type: 'stderr',
+            content: errText,
+            timestamp: Date.now()
+          });
+        }
+
+        // If text delta extracted
+        if (parsed.textDelta) {
+          textToEmit += parsed.textDelta;
         }
       }
 
-      const textToEmit = parsedDisplay || rawText;
+      if (textToEmit) {
+        databaseService.addCLISessionMessage({
+          id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-ast`,
+          sessionId,
+          role: 'assistant',
+          content: textToEmit,
+          timestamp: Date.now()
+        });
 
-      databaseService.addCLISessionMessage({
-        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-ast`,
-        sessionId,
-        role: 'assistant',
-        content: textToEmit,
-        timestamp: Date.now()
-      });
-
-      this.emitEvent({
-        sessionId,
-        type: 'stdout',
-        content: textToEmit,
-        timestamp: Date.now()
-      });
+        this.emitEvent({
+          sessionId,
+          type: 'stdout',
+          content: textToEmit,
+          timestamp: Date.now()
+        });
+      }
     });
 
     // 8. Handle stderr streaming

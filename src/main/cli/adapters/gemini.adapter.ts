@@ -14,7 +14,9 @@ export class GeminiAdapter implements ICLIAdapter {
   public readonly provider: CLIProvider = 'gemini';
   public readonly capabilities: CLICapabilities = {
     supportsStreaming: true,
-    supportsResume: false, // Stateless per command
+    supportsResume: true, // Official support via --resume
+    supportsContinue: true, // Official support via --resume latest
+    supportsListSessions: true, // Official support via --list-sessions
     supportsHeadlessPrompt: true,
     supportsJsonOutput: true // Official support via "--output-format stream-json"
   };
@@ -141,13 +143,39 @@ export class GeminiAdapter implements ICLIAdapter {
     };
   }
 
-  public buildCommand(prompt: string, workingDirectory: string): CommandSpec {
+  public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string): CommandSpec {
     // Correct official syntax: gemini -p "<prompt>" --output-format stream-json
     const args: string[] = ['-p', prompt, '--output-format', 'stream-json'];
+
+    // Official resume syntax: --resume latest or --resume <SESSION_ID/INDEX>
+    if (resumeSessionId) {
+      if (
+        resumeSessionId === '--last' ||
+        resumeSessionId === 'latest' ||
+        resumeSessionId === 'last' ||
+        resumeSessionId === '--resume' ||
+        resumeSessionId === '--continue'
+      ) {
+        args.push('--resume', 'latest');
+      } else {
+        args.push('--resume', resumeSessionId);
+      }
+    }
 
     return {
       executable: 'gemini',
       args,
+      env: {
+        ...process.env,
+        PWD: workingDirectory
+      }
+    };
+  }
+
+  public buildListSessionsCommand(workingDirectory: string): CommandSpec {
+    return {
+      executable: 'gemini',
+      args: ['--list-sessions'],
       env: {
         ...process.env,
         PWD: workingDirectory

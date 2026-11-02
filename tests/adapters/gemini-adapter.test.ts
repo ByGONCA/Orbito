@@ -18,10 +18,12 @@ describe('GeminiAdapter Unit Tests (Mocked)', () => {
     vi.restoreAllMocks();
   });
 
-  it('reports capabilities correctly (streaming, headless prompt, json output; no resume)', () => {
+  it('reports capabilities correctly (streaming, resume, continue, list-sessions, headless prompt, json output)', () => {
     expect(adapter.provider).toBe('gemini');
     expect(adapter.capabilities.supportsStreaming).toBe(true);
-    expect(adapter.capabilities.supportsResume).toBe(false);
+    expect(adapter.capabilities.supportsResume).toBe(true);
+    expect(adapter.capabilities.supportsContinue).toBe(true);
+    expect(adapter.capabilities.supportsListSessions).toBe(true);
     expect(adapter.capabilities.supportsHeadlessPrompt).toBe(true);
     expect(adapter.capabilities.supportsJsonOutput).toBe(true);
   });
@@ -30,6 +32,46 @@ describe('GeminiAdapter Unit Tests (Mocked)', () => {
     const cmd = adapter.buildCommand('Analyze database model', 'C:/my-project');
     expect(cmd.executable).toBe('gemini');
     expect(cmd.args).toEqual(['-p', 'Analyze database model', '--output-format', 'stream-json']);
+  });
+
+  it('builds resume command with specific session ID', () => {
+    const cmd = adapter.buildCommand('Follow-up query', 'C:/my-project', 'gem-session-123');
+    expect(cmd.args).toEqual([
+      '-p',
+      'Follow-up query',
+      '--output-format',
+      'stream-json',
+      '--resume',
+      'gem-session-123'
+    ]);
+  });
+
+  it('builds resume command with latest session when resumeSessionId is --last or latest', () => {
+    const cmd1 = adapter.buildCommand('Follow-up query', 'C:/my-project', '--last');
+    expect(cmd1.args).toEqual([
+      '-p',
+      'Follow-up query',
+      '--output-format',
+      'stream-json',
+      '--resume',
+      'latest'
+    ]);
+
+    const cmd2 = adapter.buildCommand('Follow-up query', 'C:/my-project', 'latest');
+    expect(cmd2.args).toEqual([
+      '-p',
+      'Follow-up query',
+      '--output-format',
+      'stream-json',
+      '--resume',
+      'latest'
+    ]);
+  });
+
+  it('builds list-sessions command correctly', () => {
+    const cmd = adapter.buildListSessionsCommand('C:/my-project');
+    expect(cmd.executable).toBe('gemini');
+    expect(cmd.args).toEqual(['--list-sessions']);
   });
 
   it('detects authentication when GEMINI_API_KEY environment variable is set', async () => {

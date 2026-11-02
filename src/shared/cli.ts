@@ -36,6 +36,8 @@ export interface CLIAuthStatus {
 export interface CLICapabilities {
   supportsStreaming: boolean;
   supportsResume: boolean;
+  supportsContinue?: boolean;
+  supportsListSessions?: boolean;
   supportsHeadlessPrompt: boolean;
   supportsJsonOutput: boolean;
 }
@@ -43,6 +45,7 @@ export interface CLICapabilities {
 export interface CLISessionRecord {
   id: string;
   provider: CLIProvider;
+  providerSessionId?: string;
   projectId?: string;
   status: CLISessionStatus;
   createdAt: number;

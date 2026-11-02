@@ -249,38 +249,60 @@ Static analysis of skills is a useful linting step, but it is **not a security b
 All CLI providers implement a strictly decoupled adapter interface:
 
 ```typescript
+export interface CommandSpec {
+  executable: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
 export interface ICLIAdapter {
   readonly provider: CLIProvider;
   readonly capabilities: CLICapabilities;
   detect(customPath?: string): Promise<CLIInstallationStatus>;
-  checkAuth(resolvedPath: string): Promise<CLIAuthStatus>;
-  execute(options: CLIExecuteOptions): CLISessionExecution;
+  checkAuth(resolvedPath?: string): Promise<CLIAuthStatus>;
+  buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string): CommandSpec;
+  buildListSessionsCommand?(workingDirectory: string): CommandSpec;
 }
 ```
 
 ### 6.2 Provider Capability & Reality Matrix
 
-| Provider | Target Binary | Auth Discovery Mechanism | Headless Mode | Streaming | Session Resume |
+| Provider | Target Binary | Auth Discovery Mechanism | Headless Command Syntax | Streaming & Output Format | Session Resume & Continuation |
 |---|---|---|---|---|---|
-| **Claude Code** | `claude` / `claude-code` | Reads `~/.claude.json`, `ANTHROPIC_API_KEY` | Yes (`-p "<prompt>"`) | Yes (stdout stream) | Yes (`claude resume <id>`) |
-| **OpenAI Codex** | `codex` / `openai` | Reads `~/.codex/config.json`, `OPENAI_API_KEY` | Yes (`codex exec "<prompt>"`) | Yes (JSON lines / stdout) | No (Stateless batch) |
-| **Google Gemini** | `gemini` / `google-genai` | Reads `~/.config/gcloud/application_default_credentials.json`, `GEMINI_API_KEY` | Yes (`gemini prompt "<prompt>"`) | Yes (stdout stream) | No (Stateless batch) |
+| **Claude Code** | `claude` / `claude-code` | Reads `~/.claude.json`, `ANTHROPIC_API_KEY` (Non-destructive check) | `claude -p "<prompt>"` | Stream JSON (`--output-format stream-json --verbose`) | Resume: `--resume <ID>`<br>Continue: `--continue` |
+| **OpenAI Codex** | `codex` / `openai` | Reads `~/.codex/config.json`, `OPENAI_API_KEY` (Non-destructive check) | `codex exec "<prompt>"` | JSONL stream (`--json`) | Resume: `exec resume <ID>`<br>Continue: `exec resume --last` |
+| **Google Gemini** | `gemini` / `google-genai` | Reads Google Cloud ADC, `GEMINI_API_KEY` (Non-destructive check) | `gemini -p "<prompt>"` | Stream JSON (`--output-format stream-json`) | Resume: `--resume <ID>`<br>Continue: `--resume latest`<br>List: `--list-sessions` |
 
-*Strict Rule:* The application never claims or fabricates resume capabilities for providers that do not officially support session persistence.
+### 6.3 Seven Normalized Authentication States
+To prevent misclassifying non-configured or expired credentials:
+1. `not_installed`: CLI binary not found on system PATH and custom path invalid.
+2. `installed`: CLI binary present on disk, but never initialized.
+3. `configured`: Config file exists (e.g. `~/.claude.json`, `~/.codex/config.json`, ADC file), but contains no active credentials or API keys.
+4. `authenticated`: Valid active credentials or API key verified without running mutating commands.
+5. `authentication_required`: CLI is installed, but no API key or session token was provided.
+6. `authentication_expired`: Existing credentials contain an expired session or token (e.g. expired OAuth token, expired ADC).
+7. `error`: Config file exists but has invalid JSON or could not be read.
 
-### 6.3 Process Lifecycle & Clean Tree Termination
-* **Child Process Spawning:** Always executed with `shell: false` and explicit argument arrays.
+### 6.4 Stream Parser Architecture & Deduplication
+To handle differing JSON schemas across CLIs without cross-coupling:
+* `IStreamParser`: Contract declaring `parseLine(line: string): NormalizedStreamChunk | null`.
+* `ClaudeStreamParser`: Extracts `session_id`, streams `content_block_delta` text, ignores redundant full result text if deltas were emitted (preventing text duplication), and isolates `terminal_reason: "api_error"`.
+* `CodexStreamParser`: Extracts `session_id` and `thread_id`, streams `response.text.delta`, deduplicates on `response.done`, and isolates `type: "error"`.
+* `GeminiStreamParser`: Extracts `session_id`, streams candidate parts (`candidates[0].content.parts`), deduplicates on `finishReason`, and isolates `error` objects.
+
+### 6.5 Process Lifecycle & Clean Tree Termination
+* **Child Process Spawning:** Always executed with `shell: false`, `windowsHide: true`, and `stdio: ['ignore', 'pipe', 'pipe']` (preventing stdin blocking).
 * **Process Tree Clean Termination:**
   * **Windows:** Executes `taskkill /pid <PID> /T /F` to ensure no orphan Node or Python worker processes linger in the background.
   * **POSIX:** Sends `SIGTERM` to the process group (`-pid`), escalating to `SIGKILL` after a 2.5-second grace period.
-* **Timeout Enforcement:** Each execution job has a bounded timeout timer. If elapsed, the Execution Engine issues an immediate tree kill and sets the session status to `failed` with code `EXECUTION_TIMEOUT`.
+* **Timeout Enforcement:** Each execution job has a bounded timeout timer. If elapsed, the Execution Engine issues an immediate tree kill and sets the session status to `failed` with code `124`.
 
-### 6.4 Session Management & Local Persistence
+### 6.6 Session Management & Local Persistence
 Sessions are persisted in `app.sqlite` across two relational tables:
-1. `cli_sessions`: `id`, `provider`, `project_id`, `status`, `created_at`, `updated_at`, `exit_code`, `custom_path`.
+1. `cli_sessions`: `id`, `provider`, `provider_session_id`, `project_id`, `status`, `prompt`, `exit_code`, `duration_ms`, `created_at`, `updated_at`.
 2. `cli_session_messages`: `id`, `session_id`, `role` ('user' | 'assistant' | 'system' | 'error'), `content`, `timestamp`.
 
-Sessions are isolated by `project_id`. The user can inspect the complete execution history, filter by provider, and re-run prompts.
+Captured `provider_session_id` values from the stream are automatically linked to `cli_sessions.provider_session_id`, allowing seamless subsequent resumption via `--resume <ID>`.
 
 ---
 

@@ -15,6 +15,7 @@ export class ClaudeCodeAdapter implements ICLIAdapter {
   public readonly capabilities: CLICapabilities = {
     supportsStreaming: true,
     supportsResume: true,
+    supportsContinue: true,
     supportsHeadlessPrompt: true,
     supportsJsonOutput: true
   };
@@ -157,10 +158,18 @@ export class ClaudeCodeAdapter implements ICLIAdapter {
     // Stream JSON output format (requires --verbose in Claude Code CLI)
     args.push('--output-format', 'stream-json', '--verbose');
 
-    // Official resume syntax: --resume <SESSION_ID>
+    // Official syntax:
+    // - "--continue" resumes the most recent conversation in the directory
+    // - "--resume <SESSION_ID>" resumes a specific session
     if (resumeSessionId) {
-      if (resumeSessionId === '--last' || resumeSessionId === 'last') {
-        args.push('--resume');
+      if (
+        resumeSessionId === '--continue' ||
+        resumeSessionId === 'continue' ||
+        resumeSessionId === '--last' ||
+        resumeSessionId === 'last' ||
+        resumeSessionId === 'latest'
+      ) {
+        args.push('--continue');
       } else {
         args.push('--resume', resumeSessionId);
       }
