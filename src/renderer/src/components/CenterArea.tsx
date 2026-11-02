@@ -10,6 +10,8 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
+import { ProvidersPanel } from './ProvidersPanel';
+import { CLIConsole } from './CLIConsole';
 
 export const CenterArea: React.FC = () => {
   const {
@@ -20,7 +22,9 @@ export const CenterArea: React.FC = () => {
     project,
     addLog,
     setProject,
-    setFiles
+    setFiles,
+    activeCenterTab,
+    setActiveCenterTab
   } = useWorkspaceStore();
 
   const handleOpenFolder = async () => {
@@ -35,6 +39,14 @@ export const CenterArea: React.FC = () => {
       addLog(`Error: ${err.message}`, 'error');
     }
   };
+
+  if (activeCenterTab === 'providers') {
+    return <ProvidersPanel />;
+  }
+
+  if (activeCenterTab === 'console') {
+    return <CLIConsole />;
+  }
 
   if (activeFilePath && activeFileContent !== null) {
     const lines = activeFileContent.split('\n');
@@ -174,6 +186,22 @@ export const CenterArea: React.FC = () => {
               >
                 <FolderOpen className="w-3.5 h-3.5" />
                 <span>Open Project</span>
+              </button>
+
+              <button
+                onClick={() => setActiveCenterTab('providers')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-secondary hover:bg-secondary/80 rounded border border-border text-foreground transition-colors"
+              >
+                <Cpu className="w-3.5 h-3.5 text-primary" />
+                <span>AI Providers</span>
+              </button>
+
+              <button
+                onClick={() => setActiveCenterTab('console')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary text-primary-foreground font-medium rounded text-xs hover:bg-primary/90 transition-colors shadow-xs"
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                <span>Open CLI Console</span>
               </button>
             </div>
           </div>

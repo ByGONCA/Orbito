@@ -17,7 +17,22 @@ const api: IElectronAPI = {
   saveMemory: (params) => ipcRenderer.invoke('memory:save', params),
   deleteMemory: (params) => ipcRenderer.invoke('memory:delete', params),
 
-  getSystemMetrics: () => ipcRenderer.invoke('system:getMetrics')
+  getSystemMetrics: () => ipcRenderer.invoke('system:getMetrics'),
+
+  // CLI Engine (Phase 2)
+  detectCLIs: (params) => ipcRenderer.invoke('cli:detect', params),
+  checkCLIAuth: (params) => ipcRenderer.invoke('cli:checkAuth', params),
+  executeCLIPrompt: (params) => ipcRenderer.invoke('cli:executePrompt', params),
+  cancelCLISession: (params) => ipcRenderer.invoke('cli:cancelSession', params),
+  listCLISessions: (params) => ipcRenderer.invoke('cli:listSessions', params),
+  getSessionMessages: (params) => ipcRenderer.invoke('cli:getSessionMessages', params),
+  onCLIStreamEvent: (callback) => {
+    const handler = (_: any, event: any) => callback(event);
+    ipcRenderer.on('cli:stream-event', handler);
+    return () => {
+      ipcRenderer.removeListener('cli:stream-event', handler);
+    };
+  }
 };
 
 contextBridge.exposeInMainWorld('api', api);

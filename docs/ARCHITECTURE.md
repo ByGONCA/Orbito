@@ -72,6 +72,7 @@ To avoid native C++ binary ABI mismatches between Node.js and Electron, the foll
 | `react` / `react-dom` | `^19.0.0` | Client-only SPA mode | **STABLE (Production)**. Pure client-side SPA with Vite. (Fallback: `18.3.1` if older canvas plugin issues arise). |
 | `vite` | `^6.0.7` | Node.js `>= 18` | **STABLE (Production)**. Lightning-fast compilation. Paired with `vite-plugin-electron` `^1.2.0` or `electron-vite` `^6.0.0`. |
 | `typescript` | `^5.7.2` | esbuild / tsc | **STABLE (Production)**. Strict type-checking enabled (`strict: true`). |
+| `tailwindcss` | `^3.4.17` | PostCSS plugin | **STABLE (Production)**. Intentionally selected v3.4.17 over v4: Tailwind v4 introduced experimental CSS-only configuration that broke standard shadcn/ui Radix CSS token mapping. v3.4.17 delivers zero-runtime CSS with bulletproof stability. |
 | `better-sqlite3` | `^11.8.0` | Node 22 / Electron ABI | **STABLE (Production)**. Requires C++ Build Tools on Windows for native compilation. |
 | `node-pty` | `^1.1.0` | Node 22 / Electron ABI | **STABLE (Production)**. Official 1.1.0 release (replaces deprecated/beta tags). Native ConPTY on Windows. |
 | `@parcel/watcher` | `^2.5.0` | N-API Prebuilt | **STABLE (Production)**. High-performance C++ directory watcher with prebuilt cross-platform binaries. |
@@ -214,8 +215,8 @@ Static analysis of skills is a useful linting step, but it is **not a security b
   ```
 
 ### 5.2 Terminal, Command Chaining & Indirect Execution Guard
-* **No Raw Shell Interpretation:** CLI subprocesses are spawned with `shell: false` using explicit argument arrays (`child_process.spawn(executable, args)`), eliminating argument injection vulnerabilities.
-* **Command Chaining Defense:** Shell operators (`&&`, `;`, `|`, `` ` ``, `$()`, `>`, `<`) are intercepted and rejected unless the user explicitly grants approval in **Full Access Mode**.
+* **No Raw Shell Interpretation:** CLI subprocesses are spawned with `shell: false` using explicit argument arrays (`child_process.spawn(executable, args)`), eliminating standard shell parameter injection.
+* **Lexical Chaining Guardrail (Not an OS Sandbox):** Shell operator regex filtering (`&&`, `;`, `|`, `` ` ``, `$()`, `>`, `<`) acts strictly as a defense-in-depth lexical guardrail against basic command concatenation. It is NOT an operating-system level sandbox. Real process isolation relies on `shell: false`, non-elevated user privilege, and strict filesystem boundaries.
 * **Indirect Execution Gating:** Scripts like `npm run <script>`, `make`, or `python` can execute arbitrary commands defined in local files. These executions are categorized as **Standard / Full Access** and require user approval if not pre-authorized in the workspace policy.
 
 ### 5.3 Impossibility of Autonomous Privilege Escalation
@@ -244,17 +245,42 @@ Static analysis of skills is a useful linting step, but it is **not a security b
 +-----------------------------+ +-----------------------------+ +-----------------------------+
 ```
 
-### 6.1 Multi-Strategy Installation Detection
-Rather than relying on a naive system `PATH` lookup, the CLI Engine executes a multi-stage search:
-1. **System Path Probe:** Executes platform-native lookups (`where.exe <binary>` on Windows, `which <binary>` on macOS/Linux).
-2. **Version Manager Scanning:** Inspects known global binary locations:
-   * Node Version Managers: NVM (`~/.nvm/versions/node/*/bin`), FNM (`~/.local/share/fnm/current/bin`), Volta, Corepack.
-   * Package Managers: npm global (`%AppData%\npm`, `/usr/local/bin`), pnpm global, yarn global.
-3. **Status Reporting:** Returns structured metadata to the UI (`isInstalled`, `resolvedPath`, `version`, `isCompatible`, `requiresUpdate`).
+### 6.1 Unified Adapter Interface (`ICLIAdapter`)
+All CLI providers implement a strictly decoupled adapter interface:
 
-### 6.2 Process Lifecycle Management & Clean Tree Termination
-* **Windows Process Tree Clean Kill:** Spawning a CLI that invokes child processes often leaves orphan processes running. On Windows, the system executes `taskkill /pid <PID> /T /F` to terminate the root process and all child processes recursively.
-* **POSIX:** Sends `SIGINT` to the process group, waits a grace period of 2.5 seconds, escalates to `SIGTERM`, and finally issues `SIGKILL` if unresponsive.
+```typescript
+export interface ICLIAdapter {
+  readonly provider: CLIProvider;
+  readonly capabilities: CLICapabilities;
+  detect(customPath?: string): Promise<CLIInstallationStatus>;
+  checkAuth(resolvedPath: string): Promise<CLIAuthStatus>;
+  execute(options: CLIExecuteOptions): CLISessionExecution;
+}
+```
+
+### 6.2 Provider Capability & Reality Matrix
+
+| Provider | Target Binary | Auth Discovery Mechanism | Headless Mode | Streaming | Session Resume |
+|---|---|---|---|---|---|
+| **Claude Code** | `claude` / `claude-code` | Reads `~/.claude.json`, `ANTHROPIC_API_KEY` | Yes (`-p "<prompt>"`) | Yes (stdout stream) | Yes (`claude resume <id>`) |
+| **OpenAI Codex** | `codex` / `openai` | Reads `~/.codex/config.json`, `OPENAI_API_KEY` | Yes (`codex exec "<prompt>"`) | Yes (JSON lines / stdout) | No (Stateless batch) |
+| **Google Gemini** | `gemini` / `google-genai` | Reads `~/.config/gcloud/application_default_credentials.json`, `GEMINI_API_KEY` | Yes (`gemini prompt "<prompt>"`) | Yes (stdout stream) | No (Stateless batch) |
+
+*Strict Rule:* The application never claims or fabricates resume capabilities for providers that do not officially support session persistence.
+
+### 6.3 Process Lifecycle & Clean Tree Termination
+* **Child Process Spawning:** Always executed with `shell: false` and explicit argument arrays.
+* **Process Tree Clean Termination:**
+  * **Windows:** Executes `taskkill /pid <PID> /T /F` to ensure no orphan Node or Python worker processes linger in the background.
+  * **POSIX:** Sends `SIGTERM` to the process group (`-pid`), escalating to `SIGKILL` after a 2.5-second grace period.
+* **Timeout Enforcement:** Each execution job has a bounded timeout timer. If elapsed, the Execution Engine issues an immediate tree kill and sets the session status to `failed` with code `EXECUTION_TIMEOUT`.
+
+### 6.4 Session Management & Local Persistence
+Sessions are persisted in `app.sqlite` across two relational tables:
+1. `cli_sessions`: `id`, `provider`, `project_id`, `status`, `created_at`, `updated_at`, `exit_code`, `custom_path`.
+2. `cli_session_messages`: `id`, `session_id`, `role` ('user' | 'assistant' | 'system' | 'error'), `content`, `timestamp`.
+
+Sessions are isolated by `project_id`. The user can inspect the complete execution history, filter by provider, and re-run prompts.
 
 ---
 
@@ -276,6 +302,12 @@ All performance specifications are empirical targets validated against the **Sta
   * Clean process termination kills all child processes without zombies.
 * **Empirical Performance Targets (Subject to hardware profiling):**
   * Cold startup time ≤ 3.0s.
-  * Total idle RAM ≤ 300 MB across all processes.
+  * Total idle RAM ≤ 300 MB across all Electron processes (Main, Renderer, GPU, Workers combined).
   * Idle CPU < 1%.
   * FTS5 search latency ≤ 15ms.
+
+### 7.3 Memory Metrics Distinction: Heap vs. Total Resident Set Size (RSS)
+* **V8 Heap Used:** Measures only JavaScript objects allocated within a single Node.js runtime (e.g. ~38 MB measured in Phase 1 unit test runner).
+* **Total Application RSS (Resident Set Size):** The sum of physical RAM mapped by all operating system processes belonging to the application:
+  $$\text{RAM}_{\text{total}} = \text{RSS}_{\text{Main}} + \text{RSS}_{\text{Renderer}} + \text{RSS}_{\text{GPU}} + \text{RSS}_{\text{Workers}}$$
+* **CI Cross-Platform Status:** Cross-platform matrix is formally defined in `.github/workflows/test.yml` (Windows, macOS, Linux). Real cross-platform compatibility is officially recorded as **Configured & Awaiting Remote Multi-Runner Execution**, avoiding premature claims before remote cloud logs exist.

@@ -8,6 +8,22 @@ import type {
   PermissionLevel,
   UIMode
 } from './types';
+import type {
+  CLIInstallationStatus,
+  CLIAuthStatus,
+  CLISessionRecord,
+  CLISessionMessage,
+  CLIStreamEvent,
+  CLIProvider
+} from './cli';
+import {
+  DetectCLIsSchema,
+  CheckCLIAuthSchema,
+  ExecuteCLIPromptSchema,
+  CancelCLISessionSchema,
+  ListCLISessionsSchema,
+  GetSessionMessagesSchema
+} from './cli';
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -78,4 +94,13 @@ export interface IElectronAPI {
   
   // System Metrics
   getSystemMetrics: () => Promise<SystemResourceMetrics>;
+
+  // CLI Engine (Phase 2)
+  detectCLIs: (params?: z.input<typeof DetectCLIsSchema>) => Promise<Record<CLIProvider, CLIInstallationStatus>>;
+  checkCLIAuth: (params: z.input<typeof CheckCLIAuthSchema>) => Promise<CLIAuthStatus>;
+  executeCLIPrompt: (params: z.input<typeof ExecuteCLIPromptSchema>) => Promise<{ sessionId: string }>;
+  cancelCLISession: (params: z.input<typeof CancelCLISessionSchema>) => Promise<{ success: boolean }>;
+  listCLISessions: (params?: z.input<typeof ListCLISessionsSchema>) => Promise<CLISessionRecord[]>;
+  getSessionMessages: (params: z.input<typeof GetSessionMessagesSchema>) => Promise<CLISessionMessage[]>;
+  onCLIStreamEvent: (callback: (event: CLIStreamEvent) => void) => () => void;
 }

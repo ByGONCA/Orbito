@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import {
   OpenDirectorySchema,
   ListFilesSchema,
@@ -9,12 +9,32 @@ import {
   SaveMemorySchema,
   DeleteMemorySchema
 } from '../../shared/ipc';
+import {
+  DetectCLIsSchema,
+  CheckCLIAuthSchema,
+  ExecuteCLIPromptSchema,
+  CancelCLISessionSchema,
+  ListCLISessionsSchema,
+  GetSessionMessagesSchema,
+  type CLIStreamEvent
+} from '../../shared/cli';
 import { workspaceService } from '../services/workspace.service';
 import { databaseService } from '../db/database.service';
 import { safeStorageService } from '../services/safe-storage.service';
+import { cliManager } from '../cli/cli-manager';
+import { executionEngine } from '../cli/execution-engine';
 import type { SystemResourceMetrics } from '../../shared/types';
 
 export function registerIpcHandlers(): void {
+  // Global stream event broadcast to all browser windows
+  executionEngine.on('stream', (event: CLIStreamEvent) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('cli:stream-event', event);
+      }
+    }
+  });
   // 1. Workspace & Files
   ipcMain.handle('workspace:openDirectory', async (_, args) => {
     const validated = OpenDirectorySchema.parse(args || {});
@@ -80,5 +100,47 @@ export function registerIpcHandlers(): void {
       cpuPercent: 0,
       uptimeSeconds: Math.round(process.uptime())
     };
+  });
+
+  // 6. CLI Engine (Phase 2)
+  ipcMain.handle('cli:detect', async (_, args) => {
+    const validated = DetectCLIsSchema.parse(args || {});
+    return await cliManager.detectAll(validated.customPaths);
+  });
+
+  ipcMain.handle('cli:checkAuth', async (_, args) => {
+    const validated = CheckCLIAuthSchema.parse(args);
+    return await cliManager.checkAuth(validated.provider, validated.customPath);
+  });
+
+  ipcMain.handle('cli:executePrompt', async (_, args) => {
+    const validated = ExecuteCLIPromptSchema.parse(args);
+    const sessionId = `cli-sess-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    return await executionEngine.execute({
+      sessionId,
+      provider: validated.provider,
+      prompt: validated.prompt,
+      workingDirectory: validated.workingDirectory,
+      projectId: validated.projectId,
+      customPath: validated.customPath,
+      timeoutSeconds: validated.timeoutSeconds,
+      resumeSessionId: validated.resumeSessionId
+    });
+  });
+
+  ipcMain.handle('cli:cancelSession', async (_, args) => {
+    const validated = CancelCLISessionSchema.parse(args);
+    const success = await executionEngine.cancel(validated.sessionId);
+    return { success };
+  });
+
+  ipcMain.handle('cli:listSessions', (_, args) => {
+    const validated = ListCLISessionsSchema.parse(args || {});
+    return databaseService.listCLISessions(validated.projectId, validated.provider);
+  });
+
+  ipcMain.handle('cli:getSessionMessages', (_, args) => {
+    const validated = GetSessionMessagesSchema.parse(args);
+    return databaseService.getCLISessionMessages(validated.sessionId);
   });
 }

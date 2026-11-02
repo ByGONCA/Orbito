@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { ProjectDescriptor, WorkspaceConfig, MemoryRecord, MemoryTier } from '../../shared/types';
+import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider } from '../../shared/cli';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -82,6 +83,27 @@ export class DatabaseService {
         key TEXT PRIMARY KEY,
         encrypted_value TEXT NOT NULL,
         updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS cli_sessions (
+        id TEXT PRIMARY KEY,
+        provider TEXT NOT NULL,
+        project_id TEXT,
+        status TEXT NOT NULL DEFAULT 'idle',
+        prompt TEXT NOT NULL,
+        exit_code INTEGER,
+        duration_ms INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS cli_session_messages (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        FOREIGN KEY(session_id) REFERENCES cli_sessions(id) ON DELETE CASCADE
       );
     `);
   }
@@ -288,6 +310,88 @@ export class DatabaseService {
     const db = this.getAppDb();
     const row = db.prepare('SELECT encrypted_value FROM secrets_store WHERE key = ?').get(key) as any;
     return row ? row.encrypted_value : null;
+  }
+
+  // ==========================================
+  // CLI Sessions & Messages (Phase 2)
+  // ==========================================
+
+  public createCLISession(session: CLISessionRecord): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO cli_sessions (id, provider, project_id, status, prompt, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      session.id,
+      session.provider,
+      session.projectId || null,
+      session.status,
+      session.prompt,
+      session.createdAt,
+      session.updatedAt
+    );
+  }
+
+  public updateCLISession(sessionId: string, status: CLISessionStatus, exitCode?: number, durationMs?: number): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      UPDATE cli_sessions
+      SET status = ?, exit_code = ?, duration_ms = ?, updated_at = ?
+      WHERE id = ?
+    `).run(status, exitCode !== undefined ? exitCode : null, durationMs !== undefined ? durationMs : null, Date.now(), sessionId);
+  }
+
+  public addCLISessionMessage(msg: CLISessionMessage): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO cli_session_messages (id, session_id, role, content, timestamp)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(msg.id, msg.sessionId, msg.role, msg.content, msg.timestamp);
+  }
+
+  public listCLISessions(projectId?: string, provider?: CLIProvider): CLISessionRecord[] {
+    const db = this.getAppDb();
+    let query = 'SELECT * FROM cli_sessions';
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (projectId) {
+      conditions.push('project_id = ?');
+      params.push(projectId);
+    }
+    if (provider) {
+      conditions.push('provider = ?');
+      params.push(provider);
+    }
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+    query += ' ORDER BY created_at DESC LIMIT 50';
+
+    const rows = db.prepare(query).all(...params) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      provider: r.provider,
+      projectId: r.project_id || undefined,
+      status: r.status,
+      prompt: r.prompt,
+      exitCode: r.exit_code !== null ? r.exit_code : undefined,
+      durationMs: r.duration_ms !== null ? r.duration_ms : undefined,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    }));
+  }
+
+  public getCLISessionMessages(sessionId: string): CLISessionMessage[] {
+    const db = this.getAppDb();
+    const rows = db.prepare('SELECT * FROM cli_session_messages WHERE session_id = ? ORDER BY timestamp ASC').all(sessionId) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      sessionId: r.session_id,
+      role: r.role,
+      content: r.content,
+      timestamp: r.timestamp
+    }));
   }
 
   // ==========================================

@@ -1,5 +1,12 @@
 import { create } from 'zustand';
 import type { ProjectDescriptor, FileNode, UIMode, SystemResourceMetrics } from '../../../shared/types';
+import type {
+  CLIProvider,
+  CLIInstallationStatus,
+  CLIAuthStatus,
+  CLISessionStatus,
+  CLISessionRecord
+} from '../../../shared/cli';
 
 interface WorkspaceState {
   project: ProjectDescriptor | null;
@@ -13,6 +20,20 @@ interface WorkspaceState {
   metrics: SystemResourceMetrics | null;
   logs: Array<{ id: string; timestamp: string; message: string; level: 'info' | 'warn' | 'error' }>;
 
+  // CLI Engine State (Phase 2)
+  cliStatuses: Record<CLIProvider, CLIInstallationStatus> | null;
+  cliAuthStatuses: Record<CLIProvider, CLIAuthStatus> | null;
+  activeProvider: CLIProvider;
+  activeSessionId: string | null;
+  sessionStatus: CLISessionStatus;
+  streamOutput: string;
+  customPaths: Record<CLIProvider, string>;
+  sessionsHistory: CLISessionRecord[];
+
+  // UI View Tabs
+  activeCenterTab: 'code' | 'providers' | 'console';
+  setActiveCenterTab: (tab: 'code' | 'providers' | 'console') => void;
+
   setProject: (project: ProjectDescriptor | null) => void;
   setFiles: (files: FileNode[]) => void;
   setActiveFile: (path: string, content: string) => void;
@@ -24,6 +45,17 @@ interface WorkspaceState {
   setMetrics: (metrics: SystemResourceMetrics) => void;
   addLog: (message: string, level?: 'info' | 'warn' | 'error') => void;
   clearLogs: () => void;
+
+  // CLI Actions
+  setCLIStatuses: (statuses: Record<CLIProvider, CLIInstallationStatus>) => void;
+  setCLIAuthStatuses: (auths: Record<CLIProvider, CLIAuthStatus>) => void;
+  setActiveProvider: (provider: CLIProvider) => void;
+  setActiveSessionId: (sessionId: string | null) => void;
+  setSessionStatus: (status: CLISessionStatus) => void;
+  appendStreamOutput: (text: string) => void;
+  clearStreamOutput: () => void;
+  setCustomPath: (provider: CLIProvider, path: string) => void;
+  setSessionsHistory: (sessions: CLISessionRecord[]) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
@@ -45,9 +77,23 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     }
   ],
 
+  // CLI Initial State
+  cliStatuses: null,
+  cliAuthStatuses: null,
+  activeProvider: 'claude',
+  activeSessionId: null,
+  sessionStatus: 'idle',
+  streamOutput: '',
+  customPaths: { claude: '', codex: '', gemini: '' },
+  sessionsHistory: [],
+
+  activeCenterTab: 'code',
+  setActiveCenterTab: (activeCenterTab) => set({ activeCenterTab }),
+
   setProject: (project) => set({ project }),
   setFiles: (files) => set({ files }),
-  setActiveFile: (activeFilePath, activeFileContent) => set({ activeFilePath, activeFileContent }),
+  setActiveFile: (activeFilePath, activeFileContent) =>
+    set({ activeFilePath, activeFileContent, activeCenterTab: 'code' }),
   closeActiveFile: () => set({ activeFilePath: null, activeFileContent: null }),
   setUiMode: (uiMode) => set({ uiMode }),
   setTheme: (theme) => set({ theme }),
@@ -75,5 +121,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         }
       ]
     })),
-  clearLogs: () => set({ logs: [] })
+  clearLogs: () => set({ logs: [] }),
+
+  // CLI Action Implementations
+  setCLIStatuses: (cliStatuses) => set({ cliStatuses }),
+  setCLIAuthStatuses: (cliAuthStatuses) => set({ cliAuthStatuses }),
+  setActiveProvider: (activeProvider) => set({ activeProvider }),
+  setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
+  setSessionStatus: (sessionStatus) => set({ sessionStatus }),
+  appendStreamOutput: (text) => set((s) => ({ streamOutput: s.streamOutput + text })),
+  clearStreamOutput: () => set({ streamOutput: '' }),
+  setCustomPath: (provider, p) =>
+    set((s) => ({
+      customPaths: { ...s.customPaths, [provider]: p }
+    })),
+  setSessionsHistory: (sessionsHistory) => set({ sessionsHistory })
 }));

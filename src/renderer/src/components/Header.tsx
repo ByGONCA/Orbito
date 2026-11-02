@@ -6,12 +6,24 @@ import {
   Sparkles,
   Terminal,
   Activity,
-  Layers
+  Layers,
+  Code2,
+  Cpu
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 
 export const Header: React.FC = () => {
-  const { project, uiMode, setUiMode, setProject, setFiles, toggleSettings, addLog } = useWorkspaceStore();
+  const {
+    project,
+    uiMode,
+    setUiMode,
+    setProject,
+    setFiles,
+    toggleSettings,
+    addLog,
+    activeCenterTab,
+    setActiveCenterTab
+  } = useWorkspaceStore();
 
   const handleOpenFolder = async () => {
     try {
@@ -65,11 +77,50 @@ export const Header: React.FC = () => {
         )}
       </div>
 
-      {/* Center / Action Controls */}
+      {/* Center View Switcher */}
+      <div className="flex items-center gap-1 bg-secondary/80 p-0.5 rounded-lg border border-border">
+        <button
+          onClick={() => setActiveCenterTab('code')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'code'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Code2 className="w-3.5 h-3.5" />
+          <span>Editor</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCenterTab('providers')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'providers'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Cpu className="w-3.5 h-3.5 text-primary" />
+          <span>AI Providers</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCenterTab('console')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+            activeCenterTab === 'console'
+              ? 'bg-background text-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Terminal className="w-3.5 h-3.5" />
+          <span>CLI Console</span>
+        </button>
+      </div>
+
+      {/* Right Controls */}
       <div className="flex items-center gap-2">
         <button
           onClick={handleOpenFolder}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded border border-border transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded border border-border transition-colors"
         >
           <FolderOpen className="w-3.5 h-3.5" />
           <span>Open Folder</span>

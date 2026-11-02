@@ -1,0 +1,95 @@
+import { z } from 'zod';
+
+export type CLIProvider = 'claude' | 'codex' | 'gemini';
+
+export type AuthType = 'oauth' | 'api-key' | 'adc' | 'missing';
+
+export type CLISessionStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface CLIInstallationStatus {
+  provider: CLIProvider;
+  isInstalled: boolean;
+  resolvedPath?: string;
+  version?: string;
+  isCompatible: boolean;
+  requiresUpdate: boolean;
+  installGuideUrl: string;
+}
+
+export interface CLIAuthStatus {
+  provider: CLIProvider;
+  isAuthenticated: boolean;
+  authType: AuthType;
+  details?: string;
+}
+
+export interface CLICapabilities {
+  supportsStreaming: boolean;
+  supportsResume: boolean;
+  supportsHeadlessPrompt: boolean;
+  supportsJsonOutput: boolean;
+}
+
+export interface CLISessionRecord {
+  id: string;
+  provider: CLIProvider;
+  projectId?: string;
+  status: CLISessionStatus;
+  createdAt: number;
+  updatedAt: number;
+  prompt: string;
+  exitCode?: number;
+  durationMs?: number;
+}
+
+export interface CLISessionMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system' | 'error';
+  content: string;
+  timestamp: number;
+}
+
+export interface CLIStreamEvent {
+  sessionId: string;
+  type: 'stdout' | 'stderr' | 'status' | 'exit';
+  content: string;
+  timestamp: number;
+  exitCode?: number;
+}
+
+// ==========================================
+// Zod Schemas for Runtime IPC Validation
+// ==========================================
+
+export const DetectCLIsSchema = z.object({
+  customPaths: z.record(z.string()).optional()
+});
+
+export const CheckCLIAuthSchema = z.object({
+  provider: z.enum(['claude', 'codex', 'gemini']),
+  customPath: z.string().optional()
+});
+
+export const ExecuteCLIPromptSchema = z.object({
+  provider: z.enum(['claude', 'codex', 'gemini']),
+  prompt: z.string().min(1),
+  projectId: z.string().optional(),
+  workingDirectory: z.string().min(1),
+  customPath: z.string().optional(),
+  timeoutSeconds: z.number().int().min(5).max(600).default(120),
+  resumeSessionId: z.string().optional()
+});
+
+export const CancelCLISessionSchema = z.object({
+  sessionId: z.string().min(1)
+});
+
+export const ListCLISessionsSchema = z.object({
+  projectId: z.string().optional(),
+  provider: z.enum(['claude', 'codex', 'gemini']).optional()
+});
+
+export const GetSessionMessagesSchema = z.object({
+  sessionId: z.string().min(1)
+});

@@ -42,44 +42,56 @@
 ## 2. Phase 1 Implementation Plan & Work Packages
 
 ```
-Phase 1: Foundation & Benchmarking
-├── WP 1.1: Project Scaffolding & Native Toolchain Configuration
-│   ├── Vite 6 + Electron 34 configuration (main, preload, renderer entries)
-│   ├── TypeScript path aliases (@main/*, @preload/*, @renderer/*, @shared/*)
-│   ├── Tailwind CSS v4 + PostCSS + shadcn/ui component library setup
-│   ├── Native build scripts with @electron/rebuild for better-sqlite3 and @parcel/watcher
-│   └── ESLint, Prettier, and Vitest test runner configuration
+Phase 1: Foundation & Benchmarking (COMPLETED)
+├── WP 1.1: Project Scaffolding & Native Toolchain Configuration [DONE]
+├── WP 1.2: IPC Contract & Security Architecture [DONE]
+├── WP 1.3: Dual SQLite Persistence & Credential Keyring [DONE]
+├── WP 1.4: Workspace & Project Management Engine [DONE]
+├── WP 1.5: UI Shell & Core Components [DONE]
+└── WP 1.6: Verification & Automated Performance Benchmarks [DONE]
+```
+
+### 2.1 Phase 2 Implementation Plan & Work Packages (IN PROGRESS)
+
+```
+Phase 2: CLI Engine & Provider Adapters
+├── WP 2.1: Domain Types & Unified Contract (@shared/cli)
+│   ├── Provider identifier types ('claude' | 'codex' | 'gemini')
+│   ├── Installation, auth status, and capability schemas
+│   ├── Normalized stream event types ('stdout', 'stderr', 'status', 'token_usage', 'exit')
+│   └── Typed IPC channels for detection, execution, streaming, and session history
 │
-├── WP 1.2: IPC Contract & Security Architecture
-│   ├── Shared TypeScript IPC contract types and Zod schema validators
-│   ├── Secure Preload bridge using contextBridge.exposeInMainWorld()
-│   ├── Content Security Policy (CSP) header enforcement
-│   └── Window lifecycle management (bounds persistence, graceful exit)
+├── WP 2.2: Provider Adapters (Decoupled & Normalized)
+│   ├── ICLIAdapter base contract & helper utilities (path lookup, semver probe)
+│   ├── ClaudeCodeAdapter (@anthropic-ai/claude-code, ~/.claude.json, resume support)
+│   ├── CodexAdapter (codex/openai CLI, API key, stdin/exec piping)
+│   └── GeminiAdapter (gemini/gcloud CLI, ADC/API key detection)
 │
-├── WP 1.3: Dual SQLite Persistence & Credential Keyring
-│   ├── better-sqlite3 setup with dual databases (app.sqlite and index.sqlite)
-│   ├── Drizzle ORM schema definition (workspaces, projects, files, settings, memories)
-│   ├── SQLite WAL mode configuration, busy timeout (5000ms), and automated migration runner
-│   └── OS safeStorage integration for encrypted credential storage
+├── WP 2.3: Process Execution Engine
+│   ├── Process spawn with shell: false and clean argument arrays
+│   ├── Process tree clean termination (taskkill /pid /T /F on Win, process groups on POSIX)
+│   ├── Real-time stdout/stderr stream parsing and IPC broadcast
+│   ├── Configurable execution timeouts & cancellation tokens
+│   └── Session isolation (preventing cross-session environment or state leakage)
 │
-├── WP 1.4: Workspace & Project Management Engine
-│   ├── Native dialog integration for folder selection (`dialog.showOpenDialog`)
-│   ├── Workspace validation, recent project history persistence
-│   ├── Path traversal & symlink defense utilities (`fs.realpathSync`)
-│   └── High-performance file system watcher service (@parcel/watcher)
+├── WP 2.4: Session Manager & SQLite Persistence
+│   ├── Schema migration: cli_sessions and cli_session_messages tables in app.sqlite
+│   ├── Association with workspaceId and currentProjectId
+│   ├── Execution history tracking (status, exit code, duration, token metrics)
+│   └── Capability-gated session resumption (only enabled when supported by provider)
 │
-├── WP 1.5: UI Shell & Core Components
-│   ├── App layout: Collapsible 4-pane layout (Left, Center, Right, Bottom)
-│   ├── Mode switcher: "Simple Mode" vs "Advanced Mode"
-│   ├── Virtualized File Explorer (@tanstack/react-virtual) with file icons
-│   ├── Status bar: system resource indicator, active project, Git branch pill
-│   └── Settings modal: theme toggle, storage directory, credential management
+├── WP 2.5: UI AI Providers Panel & Stream Console
+│   ├── Providers overview tab in UI showing detection, version, and auth status
+│   ├── Custom executable path configuration inputs per provider
+│   ├── Active provider selector
+│   ├── Real-time execution stream console with auto-scroll and status pills
+│   └── Actionable, human-readable error banners for missing binaries or auth failures
 │
-└── WP 1.6: Verification & Automated Performance Benchmarks
-    ├── Unit tests for path validation, IPC schemas, and SQLite migrations (Vitest)
-    ├── Cross-platform tests (Windows, macOS, Linux) for lifecycle and process tree termination
-    ├── Automated performance harness tracking startup time, idle RAM, and CPU
-    └── E2E tests for Electron window launch, directory opening, and state persistence (Playwright)
+└── WP 2.6: Test Suite (Mocks & Integration)
+    ├── Unit tests with process mocks for Claude Code, Codex, and Gemini adapters
+    ├── Execution engine tests (streaming, timeout, clean tree kill, error normalization)
+    ├── SQLite session persistence & history querying tests
+    └── Integration test harness separating mocked runs from live binary checks
 ```
 
 ---
