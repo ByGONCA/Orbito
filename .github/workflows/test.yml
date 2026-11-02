@@ -2,9 +2,9 @@ name: CI Matrix (Cross-Platform)
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   native-matrix:
@@ -43,3 +43,6 @@ jobs:
 
       - name: Run Test Suite
         run: npm test
+
+      - name: Run Production Build
+        run: npm run build

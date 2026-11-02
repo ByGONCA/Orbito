@@ -2296,8 +2296,9 @@ export class DatabaseService {
   public close(): void {
     if (this.appDb) {
       try {
-        this.appDb.pragma('wal_checkpoint(TRUNCATE)');
-        this.appDb.close();
+        if (this.appDb.open) {
+          this.appDb.close();
+        }
       } catch (err) {
         console.error('Error closing appDb:', err);
       }
@@ -2306,8 +2307,9 @@ export class DatabaseService {
 
     if (this.indexDb) {
       try {
-        this.indexDb.pragma('wal_checkpoint(TRUNCATE)');
-        this.indexDb.close();
+        if (this.indexDb.open) {
+          this.indexDb.close();
+        }
       } catch (err) {
         console.error('Error closing indexDb:', err);
       }

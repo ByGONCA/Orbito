@@ -5,6 +5,7 @@ import { registerIpcHandlers } from './ipc/register';
 import { skillRegistry } from './skills/skill-registry';
 import { agentOrchestrator } from './agents/agent-orchestrator';
 import { extensionRegistry } from './extensions/extension-registry';
+import { airGapManager } from './services/air-gap.manager';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -30,9 +31,31 @@ function createWindow(): BrowserWindow {
     win.show();
   });
 
+  // Guard external navigation and restrict protocols strictly to http/https
   win.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    try {
+      const parsed = new URL(details.url);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        shell.openExternal(details.url);
+      }
+    } catch {
+      // Ignore invalid or disallowed protocols
+    }
     return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url !== win.webContents.getURL()) {
+      event.preventDefault();
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+          shell.openExternal(url);
+        }
+      } catch {
+        // Disallow
+      }
+    }
   });
 
   // HMR or production file load
@@ -78,7 +101,29 @@ if (!gotTheLock) {
       });
     });
 
-    // 3. Register IPC handlers
+    // 3. Air-Gap webRequest interceptor (cancels outbound network requests if Air-Gap is enabled)
+    session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+      if (airGapManager.isAirGapEnabled()) {
+        try {
+          const parsed = new URL(details.url);
+          const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+          const isLocal =
+            hostname === '127.0.0.1' ||
+            hostname === 'localhost' ||
+            hostname === '::1' ||
+            hostname.startsWith('127.');
+          if (!isLocal && parsed.protocol !== 'file:' && parsed.protocol !== 'devtools:') {
+            callback({ cancel: true });
+            return;
+          }
+        } catch {
+          // Ignore unparseable internal URLs
+        }
+      }
+      callback({ cancel: false });
+    });
+
+    // 4. Register IPC handlers
     registerIpcHandlers();
 
     // 4. Create Window

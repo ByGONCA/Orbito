@@ -10,7 +10,8 @@ import type {
 import { WorkflowValidator } from './workflow-validator';
 import { NODE_EXECUTORS, type NodeExecutionContext } from './node-executors';
 import { databaseService } from '../db/database.service';
-import { SkillPermissionManager } from '../skills/skill-permission-manager';
+import { SkillPermissionManager, type WorkspacePermissionTier } from '../skills/skill-permission-manager';
+import { airGapManager } from '../services/air-gap.manager';
 
 export class WorkflowEngine {
   private activeExecutions = new Map<string, { cancelled: boolean; workflowId: string }>();
@@ -260,7 +261,14 @@ export class WorkflowEngine {
 
     // Check permissions
     if (node.data.requiredPermissions) {
-      const allowed = SkillPermissionManager.evaluate(node.data.requiredPermissions, 'permissive');
+      if (airGapManager.isAirGapEnabled() && node.data.requiredPermissions.network?.allowed) {
+        throw new Error(
+          `Permission denied for node "${node.data.label}": Network egress is forbidden under active Air-Gap isolation mode.`
+        );
+      }
+
+      const tier: WorkspacePermissionTier = airGapManager.isAirGapEnabled() ? 'strict' : 'standard';
+      const allowed = SkillPermissionManager.evaluate(node.data.requiredPermissions, tier);
       if (!allowed.allowed) {
         throw new Error(
           `Permission denied for node "${node.data.label}": ${allowed.violations.join(', ')}`

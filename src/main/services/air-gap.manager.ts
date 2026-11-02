@@ -86,23 +86,63 @@ export class AirGapManager {
     let hostname = '';
     try {
       const parsed = new URL(targetUrl.includes('://') ? targetUrl : `http://${targetUrl}`);
-      hostname = parsed.hostname.toLowerCase();
+      hostname = parsed.hostname;
     } catch {
-      hostname = targetUrl.toLowerCase();
+      hostname = targetUrl;
     }
 
-    const isAllowed = this.config.allowedHosts.some(
-      (h) => h.toLowerCase() === hostname || hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1'
-    );
+    // Strip IPv6 brackets if present e.g. [::1] -> ::1
+    const cleanHost = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+
+    // Check against allowed loopback addresses or custom allowed hosts
+    const isLoopback =
+      cleanHost === 'localhost' ||
+      cleanHost === '127.0.0.1' ||
+      cleanHost.startsWith('127.') ||
+      cleanHost === '::1' ||
+      cleanHost === '0:0:0:0:0:0:0:1' ||
+      cleanHost === '0.0.0.0';
+
+    const isAllowed =
+      isLoopback ||
+      this.config.allowedHosts.some((h) => {
+        const cleanAllowed = h.replace(/^\[|\]$/g, '').toLowerCase();
+        return cleanAllowed === cleanHost;
+      });
 
     if (!isAllowed) {
-      const err = `Outbound network egress to '${hostname}' rejected: Air-Gap isolation mode is active.`;
+      const err = `Outbound network egress to '${cleanHost}' rejected: Air-Gap isolation mode is active.`;
       auditService.logSecurityViolation(actor, 'network_egress_blocked', err, targetUrl, undefined, {
-        hostname,
+        hostname: cleanHost,
         targetUrl
       });
       throw new AirGapViolationException(err);
     }
+  }
+
+  /**
+   * Provides hardened environment variables for child processes when Air-Gap is active.
+   * Sets dead-end localhost proxies and offline flags to prevent tools/CLIs from egressing.
+   */
+  public getChildProcessEnv(baseEnv: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+    if (!this.config.enabled) {
+      return { ...baseEnv };
+    }
+
+    return {
+      ...baseEnv,
+      HTTP_PROXY: 'http://127.0.0.1:0',
+      HTTPS_PROXY: 'http://127.0.0.1:0',
+      ALL_PROXY: 'http://127.0.0.1:0',
+      http_proxy: 'http://127.0.0.1:0',
+      https_proxy: 'http://127.0.0.1:0',
+      all_proxy: 'http://127.0.0.1:0',
+      NO_PROXY: 'localhost,127.0.0.1,::1',
+      no_proxy: 'localhost,127.0.0.1,::1',
+      npm_config_offline: 'true',
+      PIP_NO_INDEX: 'true',
+      AIR_GAP_MODE: 'true'
+    };
   }
 
   /**

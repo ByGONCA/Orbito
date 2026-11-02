@@ -22,6 +22,12 @@ export class SecurityService {
       throw new SecurityViolationException(err);
     }
 
+    if (targetPath.includes('\0') || workspaceRoot.includes('\0')) {
+      const err = 'Null byte injection detected in path.';
+      auditService.logSecurityViolation('security_kernel', 'null_byte_detected', err, targetPath);
+      throw new SecurityViolationException(err);
+    }
+
     const resolvedRoot = path.resolve(workspaceRoot);
     if (!fs.existsSync(resolvedRoot)) {
       const err = `Workspace root does not exist on disk: ${workspaceRoot}`;

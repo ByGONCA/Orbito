@@ -9,6 +9,7 @@ import { securityService } from '../services/security.service';
 import { contextEngineService } from '../context/context-engine.service';
 import { agentOrchestrator } from '../agents/agent-orchestrator';
 import { SPECIALIST_ROLES } from '../agents/specialist-roles';
+import { airGapManager } from '../services/air-gap.manager';
 
 const execFileAsync = promisify(execFile);
 
@@ -27,7 +28,8 @@ async function runChildProcess(
       cwd,
       timeout: timeoutMs,
       maxBuffer: 10 * 1024 * 1024,
-      shell: isCmd
+      shell: isCmd,
+      env: airGapManager.getChildProcessEnv(process.env)
     });
     return {
       stdout: String(stdout || '').trim(),
@@ -68,7 +70,8 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
   ai_agent: async (node, ctx) => {
     const roleKey = (node.data.config.role || 'backend') as keyof typeof SPECIALIST_ROLES;
     const specialist = SPECIALIST_ROLES[roleKey] || SPECIALIST_ROLES.backend;
-    const providerName = node.data.config.provider || 'claude';
+    const rawProvider = node.data.config.provider || 'claude';
+    const providerName = airGapManager.resolveProvider(rawProvider as any);
     const promptInput = ctx.inputs.prompt || node.data.config.taskPrompt || 'Analyze project';
     const contextInput = ctx.inputs.context ? `\n\nContext:\n${ctx.inputs.context}` : '';
 
@@ -102,6 +105,8 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
   multi_agent_task: async (node, ctx) => {
     const userGoal = ctx.inputs.goal || node.data.config.goal || 'Complete task';
     const mode = node.data.config.mode || 'supervised';
+    const rawProvider = node.data.config.provider || 'claude';
+    const provider = airGapManager.resolveProvider(rawProvider as any);
 
     ctx.onLog?.(`Delegating Multi-Agent task: "${userGoal.slice(0, 60)}..."`);
 
@@ -110,7 +115,7 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
       projectPath: ctx.projectPath,
       userGoal,
       mode: mode as any,
-      provider: 'claude'
+      provider: provider as any
     });
 
     // Wait for orchestration completion or timeout (max 5 minutes)
@@ -146,7 +151,8 @@ export const NODE_EXECUTORS: Record<FlowNodeType, NodeExecutionHandler> = {
   },
 
   ai_prompt: async (node, ctx) => {
-    const providerName = node.data.config.provider || 'claude';
+    const rawProvider = node.data.config.provider || 'claude';
+    const providerName = airGapManager.resolveProvider(rawProvider as any);
     const template = node.data.config.template || '{{input}}';
     const inputVal = typeof ctx.inputs.input === 'object' ? JSON.stringify(ctx.inputs.input) : String(ctx.inputs.input || '');
     const rendered = template.replace(/\{\{input\}\}/g, inputVal);

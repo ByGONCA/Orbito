@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import vm from 'node:vm';
 import type {
   ExtensionManifest,
   ExtensionRecord,
@@ -14,6 +15,22 @@ import { auditService } from '../services/audit.service';
 import { airGapManager } from '../services/air-gap.manager';
 
 export class ExtensionLoader {
+  private static activeModules = new Map<string, IExtensionModule>();
+
+  /**
+   * Validates that contributed skill permissions do not exceed extension manifest permissions.
+   */
+  private static validateSkillPermissions(manifest: ExtensionManifest, skillPerms: any): boolean {
+    if (!skillPerms) return true;
+    if (skillPerms.terminal?.execute && !manifest.permissions?.shell) {
+      return false;
+    }
+    if (skillPerms.network?.allowed && !manifest.permissions?.network?.allowExternal) {
+      return false;
+    }
+    return true;
+  }
+
   /**
    * Computes SHA-256 checksum of an extension folder and manifest.
    */
@@ -112,16 +129,33 @@ export class ExtensionLoader {
   public static async activateExtension(record: ExtensionRecord): Promise<void> {
     const { manifest, installPath } = record;
 
-    // 1. Register contributed workflow nodes
+    // 1. Register contributed workflow nodes with permission validation
     if (manifest.contributes?.nodes && Array.isArray(manifest.contributes.nodes)) {
       for (const node of manifest.contributes.nodes as any[]) {
+        if (node.data?.requiredPermissions?.terminal?.execute && !manifest.permissions?.shell) {
+          auditService.logSecurityViolation(
+            record.id,
+            'node_permission_escalation',
+            `Contributed node '${node.id}' requires terminal execution not granted to extension.`
+          );
+          continue;
+        }
         registerCustomNode(node);
       }
     }
 
-    // 2. Register contributed skills
+    // 2. Register contributed skills with permission validation
     if (manifest.contributes?.skills && Array.isArray(manifest.contributes.skills)) {
       for (const s of manifest.contributes.skills) {
+        if (!this.validateSkillPermissions(manifest, s.requiredPermissions)) {
+          auditService.logSecurityViolation(
+            record.id,
+            'skill_permission_escalation',
+            `Contributed skill '${s.id}' requires permissions exceeding extension manifest.`
+          );
+          continue;
+        }
+
         skillRegistry.registerLoadedSkill({
           id: s.id,
           name: s.name,
@@ -146,12 +180,52 @@ export class ExtensionLoader {
       }
     }
 
-    // 3. If main script is present, dynamically load and run activate()
+    // 3. If main script is present, run inside isolated node:vm sandbox
     if (manifest.main) {
       const entryPath = path.resolve(installPath, manifest.main);
+      const normalizedEntry = path.normalize(entryPath);
+      const normalizedInstall = path.normalize(installPath);
+
+      // Path traversal containment check
+      if (!normalizedEntry.startsWith(normalizedInstall + path.sep) && normalizedEntry !== normalizedInstall) {
+        const err = `Extension main script '${manifest.main}' attempts path traversal outside extension directory.`;
+        auditService.logSecurityViolation(record.id, 'extension_traversal_blocked', err, entryPath);
+        record.status = 'error';
+        record.errorMessage = err;
+        return;
+      }
+
       if (fs.existsSync(entryPath)) {
         try {
-          const mod: IExtensionModule = require(entryPath);
+          const scriptContent = fs.readFileSync(entryPath, 'utf8');
+
+          // Sandboxed execution context without access to process, require, child_process, fs, net
+          const sandbox: Record<string, any> = {
+            console: {
+              log: (...args: any[]) => console.log(`[Ext:${record.id}]`, ...args),
+              warn: (...args: any[]) => console.warn(`[Ext:${record.id}]`, ...args),
+              error: (...args: any[]) => console.error(`[Ext:${record.id}]`, ...args),
+              info: (...args: any[]) => console.info(`[Ext:${record.id}]`, ...args)
+            },
+            setTimeout,
+            clearTimeout,
+            setInterval,
+            clearInterval,
+            exports: {},
+            module: { exports: {} }
+          };
+
+          const vmContext = vm.createContext(sandbox, {
+            codeGeneration: { strings: false, wasm: false }
+          });
+
+          const wrapped = `(function(exports, module) { ${scriptContent}\n})(exports, module);`;
+          const script = new vm.Script(wrapped, { filename: entryPath });
+          script.runInContext(vmContext, { timeout: 3000 });
+
+          const mod: IExtensionModule = sandbox.module?.exports || sandbox.exports;
+          this.activeModules.set(record.id, mod);
+
           if (typeof mod?.activate === 'function') {
             const context: ExtensionContext = {
               extensionId: record.id,
@@ -166,8 +240,16 @@ export class ExtensionLoader {
                   details: { message: msg }
                 });
               },
-              registerNode: (node: any) => registerCustomNode(node),
+              registerNode: (node: any) => {
+                if (node.data?.requiredPermissions?.terminal?.execute && !manifest.permissions?.shell) {
+                  throw new Error(`Extension "${record.id}" cannot register a node requiring terminal execution.`);
+                }
+                registerCustomNode(node);
+              },
               registerSkill: (skillManifest: any) => {
+                if (!this.validateSkillPermissions(manifest, skillManifest.requiredPermissions)) {
+                  throw new Error(`Extension "${record.id}" cannot register a skill with permissions exceeding manifest.`);
+                }
                 skillRegistry.registerLoadedSkill({
                   id: skillManifest.id,
                   name: skillManifest.name,
@@ -220,7 +302,7 @@ export class ExtensionLoader {
    * Deactivates an extension and rolls back contributions.
    */
   public static async deactivateExtension(record: ExtensionRecord): Promise<void> {
-    const { manifest, installPath } = record;
+    const { manifest } = record;
 
     // 1. Unregister contributed workflow nodes
     if (manifest.contributes?.nodes && Array.isArray(manifest.contributes.nodes)) {
@@ -236,19 +318,17 @@ export class ExtensionLoader {
       }
     }
 
-    // 3. Call deactivate if present
+    // 3. Call deactivate on cached sandboxed module if present
     if (manifest.main) {
-      const entryPath = path.resolve(installPath, manifest.main);
-      if (fs.existsSync(entryPath)) {
+      const mod = this.activeModules.get(record.id);
+      if (mod && typeof mod.deactivate === 'function') {
         try {
-          const mod: IExtensionModule = require(entryPath);
-          if (typeof mod?.deactivate === 'function') {
-            await mod.deactivate();
-          }
+          await mod.deactivate();
         } catch (err) {
           console.warn(`[ExtensionLoader] Error in deactivate for ${record.id}:`, err);
         }
       }
+      this.activeModules.delete(record.id);
     }
 
     record.status = 'disabled';

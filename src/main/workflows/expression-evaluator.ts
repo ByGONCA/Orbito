@@ -163,6 +163,13 @@ export class ExpressionEvaluator {
       if (current === null || current === undefined || typeof current !== 'object') {
         return undefined;
       }
+      // Security: Block prototype poisoning and function constructor access
+      if (part === '__proto__' || part === 'prototype' || part === 'constructor') {
+        return undefined;
+      }
+      if (!Object.prototype.hasOwnProperty.call(current, part) && !(part in current)) {
+        return undefined;
+      }
       current = current[part];
     }
     return current;
