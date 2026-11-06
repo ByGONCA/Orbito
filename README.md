@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/assets/orbito-banner.jpg" alt="Orbito" width="680" />
+</p>
+
 # ORBITO
 
 **The unified, local-first development workspace for projects, terminals, processes, and agentic workflows.**
@@ -134,6 +138,7 @@ npm run dev
 ```text
 Orbito/
 ├── .github/
+│   ├── assets/                # Logos, banners, and brand assets
 │   ├── workflows/             # CI matrix workflows (Windows, macOS, Linux)
 │   └── FUNDING.yml            # Project sponsorship configuration
 ├── docs/                      # Architectural designs, security models, PRD, and reports
@@ -207,7 +212,17 @@ Contributions to Orbito are welcome. As an open-source project, we value high-qu
 
 Orbito is free and open-source software built for the developer community. If Orbito helps streamline your workflow and you would like to support ongoing development, voluntary contributions are greatly appreciated:
 
-[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20baptista-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white)](https://ko-fi.com/baptista)
+<p align="center">
+  <a href="https://ko-fi.com/baptista" target="_blank">
+    <img src=".github/assets/kofi-support.jpg" alt="Support baptista on Ko-fi" width="560" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://ko-fi.com/baptista" target="_blank">
+    <img src="https://img.shields.io/badge/Ko--fi-Support%20baptista-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Support on Ko-fi" />
+  </a>
+</p>
 
 *Support is completely voluntary and goes directly toward maintaining and advancing open-source development.*
 
