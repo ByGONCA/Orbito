@@ -126,6 +126,9 @@ export class ExecutionEngine extends EventEmitter {
     customPath?: string;
     timeoutSeconds?: number;
     resumeSessionId?: string;
+    enableContext?: boolean;
+    enableSkills?: boolean;
+    maxContextTokens?: number;
   }): Promise<{ sessionId: string }> {
     const {
       sessionId,
@@ -135,7 +138,10 @@ export class ExecutionEngine extends EventEmitter {
       projectId,
       customPath,
       timeoutSeconds = 120,
-      resumeSessionId
+      resumeSessionId,
+      enableContext = true,
+      enableSkills = true,
+      maxContextTokens = 4000
     } = params;
 
     // 0. Air-gap provider routing
@@ -168,43 +174,48 @@ export class ExecutionEngine extends EventEmitter {
     let finalPrompt = prompt;
     let contextNotice: string | null = null;
 
-    if (!isShell) {
+    if (!isShell && (enableContext || enableSkills)) {
       try {
         let assembledText = '';
         let fileCount = 0;
         let tokenEstimate = 0;
 
         // Context Retrieval
-        const fragments = await contextRetrievalService.retrieve({
-          taskDescription: prompt,
-          maxCandidates: 10
-        });
-
-        if (fragments.length > 0) {
-          const assembly = await contextAssemblyService.assemble({
-            projectPath: canonicalWorkDir,
-            fragments,
-            maxTokens: 4000,
-            modelTarget: effectiveProvider
+        if (enableContext) {
+          const fragments = await contextRetrievalService.retrieve({
+            taskDescription: prompt,
+            maxCandidates: 10
           });
-          assembledText = assembly.assembledText;
-          fileCount = new Set(assembly.fragments.map((f) => f.filePath)).size;
-          tokenEstimate = assembly.actualTokens || assembly.estimatedTokens;
+
+          if (fragments.length > 0) {
+            const assembly = await contextAssemblyService.assemble({
+              projectPath: canonicalWorkDir,
+              fragments,
+              maxTokens: maxContextTokens,
+              modelTarget: effectiveProvider
+            });
+            assembledText = assembly.assembledText;
+            fileCount = new Set(assembly.fragments.map((f) => f.filePath)).size;
+            tokenEstimate = assembly.actualTokens || assembly.estimatedTokens;
+          }
         }
 
         // Skills Resolution
-        const skillCandidates = SkillResolver.resolve(prompt, effectiveProvider);
-        const matchedSkills = skillCandidates.filter((s) => s.confidence >= 0.5);
         const skillInstructions: string[] = [];
         const skillNames: string[] = [];
 
-        for (const match of matchedSkills) {
-          const skillMeta = match.skill;
-          if (skillMeta && skillMeta.enabled) {
-            const details = SkillLoader.loadDetails(skillMeta);
-            if (details.instructions) {
-              skillInstructions.push(`### Skill: ${details.name}\n${details.instructions}`);
-              skillNames.push(details.name);
+        if (enableSkills) {
+          const skillCandidates = SkillResolver.resolve(prompt, effectiveProvider);
+          const matchedSkills = skillCandidates.filter((s) => s.confidence >= 0.5);
+
+          for (const match of matchedSkills) {
+            const skillMeta = match.skill;
+            if (skillMeta && skillMeta.enabled) {
+              const details = SkillLoader.loadDetails(skillMeta);
+              if (details.instructions) {
+                skillInstructions.push(`### Skill: ${details.name}\n${details.instructions}`);
+                skillNames.push(details.name);
+              }
             }
           }
         }
@@ -330,6 +341,12 @@ export class ExecutionEngine extends EventEmitter {
       if (cmdSpec.env) {
         Object.assign(env, cmdSpec.env);
       }
+    }
+
+    // If the target executable is Electron (e.g. test harness using process.execPath),
+    // preserve ELECTRON_RUN_AS_NODE so Electron runs as a node CLI rather than opening a GUI window
+    if (path.basename(executable).toLowerCase().includes('electron') && process.env.ELECTRON_RUN_AS_NODE) {
+      env['ELECTRON_RUN_AS_NODE'] = '1';
     }
 
     // Spawn child process with isolated environment

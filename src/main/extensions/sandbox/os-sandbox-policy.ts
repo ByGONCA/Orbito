@@ -55,6 +55,23 @@ export class OSSandboxPolicy {
   }
 
   /**
+   * Resolves the appropriate Node binary to execute sandboxed child processes.
+   * In Electron environments, electron.exe lacks the --permission CLI flag,
+   * so we resolve to the system 'node' binary if available.
+   */
+  public resolveNodeBinary(): string {
+    if (!process.versions.electron && !process.env.ELECTRON_RUN_AS_NODE) {
+      return process.execPath;
+    }
+    try {
+      execFileSync('node', ['--version'], { timeout: 1000, stdio: 'ignore' });
+      return 'node';
+    } catch {
+      return process.execPath;
+    }
+  }
+
+  /**
    * Probes and caches current operating system and runtime sandboxing capabilities.
    */
   public detectCapabilities(): OSSandboxCapabilities {
@@ -67,13 +84,14 @@ export class OSSandboxPolicy {
     // 1. Detect Node Permission Model support
     // In Node 20+, the permission system is built into the node executable
     let hasNodePermissionModel = false;
+    const nodeBinary = this.resolveNodeBinary();
     try {
       if (typeof (process as any).permission !== 'undefined') {
         hasNodePermissionModel = true;
       } else {
         // Probe via fast test invocation of node binary with --permission
-        const testRes = execFileSync(
-          process.execPath,
+        execFileSync(
+          nodeBinary,
           ['--permission', '-e', 'process.exit(0)'],
           { timeout: 1500, stdio: 'ignore' }
         );

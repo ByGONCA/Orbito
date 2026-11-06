@@ -3,6 +3,7 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
 import { app, BrowserWindow, shell, session } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import { databaseService } from './db/database.service';
 import { registerIpcHandlers } from './ipc/register';
 import { skillRegistry } from './skills/skill-registry';
@@ -10,6 +11,7 @@ import { agentOrchestrator } from './agents/agent-orchestrator';
 import { extensionRegistry } from './extensions/extension-registry';
 import { airGapManager } from './services/air-gap.manager';
 import { appLogger } from './services/app-logger';
+import { discordRpcService } from './services/discord/discord-rpc.service';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -24,6 +26,7 @@ process.on('unhandledRejection', (reason) => {
 
 function createWindow(): BrowserWindow {
   const isDev = !app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
+  const iconPath = path.join(__dirname, '../../resources/Orbit.png');
 
   const win = new BrowserWindow({
     width: 1280,
@@ -34,7 +37,8 @@ function createWindow(): BrowserWindow {
     frame: false,
     titleBarStyle: 'hidden',
     autoHideMenuBar: true,
-    title: `AI Workspace${isDev ? ' [DEV]' : ''}`,
+    title: `Orbito${isDev ? ' [DEV]' : ''}`,
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     backgroundColor: '#101113',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -54,8 +58,9 @@ function createWindow(): BrowserWindow {
   });
 
   win.once('ready-to-show', () => {
-    if (!win.isDestroyed() && !win.isVisible()) {
+    if (!win.isDestroyed()) {
       win.show();
+      win.focus();
       appLogger.info('Window', 'Main desktop window ready and visible');
     }
     if (isDev && (process.env.DEBUG_DEVTOOLS === '1' || process.env.ELECTRON_DEVTOOLS === 'true')) {
@@ -67,9 +72,10 @@ function createWindow(): BrowserWindow {
   setTimeout(() => {
     if (!win.isDestroyed() && !win.isVisible()) {
       win.show();
+      win.focus();
       appLogger.info('Window', 'Main window shown via timeout fallback');
     }
-  }, 4000);
+  }, 2500);
 
   // Pipe renderer console errors to main terminal for diagnostics
   win.webContents.on('console-message', (_, level, message, line, sourceId) => {
@@ -178,20 +184,22 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     const isDev = !app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
     appLogger.info('Main', `========================================================`);
-    appLogger.info('Main', `AI Workspace v0.1.0 starting [Mode: ${isDev ? 'DEVELOPMENT' : 'PRODUCTION'}]`);
+    appLogger.info('Main', `Orbito v0.1.0 starting [Mode: ${isDev ? 'DEVELOPMENT' : 'PRODUCTION'}]`);
     appLogger.info('Main', `Node ${process.version} | Electron ${process.versions.electron} | ${process.platform} (${process.arch})`);
     appLogger.info('Main', `========================================================`);
 
     try {
       // 1. Initialize Dual SQLite databases & services
-      const appDataPath = path.join(app.getPath('userData'), 'data');
+      const appDataPath = isDev
+        ? path.join(process.cwd(), '.ai-workspace-data')
+        : path.join(app.getPath('userData'), 'data');
       appLogger.info('Database', `Initializing Dual SQLite persistence at ${appDataPath}`);
-      databaseService.initialize();
+      databaseService.initialize(appDataPath);
       databaseService.recoverWorkflowExecutionsOnStartup();
       databaseService.recoverCLISessionsOnStartup();
-      skillRegistry.initialize();
+      skillRegistry.initialize(appDataPath);
       agentOrchestrator.initialize();
-      extensionRegistry.initialize();
+      extensionRegistry.initialize(appDataPath);
       appLogger.info('Main', 'Core services initialized successfully');
     } catch (err: any) {
       appLogger.error('Main', `Critical startup error: ${err.message}`, err);
@@ -237,7 +245,12 @@ if (!gotTheLock) {
     // 4. Register IPC handlers
     registerIpcHandlers();
 
-    // 5. Create Window
+    // 5. Initialize Discord Rich Presence Service
+    discordRpcService.initialize().catch((err) => {
+      appLogger.warn('Main', `Discord RPC initialization non-fatal error: ${err.message}`);
+    });
+
+    // 6. Create Window
     mainWindow = createWindow();
 
     app.on('activate', () => {
@@ -249,6 +262,7 @@ if (!gotTheLock) {
 
   app.on('before-quit', () => {
     appLogger.info('Main', 'Application shutting down, closing database handles...');
+    discordRpcService.shutdown().catch(() => {});
     databaseService.close();
   });
 

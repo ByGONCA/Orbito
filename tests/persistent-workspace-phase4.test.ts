@@ -27,9 +27,10 @@ vi.mock('better-sqlite3', () => {
               const [id, name, ui_mode, theme, auto_index, created_at, updated_at] = params;
               dbTables.workspaces.set(id, { id, name, ui_mode, theme, auto_index, created_at, updated_at, layout_json: '{}' });
             } else if (normalized.includes('UPDATE workspaces SET ui_mode')) {
-              const [ui_mode, theme, auto_index, current_project_id, updated_at, id] = params;
+              const id = params[params.length - 1];
+              const [ui_mode, theme, auto_index, current_project_id] = params;
               const current = dbTables.workspaces.get(id) || { id };
-              dbTables.workspaces.set(id, { ...current, ui_mode, theme, auto_index, current_project_id, updated_at });
+              dbTables.workspaces.set(id, { ...current, ui_mode, theme, auto_index, current_project_id, updated_at: params[params.length - 2] });
             } else if (normalized.includes('UPDATE workspaces SET layout_json =')) {
               const [layout_json, updated_at] = params;
               const current = Array.from(dbTables.workspaces.values())[0] || { id: 'default-workspace' };

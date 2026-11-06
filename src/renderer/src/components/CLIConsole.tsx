@@ -18,6 +18,9 @@ export const CLIConsole: React.FC = () => {
     project,
     activeProvider,
     setActiveProvider,
+    cliStatuses,
+    cliAuthStatuses,
+    setCLIStatuses,
     customPaths,
     activeSessionId,
     setActiveSessionId,
@@ -33,6 +36,15 @@ export const CLIConsole: React.FC = () => {
 
   const [prompt, setPrompt] = useState('');
   const outputEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-detect CLI statuses if null on mount
+  useEffect(() => {
+    if (!cliStatuses) {
+      window.api?.detectCLIs?.({ customPaths }).then((res) => {
+        if (res) setCLIStatuses(res);
+      }).catch(() => {});
+    }
+  }, [cliStatuses, customPaths, setCLIStatuses]);
 
   // Subscribe to real-time IPC stream events
   useEffect(() => {
@@ -190,6 +202,24 @@ export const CLIConsole: React.FC = () => {
             )}
             <div ref={outputEndRef} />
           </div>
+
+          {/* Active Provider Guidance Alert */}
+          {cliStatuses?.[activeProvider] && !cliStatuses[activeProvider]?.isInstalled && (
+            <div className="border-t border-amber-500/20 bg-amber-500/5 px-3 py-1.5 flex items-center justify-between text-[11px] text-amber-300">
+              <div className="flex items-center gap-1.5 truncate">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <span className="truncate">{activeProvider.toUpperCase()} CLI is not found on PATH. Configure executable path in Providers or install globally.</span>
+              </div>
+            </div>
+          )}
+          {cliStatuses?.[activeProvider]?.isInstalled && cliAuthStatuses?.[activeProvider]?.state === 'authentication_required' && (
+            <div className="border-t border-amber-500/20 bg-amber-500/5 px-3 py-1.5 flex items-center justify-between text-[11px] text-amber-300">
+              <div className="flex items-center gap-1.5 truncate">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <span className="truncate">{activeProvider.toUpperCase()} CLI requires login: {cliAuthStatuses[activeProvider]?.details || 'Set API key in environment'}</span>
+              </div>
+            </div>
+          )}
 
           {/* Interactive Prompt Input Bar */}
           <div className="border-t border-border p-3 bg-card/40 flex items-center gap-2">

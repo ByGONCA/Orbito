@@ -32,6 +32,7 @@ export interface ProjectSettings {
   instructions?: string;
   gitAutoFetch?: boolean;
   envVars?: Record<string, string>;
+  discordRpcEnabled?: boolean;
 }
 
 export interface ProjectDescriptor {
@@ -60,6 +61,28 @@ export interface WorkspaceConfig {
   autoIndex: boolean;
   fileIconTheme?: 'material' | 'minimal';
   showGitFileColors?: boolean;
+  discordRpcEnabled?: boolean;
+  discordClientId?: string;
+}
+
+export type DiscordConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';
+
+export interface DiscordActivitySnapshot {
+  details: string;
+  state: string;
+  buttons?: Array<{ label: string; url: string }>;
+  startTimestamp?: number;
+}
+
+export interface DiscordStatusResponse {
+  enabled: boolean;
+  connected: boolean;
+  status: DiscordConnectionState;
+  currentPresence: DiscordActivitySnapshot | null;
+  error: string | null;
+  clientId: string;
+  isProjectOptedIn: boolean;
+  activeProjectName: string | null;
 }
 
 export interface AppLayoutConfig {

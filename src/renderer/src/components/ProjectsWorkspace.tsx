@@ -173,22 +173,19 @@ export const ProjectsWorkspace: React.FC = () => {
         <div className="max-w-lg w-full mx-auto my-auto py-6 space-y-4">
           {/* 1. Minimal Center Card */}
           <div className="p-6 text-center space-y-4 border border-white/[0.08] rounded-2xl bg-white/[0.02]">
-            {/* Minimal App Icon */}
-            <div className="w-10 h-10 mx-auto rounded-xl bg-white/[0.05] border border-white/[0.10] flex items-center justify-center text-white shadow-xs">
-              <svg
-                className="w-5 h-5 fill-current text-[#ECEDEF]"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M2.5 14.5C4 11 8 8 13.5 8.5C18 9 20.5 7 21.5 5.5C21 8.5 18.5 12 14.5 13C10.5 14 7 17 4.5 20C4 18 3 16 2.5 14.5Z" />
-                <path d="M14 6C15.5 4.5 18 3.5 21 3C19.5 5 17 6.5 14 6Z" opacity="0.6" />
-              </svg>
+            {/* Orbito Logo */}
+            <div className="w-12 h-12 mx-auto flex items-center justify-center">
+              <img
+                src="/Orbit.png"
+                alt="Orbito Logo"
+                className="w-10 h-10 object-contain drop-shadow select-none pointer-events-none"
+              />
             </div>
 
             {/* Title & Description */}
             <div className="space-y-1">
               <h1 className="text-base font-semibold tracking-tight text-[#ECEDEF]">
-                AI Workspace
+                Orbito
               </h1>
               <p className="text-xs text-[#A4A8AF] max-w-sm mx-auto leading-relaxed">
                 Create or open a workspace project to begin orchestrating multi-agent tasks, Git worktrees, and context intelligence.

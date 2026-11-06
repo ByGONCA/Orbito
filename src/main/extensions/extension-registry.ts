@@ -29,8 +29,11 @@ export class ExtensionRegistry {
   /**
    * Initialize and load persisted extensions from SQLite.
    */
-  public async initialize(): Promise<void> {
+  public async initialize(customBaseDir?: string): Promise<void> {
     if (this.initialized) return;
+    if (customBaseDir) {
+      this.extensionsDir = path.join(customBaseDir, 'extensions');
+    }
     this.ensureExtensionsDir();
 
     try {

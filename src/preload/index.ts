@@ -168,6 +168,18 @@ const api: IElectronAPI = {
   getIntelligenceCacheStats: () => ipcRenderer.invoke('intelligence:getCacheStats'),
   clearIntelligenceCache: () => ipcRenderer.invoke('intelligence:clearCache'),
 
+  // Discord Rich Presence
+  getDiscordStatus: () => ipcRenderer.invoke('discord:getStatus'),
+  updateDiscordSettings: (params) => ipcRenderer.invoke('discord:updateSettings', params),
+  getProjectGitRemote: (params) => ipcRenderer.invoke('discord:getProjectGitRemote', params),
+  onDiscordStatusChange: (callback) => {
+    const handler = (_: any, status: any) => callback(status);
+    ipcRenderer.on('discord:status-changed', handler);
+    return () => {
+      ipcRenderer.removeListener('discord:status-changed', handler);
+    };
+  },
+
   // Window Controls (Frameless Titlebar)
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),

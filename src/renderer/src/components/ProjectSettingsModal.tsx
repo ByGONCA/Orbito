@@ -16,7 +16,10 @@ import {
   AlertCircle,
   HelpCircle,
   Save,
-  Palette
+  Palette,
+  Radio,
+  ExternalLink,
+  Globe
 } from 'lucide-react';
 import type { ProjectDescriptor, ProjectSettings } from '../../../shared/types';
 import { useWorkspaceStore } from '../stores/workspace.store';
@@ -45,7 +48,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 }) => {
   const { saveProjectSettings, updateProjectCustomization, addLog } = useWorkspaceStore();
 
-  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'git' | 'env'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'git' | 'discord' | 'env'>('general');
   const [customName, setCustomName] = useState('');
   const [customTag, setCustomTag] = useState('');
   const [description, setDescription] = useState('');
@@ -53,6 +56,10 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const [defaultModel, setDefaultModel] = useState('');
   const [instructions, setInstructions] = useState('');
   const [gitAutoFetch, setGitAutoFetch] = useState(false);
+  const [discordRpcEnabled, setDiscordRpcEnabled] = useState(false);
+  const [detectedRemote, setDetectedRemote] = useState<any>(null);
+  const [isLoadingRemote, setIsLoadingRemote] = useState(false);
+  const [globalDiscordStatus, setGlobalDiscordStatus] = useState<any>(null);
   const [envVars, setEnvVars] = useState<Array<{ key: string; value: string; masked: boolean }>>([]);
   const [newKey, setNewKey] = useState('');
   const [newVal, setNewVal] = useState('');
@@ -70,6 +77,18 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       setDefaultModel(s.defaultModel || '');
       setInstructions(s.instructions || '');
       setGitAutoFetch(Boolean(s.gitAutoFetch));
+      setDiscordRpcEnabled(Boolean(s.discordRpcEnabled));
+
+      if (project.path) {
+        setIsLoadingRemote(true);
+        window.api?.getProjectGitRemote?.({ projectPath: project.path })
+          .then((remote) => setDetectedRemote(remote))
+          .catch(() => setDetectedRemote(null))
+          .finally(() => setIsLoadingRemote(false));
+        window.api?.getDiscordStatus?.()
+          .then((status) => setGlobalDiscordStatus(status))
+          .catch(() => {});
+      }
 
       if (s.envVars) {
         setEnvVars(
@@ -132,6 +151,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
         defaultModel: defaultModel.trim() || undefined,
         instructions: instructions.trim() || undefined,
         gitAutoFetch,
+        discordRpcEnabled,
         envVars: envMap
       };
 
@@ -210,6 +230,17 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             }`}
           >
             Git & Worktrees
+          </button>
+          <button
+            onClick={() => setActiveTab('discord')}
+            className={`py-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'discord'
+                ? 'border-white text-white'
+                : 'border-transparent text-[#747982] hover:text-[#A4A8AF]'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5" />
+            <span>Discord RPC</span>
           </button>
           <button
             onClick={() => setActiveTab('env')}
@@ -344,6 +375,136 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                     <p className="text-[11px] text-[#747982]">Keeps working tree indicators and diffs synchronized.</p>
                   </div>
                 </label>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Discord Rich Presence */}
+          {activeTab === 'discord' && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              {/* Global state notification if disabled */}
+              {globalDiscordStatus && !globalDiscordStatus.enabled && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
+                  <div>
+                    <span className="font-semibold text-white">Integração Global Discord Desativada</span>
+                    <p className="text-[11px] text-amber-300/80 mt-0.5">
+                      Para que este projeto seja publicado no Discord, ative também o Discord Rich Presence nas Definições Globais (Definições → Integrações).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Opt-in Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-semibold text-white">
+                    Mostrar este projeto no Discord
+                  </div>
+                  <p className="text-[11px] text-[#747982]">
+                    Publica o nome do projeto e os botões de repositório no seu perfil Discord quando este projeto estiver ativo.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={discordRpcEnabled}
+                    onChange={(e) => setDiscordRpcEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-white/[0.1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white" />
+                </label>
+              </div>
+
+              {/* Git Remote Detection Information */}
+              <div className="space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#747982] font-mono">
+                  Repositório Git Detetado
+                </div>
+
+                {isLoadingRemote ? (
+                  <div className="text-xs text-[#747982] flex items-center gap-2 py-2">
+                    <span className="w-2 h-2 rounded-full bg-white/40 animate-ping" />
+                    <span>A detetar remotos Git configurados...</span>
+                  </div>
+                ) : detectedRemote ? (
+                  <div className="space-y-2 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#747982]">Fornecedor Git:</span>
+                      <span className="font-semibold text-white capitalize flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                        {detectedRemote.provider} ({detectedRemote.remoteName})
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#747982]">URL Público Normalizado:</span>
+                      <a
+                        href={detectedRemote.browserUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-white hover:underline truncate max-w-xs font-mono text-[11px] flex items-center gap-1"
+                      >
+                        <span className="truncate">{detectedRemote.browserUrl}</span>
+                        <ExternalLink className="w-3 h-3 flex-shrink-0 text-[#747982]" />
+                      </a>
+                    </div>
+                    {detectedRemote.rawUrl !== detectedRemote.browserUrl && (
+                      <div className="flex items-center justify-between text-[11px] text-[#747982] pt-1 border-t border-white/[0.04]">
+                        <span>Origem Git Bruta:</span>
+                        <span className="font-mono truncate max-w-xs">{detectedRemote.rawUrl}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-[#747982] space-y-1">
+                    <div className="font-medium text-[#A4A8AF]">Nenhum repositório Git remoto detetado</div>
+                    <p className="text-[11px]">
+                      Este projeto não tem nenhum remote configurado (ou não é um repositório Git). O Discord exibirá este projeto como "Local project" com o botão predefinido do Orbito.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Buttons Preview */}
+              <div className="space-y-2.5">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#747982] font-mono">
+                  Botões no Discord (Máximo 2)
+                </div>
+
+                <div className="space-y-2 max-w-md">
+                  {detectedRemote?.browserUrl ? (
+                    <>
+                      <div className="p-2.5 rounded-lg bg-[#2b2d31] border border-white/[0.06] flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-[#747982]">Botão 1</span>
+                          <span className="text-white font-medium">{detectedRemote.providerLabel}</span>
+                        </div>
+                        <span className="text-[10px] text-[#949ba4] font-mono truncate max-w-[200px]">
+                          {detectedRemote.browserUrl}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[#2b2d31] border border-white/[0.06] flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-[#747982]">Botão 2</span>
+                          <span className="text-white font-medium">Get Orbito</span>
+                        </div>
+                        <span className="text-[10px] text-[#949ba4] font-mono">
+                          https://github.com/ByGONCA/Orbito
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-2.5 rounded-lg bg-[#2b2d31] border border-white/[0.06] flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-[#747982]">Botão 1</span>
+                        <span className="text-white font-medium">Get Orbito</span>
+                      </div>
+                      <span className="text-[10px] text-[#949ba4] font-mono">
+                        https://github.com/ByGONCA/Orbito
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

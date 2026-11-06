@@ -42,7 +42,10 @@ export class DatabaseService {
     }
   }
 
-  public initialize(): { appDbPath: string; indexDbPath: string } {
+  public initialize(customStorageDir?: string): { appDbPath: string; indexDbPath: string } {
+    if (customStorageDir) {
+      this.storageDir = customStorageDir;
+    }
     this.ensureStorageDir();
     const appDbPath = path.join(this.storageDir, 'app.sqlite');
     const indexDbPath = path.join(this.storageDir, 'index.sqlite');
@@ -79,6 +82,8 @@ export class DatabaseService {
         auto_index INTEGER NOT NULL DEFAULT 1,
         file_icon_theme TEXT NOT NULL DEFAULT 'material',
         show_git_file_colors INTEGER NOT NULL DEFAULT 1,
+        discord_rpc_enabled INTEGER NOT NULL DEFAULT 0,
+        discord_client_id TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -374,6 +379,18 @@ export class DatabaseService {
       // Column already exists
     }
 
+    try {
+      db.exec(`ALTER TABLE workspaces ADD COLUMN discord_rpc_enabled INTEGER DEFAULT 0`);
+    } catch {
+      // Column already exists
+    }
+
+    try {
+      db.exec(`ALTER TABLE workspaces ADD COLUMN discord_client_id TEXT`);
+    } catch {
+      // Column already exists
+    }
+
     // Projects table customization columns
     try {
       db.exec(`ALTER TABLE projects ADD COLUMN custom_name TEXT`);
@@ -522,7 +539,8 @@ export class DatabaseService {
         name: 'Default Workspace',
         uiMode: 'simple',
         theme: 'system',
-        autoIndex: true
+        autoIndex: true,
+        discordRpcEnabled: false
       };
       db.prepare(`
         INSERT INTO workspaces (id, name, ui_mode, theme, auto_index, created_at, updated_at)
@@ -545,7 +563,11 @@ export class DatabaseService {
       currentProjectId: row.current_project_id || undefined,
       uiMode: row.ui_mode as any,
       theme: row.theme as any,
-      autoIndex: Boolean(row.auto_index)
+      autoIndex: Boolean(row.auto_index),
+      fileIconTheme: row.file_icon_theme || 'material',
+      showGitFileColors: row.show_git_file_colors !== undefined ? Boolean(row.show_git_file_colors) : true,
+      discordRpcEnabled: Boolean(row.discord_rpc_enabled),
+      discordClientId: row.discord_client_id || undefined
     };
   }
 
@@ -556,13 +578,17 @@ export class DatabaseService {
     const db = this.getAppDb();
     db.prepare(`
       UPDATE workspaces
-      SET ui_mode = ?, theme = ?, auto_index = ?, current_project_id = ?, updated_at = ?
+      SET ui_mode = ?, theme = ?, auto_index = ?, current_project_id = ?, file_icon_theme = ?, show_git_file_colors = ?, discord_rpc_enabled = ?, discord_client_id = ?, updated_at = ?
       WHERE id = ?
     `).run(
       merged.uiMode,
       merged.theme,
       merged.autoIndex ? 1 : 0,
       merged.currentProjectId || null,
+      merged.fileIconTheme || 'material',
+      merged.showGitFileColors ? 1 : 0,
+      merged.discordRpcEnabled ? 1 : 0,
+      merged.discordClientId || null,
       Date.now(),
       merged.id
     );
@@ -933,6 +959,12 @@ export class DatabaseService {
     const db = this.getAppDb();
     const row = db.prepare('SELECT encrypted_value FROM secrets_store WHERE key = ?').get(key) as any;
     return row ? row.encrypted_value : null;
+  }
+
+  public listAllSecrets(): { key: string; encryptedValue: string }[] {
+    const db = this.getAppDb();
+    const rows = db.prepare('SELECT key, encrypted_value FROM secrets_store').all() as any[];
+    return rows.map((r) => ({ key: r.key, encryptedValue: r.encrypted_value }));
   }
 
   // ==========================================

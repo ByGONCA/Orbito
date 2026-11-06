@@ -47,8 +47,12 @@ import {
   UpdateAirGapConfigSchema,
   RouteIntelligenceTaskSchema,
   AssemblePromptSchema,
-  ComposeSkillsSchema
+  ComposeSkillsSchema,
+  UpdateDiscordSettingsSchema,
+  GetProjectGitRemoteSchema
 } from '../../shared/ipc';
+import { discordRpcService } from '../services/discord/discord-rpc.service';
+import { detectProjectGitRemote } from '../services/git-remote-resolver';
 import { IntelligenceRouter } from '../services/intelligence-router.service';
 import { PromptAssemblyService } from '../prompt/prompt-assembly.service';
 import { SkillCompositionService } from '../skills/skill-composition.service';
@@ -173,15 +177,32 @@ export function registerIpcHandlers(): void {
       }
     }
   });
+
+  // Track active agent count for Discord Rich Presence
+  agentOrchestrator.on('event', () => {
+    try {
+      const activeTasks = agentOrchestrator.getActiveRunningTasksCount();
+      discordRpcService.setAgentCount(activeTasks);
+    } catch {}
+  });
+
   // 1. Workspace & Files
   ipcMain.handle('workspace:openDirectory', async (_, args) => {
     const validated = OpenDirectorySchema.parse(args || {});
-    return await workspaceService.openDirectoryDialog(validated.targetPath);
+    const descriptor = await workspaceService.openDirectoryDialog(validated.targetPath);
+    if (descriptor) {
+      discordRpcService.setActiveProject(descriptor);
+    }
+    return descriptor;
   });
 
   ipcMain.handle('workspace:createProject', async (_, args) => {
     const validated = CreateProjectSchema.parse(args);
-    return await workspaceService.createProject(validated);
+    const descriptor = await workspaceService.createProject(validated);
+    if (descriptor) {
+      discordRpcService.setActiveProject(descriptor);
+    }
+    return descriptor;
   });
 
   ipcMain.handle('workspace:selectDirectory', async (_, title?: string) => {
@@ -267,7 +288,12 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('workspace:updateProject', (_, { projectId, updates }: { projectId: string; updates: any }) => {
-    return databaseService.updateProject(projectId, updates);
+    const updated = databaseService.updateProject(projectId, updates);
+    const settings = databaseService.getSettings();
+    if (settings.currentProjectId === projectId) {
+      discordRpcService.setActiveProject(updated);
+    }
+    return updated;
   });
 
   ipcMain.handle('workspace:toggleFavorite', (_, { projectId, isFavorite }: { projectId: string; isFavorite?: boolean }) => {
@@ -279,7 +305,13 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('workspace:saveProjectSettings', (_, { projectId, settings }: { projectId: string; settings: any }) => {
-    return databaseService.saveProjectSettings(projectId, settings);
+    const success = databaseService.saveProjectSettings(projectId, settings);
+    const project = databaseService.getProject(projectId);
+    const wsSettings = databaseService.getSettings();
+    if (project && wsSettings.currentProjectId === projectId) {
+      discordRpcService.setActiveProject(project);
+    }
+    return success;
   });
 
   ipcMain.handle('workspace:openInExplorer', async (_, projectPath: string) => {
@@ -316,7 +348,39 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('settings:update', (_, args) => {
     const validated = UpdateSettingsSchema.parse(args);
-    return databaseService.updateSettings(validated);
+    const updated = databaseService.updateSettings(validated);
+    if (validated.currentProjectId) {
+      const p = databaseService.getProject(validated.currentProjectId);
+      discordRpcService.setActiveProject(p || null);
+    }
+    if (validated.discordRpcEnabled !== undefined) {
+      discordRpcService.setEnabled(validated.discordRpcEnabled);
+    }
+    if (validated.discordClientId !== undefined) {
+      discordRpcService.setClientId(validated.discordClientId);
+    }
+    return updated;
+  });
+
+  // Discord Rich Presence Endpoints
+  ipcMain.handle('discord:getStatus', () => {
+    return discordRpcService.getStatus();
+  });
+
+  ipcMain.handle('discord:updateSettings', async (_, args) => {
+    const validated = UpdateDiscordSettingsSchema.parse(args || {});
+    if (validated.enabled !== undefined) {
+      await discordRpcService.setEnabled(validated.enabled);
+    }
+    if (validated.clientId !== undefined) {
+      await discordRpcService.setClientId(validated.clientId);
+    }
+    return discordRpcService.getStatus();
+  });
+
+  ipcMain.handle('discord:getProjectGitRemote', async (_, args) => {
+    const validated = GetProjectGitRemoteSchema.parse(args);
+    return await detectProjectGitRemote(validated.projectPath);
   });
 
   ipcMain.handle('workspace:getAppLayout', () => {

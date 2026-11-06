@@ -19,6 +19,7 @@
   "dependencies": {
     "@glass-sdk/liquid-glass": "^0.0.2",
     "@tanstack/react-virtual": "^3.11.2",
+    "@xhayper/discord-rpc": "^1.5.1",
     "@xyflow/react": "^12.12.1",
     "better-sqlite3": "^11.8.0",
     "chokidar": "^6.0.0",

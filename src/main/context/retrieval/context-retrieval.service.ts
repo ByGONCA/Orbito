@@ -22,7 +22,7 @@ export class ContextRetrievalService {
     const keywords = this.extractQueryKeywords(taskDescription);
 
     // 2. Hybrid search across indexed chunks and symbols
-    const searchPromises = keywords.slice(0, 3).map((kw) => hybridSearchService.search(kw, 15));
+    const searchPromises = keywords.slice(0, 5).map((kw) => hybridSearchService.search(kw, 15));
     const searchResultsArrays = await Promise.all(searchPromises);
 
     const mergedSearchResults: SearchResult[] = [];
@@ -139,9 +139,16 @@ export class ContextRetrievalService {
     const terms = new Set<string>();
     const words = query.split(/[\s,.;:!?()[\]{}"'`]+/);
 
+    const stopWords = new Set([
+      'the', 'and', 'for', 'with', 'from', 'what', 'this', 'that',
+      'please', 'can', 'you', 'how', 'why', 'are', 'were', 'was',
+      'will', 'would', 'could', 'should', 'perform', 'make', 'into',
+      'about', 'have', 'has', 'had', 'does', 'doing'
+    ]);
+
     for (const w of words) {
       const clean = w.trim();
-      if (clean.length >= 3 && !['the', 'and', 'for', 'with', 'from', 'what', 'this', 'that'].includes(clean.toLowerCase())) {
+      if (clean.length >= 3 && !stopWords.has(clean.toLowerCase())) {
         terms.add(clean);
       }
     }
@@ -151,7 +158,10 @@ export class ContextRetrievalService {
       terms.add(query.trim());
     }
 
-    return Array.from(terms);
+    // Prioritize camelCase/PascalCase identifiers first, then other terms
+    const identifiers = Array.from(terms).filter((t) => /[a-z][A-Z]|[A-Z]{2,}/.test(t));
+    const otherTerms = Array.from(terms).filter((t) => !/[a-z][A-Z]|[A-Z]{2,}/.test(t));
+    return [...identifiers, ...otherTerms];
   }
 }
 

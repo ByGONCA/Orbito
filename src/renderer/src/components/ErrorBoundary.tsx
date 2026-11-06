@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
   private handleCopy = async (): Promise<void> => {
     const { error, errorInfo } = this.state;
     const diagnostics = [
-      `AI Workspace UI Crash Diagnostics`,
+      `Orbito UI Crash Diagnostics`,
       `Time: ${new Date().toISOString()}`,
       `Error: ${error?.name}: ${error?.message}`,
       `Stack: ${error?.stack || 'N/A'}`,

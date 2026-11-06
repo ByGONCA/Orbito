@@ -196,6 +196,14 @@ export class AgentOrchestrator extends EventEmitter {
     return await WorktreeManager.getDiff(task.worktreePath);
   }
 
+  public getActiveRunningTasksCount(): number {
+    let count = 0;
+    for (const scheduler of this.activeSchedulers.values()) {
+      count += scheduler.getActiveWorkersCount();
+    }
+    return count;
+  }
+
   private handleSchedulerEvent(orchestrationId: string, event: OrchestrationEvent): void {
     // Update orchestration status in database if finished
     if (event.type === 'orchestration_completed') {

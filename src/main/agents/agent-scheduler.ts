@@ -44,6 +44,10 @@ export class AgentScheduler extends EventEmitter {
     return Array.from(this.tasks.values());
   }
 
+  public getActiveWorkersCount(): number {
+    return this.activeWorkersCount;
+  }
+
   /**
    * Starts scheduling and executing tasks according to DAG dependencies.
    */

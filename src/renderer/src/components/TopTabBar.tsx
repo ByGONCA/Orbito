@@ -146,19 +146,17 @@ export const TopTabBar: React.FC = () => {
             width: isLeftSidebarOpen ? `${leftSidebarWidth}px` : 'auto'
           } as React.CSSProperties}
         >
-          {/* Orc Stylized Wave Logo */}
+          {/* Orbito Logo */}
           <div
-            className="flex items-center justify-center w-6 h-6 text-[#ECEDEF] hover:text-white cursor-pointer transition-colors"
-            title="AI Workspace"
+            className="flex items-center justify-center w-6 h-6 cursor-pointer transition-opacity hover:opacity-85 select-none"
+            title="Orbito"
           >
-            <svg
-              className="w-4 h-4 fill-current"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M2.5 14.5C4 11 8 8 13.5 8.5C18 9 20.5 7 21.5 5.5C21 8.5 18.5 12 14.5 13C10.5 14 7 17 4.5 20C4 18 3 16 2.5 14.5Z" />
-              <path d="M14 6C15.5 4.5 18 3.5 21 3C19.5 5 17 6.5 14 6Z" opacity="0.6" />
-            </svg>
+            <img
+              src="/Orbit.png"
+              alt="Orbito"
+              className="w-5 h-5 object-contain select-none pointer-events-none"
+              style={{ imageRendering: 'auto' }}
+            />
           </div>
 
           {/* Three-Dots Menu (···) */}

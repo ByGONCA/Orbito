@@ -178,7 +178,9 @@ export class ExtensionHostManager {
     });
 
     // Spawn child process with OS/runtime permission boundaries
+    const execPath = osSandboxPolicy.resolveNodeBinary();
     const child = fork(this.workerScriptPath, [], {
+      execPath,
       env,
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
       execArgv

@@ -10,7 +10,8 @@ import type {
   DetailedResourceMetrics,
   PermissionLevel,
   UIMode,
-  ProjectGraphData
+  ProjectGraphData,
+  DiscordStatusResponse
 } from './types';
 import type {
   CLIInstallationStatus,
@@ -176,7 +177,18 @@ export const UpdateSettingsSchema = z.object({
   theme: z.enum(['glass', 'solid', 'dark', 'light', 'system']).optional(),
   autoIndex: z.boolean().optional(),
   fileIconTheme: z.enum(['material', 'minimal']).optional(),
-  showGitFileColors: z.boolean().optional()
+  showGitFileColors: z.boolean().optional(),
+  discordRpcEnabled: z.boolean().optional(),
+  discordClientId: z.string().optional()
+});
+
+export const UpdateDiscordSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  clientId: z.string().optional()
+});
+
+export const GetProjectGitRemoteSchema = z.object({
+  projectPath: z.string().min(1)
 });
 
 export const SaveAppLayoutSchema = z.object({
@@ -517,6 +529,20 @@ export interface IElectronAPI {
   composeSkills: (params: z.input<typeof ComposeSkillsSchema>) => Promise<ComposedSkillInstructions>;
   getIntelligenceCacheStats: () => Promise<any>;
   clearIntelligenceCache: () => Promise<{ success: boolean }>;
+
+  // Discord Rich Presence Integration
+  getDiscordStatus: () => Promise<DiscordStatusResponse>;
+  updateDiscordSettings: (params: z.input<typeof UpdateDiscordSettingsSchema>) => Promise<DiscordStatusResponse>;
+  getProjectGitRemote: (params: z.input<typeof GetProjectGitRemoteSchema>) => Promise<{
+    provider: 'github' | 'gitlab' | 'bitbucket' | 'other';
+    providerLabel: string;
+    browserUrl: string;
+    rawUrl: string;
+    remoteName: string;
+    owner?: string;
+    repo?: string;
+  } | null>;
+  onDiscordStatusChange: (callback: (status: DiscordStatusResponse) => void) => () => void;
 
   // Window Controls (Frameless Titlebar)
   minimizeWindow?: () => Promise<void>;

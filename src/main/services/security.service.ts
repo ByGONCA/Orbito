@@ -47,18 +47,37 @@ export class SecurityService {
     if (fs.existsSync(resolvedTarget)) {
       canonicalTarget = fs.realpathSync(resolvedTarget);
     } else {
-      // If the file does not yet exist (e.g. creating a new file), check its existing parent directory
-      const parentDir = path.dirname(resolvedTarget);
-      if (fs.existsSync(parentDir)) {
-        const canonicalParent = fs.realpathSync(parentDir);
-        canonicalTarget = path.join(canonicalParent, path.basename(resolvedTarget));
+      // If the target does not exist, walk up ancestors to find the closest existing directory
+      // and resolve physical symlinks on all existing directory components
+      let existingAncestor = path.dirname(resolvedTarget);
+      const missingSegments: string[] = [path.basename(resolvedTarget)];
+
+      while (!fs.existsSync(existingAncestor)) {
+        const parent = path.dirname(existingAncestor);
+        if (parent === existingAncestor) break; // reached filesystem drive root
+        missingSegments.unshift(path.basename(existingAncestor));
+        existingAncestor = parent;
+      }
+
+      if (fs.existsSync(existingAncestor)) {
+        const canonicalAncestor = fs.realpathSync(existingAncestor);
+        canonicalTarget = path.join(canonicalAncestor, ...missingSegments);
       }
     }
 
+    const isWindows = process.platform === 'win32';
+    const normCanonicalRoot = isWindows ? canonicalRoot.toLowerCase() : canonicalRoot;
+    const normCanonicalTarget = isWindows ? canonicalTarget.toLowerCase() : canonicalTarget;
+
     const relative = path.relative(canonicalRoot, canonicalTarget);
 
-    // If relative starts with '..' or is absolute, target lies outside canonicalRoot
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    // If relative starts with '..' or is absolute, or if target is outside root (handling case-insensitivity on Windows)
+    const isOutside =
+      relative.startsWith('..') ||
+      path.isAbsolute(relative) ||
+      (isWindows && !normCanonicalTarget.startsWith(normCanonicalRoot + path.sep) && normCanonicalTarget !== normCanonicalRoot);
+
+    if (isOutside) {
       const err = `Path traversal attempt rejected. Target '${targetPath}' resolves to '${canonicalTarget}', outside authorized root '${canonicalRoot}'`;
       auditService.logSecurityViolation('security_kernel', 'path_traversal_blocked', err, targetPath, canonicalRoot);
       throw new SecurityViolationException(err);
@@ -154,18 +173,36 @@ export class SecurityService {
         'show',
         'rev-parse',
         'describe',
-        'version'
+        'version',
+        '--version',
+        '-v',
+        '-version',
+        '-V'
       ]);
       if (allowedGitSub.has(sub)) {
         return true;
       }
 
-      // `git branch` or `git tag` only in listing mode (no modifying flags)
-      if (sub === 'branch' || sub === 'tag') {
-        const hasModifyingFlag = tokens.slice(2).some((t) =>
-          /^-[dDmaMc]/.test(t) || t === '--delete' || t === '--create'
+      // `git branch` only in listing mode (no modifying flags and no positional branch names)
+      if (sub === 'branch') {
+        const rest = tokens.slice(2);
+        if (rest.length === 0) return true; // pure `git branch` lists local branches
+        const hasPositionalArg = rest.some((t) => !t.startsWith('-'));
+        const hasModifyingFlag = rest.some((t) =>
+          /^-[dDmMcfC]/.test(t) || t === '--delete' || t === '--create' || t === '--edit-description'
         );
-        return !hasModifyingFlag;
+        return !hasPositionalArg && !hasModifyingFlag;
+      }
+
+      // `git tag` only in listing mode (no tag names and no modifying flags)
+      if (sub === 'tag') {
+        const rest = tokens.slice(2);
+        if (rest.length === 0) return true; // pure `git tag` lists tags
+        const hasPositionalArg = rest.some((t) => !t.startsWith('-'));
+        const hasModifyingFlag = rest.some((t) =>
+          /^-[dDafms]/.test(t) || t === '--delete' || t === '--create' || t === '--annotate'
+        );
+        return !hasPositionalArg && !hasModifyingFlag;
       }
 
       return false;
@@ -210,10 +247,10 @@ export class SecurityService {
       throw new SecurityViolationException(err);
     }
 
-    // Dangerous shell chaining and redirection patterns
-    const dangerousPattern = /[;&|`$<>]/;
+    // Dangerous shell chaining, subshells, newlines, and redirection patterns
+    const dangerousPattern = /[;&|`$<>()\r\n\0]/;
     if (level === 'standard' && dangerousPattern.test(command)) {
-      const err = `Command contains dangerous shell operator characters. Full Access permission tier required to execute compound commands.`;
+      const err = `Command contains dangerous shell operator or multi-line characters. Full Access permission tier required to execute compound commands.`;
       auditService.logSecurityViolation('permission_manager', 'compound_command_blocked', err, command);
       throw new SecurityViolationException(err);
     }

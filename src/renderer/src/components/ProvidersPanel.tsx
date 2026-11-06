@@ -9,7 +9,8 @@ import {
   FolderSearch,
   Sparkles,
   ShieldCheck,
-  Check
+  Check,
+  Copy
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 import type { CLIProvider } from '../../../shared/cli';
@@ -19,6 +20,9 @@ interface ProviderCardProps {
   name: string;
   tagline: string;
   badge: string;
+  installCmd?: string;
+  authCmd?: string;
+  guideUrl?: string;
 }
 
 const PROVIDERS: ProviderCardProps[] = [
@@ -26,25 +30,37 @@ const PROVIDERS: ProviderCardProps[] = [
     id: 'claude',
     name: 'Claude Code CLI',
     tagline: 'Interactive agentic coding by Anthropic (@anthropic-ai/claude-code)',
-    badge: 'Anthropic'
+    badge: 'Anthropic',
+    installCmd: 'npm install -g @anthropic-ai/claude-code',
+    authCmd: 'claude',
+    guideUrl: 'https://docs.anthropic.com/en/docs/agents-and-tools/claude-code'
   },
   {
     id: 'codex',
     name: 'OpenAI Codex CLI',
     tagline: 'Command-line execution and code automation via OpenAI tools',
-    badge: 'OpenAI'
+    badge: 'OpenAI',
+    installCmd: 'npm install -g @openai/codex',
+    authCmd: 'codex login',
+    guideUrl: 'https://learn.chatgpt.com/docs/cli/reference'
   },
   {
     id: 'gemini',
     name: 'Google Gemini CLI',
     tagline: 'Multimodal and code intelligence via Google GenAI developer CLI',
-    badge: 'Google'
+    badge: 'Google',
+    installCmd: 'npm install -g @google/genai-cli',
+    authCmd: 'gcloud auth application-default login',
+    guideUrl: 'https://ai.google.dev/gemini-api/docs'
   },
   {
     id: 'ollama',
     name: 'Ollama (Local Models)',
     tagline: 'Local air-gapped LLM inference (Llama 3, Mistral, DeepSeek-R1)',
-    badge: 'Air-Gap / Local'
+    badge: 'Air-Gap / Local',
+    installCmd: 'https://ollama.com/download',
+    authCmd: 'ollama run llama3:latest',
+    guideUrl: 'https://ollama.com/download'
   }
 ];
 
@@ -63,6 +79,13 @@ export const ProvidersPanel: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [editingPath, setEditingPath] = useState<Record<string, string>>({});
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1800);
+  };
 
   const refreshStatuses = async () => {
     setIsLoading(true);
@@ -217,6 +240,54 @@ export const ProvidersPanel: React.FC = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Setup & Login Guidance */}
+                  {!status?.isInstalled ? (
+                    <div className="pt-2 border-t border-border/40 text-[10px] space-y-1">
+                      <div className="flex items-center justify-between text-foreground-muted">
+                        <span>Install:</span>
+                        {p.guideUrl && (
+                          <a
+                            href={p.guideUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-0.5 text-foreground hover:underline text-[9.5px]"
+                          >
+                            <span>Guide</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                      {p.installCmd && (
+                        <div className="flex items-center justify-between bg-background border border-border/70 rounded px-1.5 py-0.5 font-mono text-[9px]">
+                          <span className="truncate text-foreground-secondary">{p.installCmd}</span>
+                          <button
+                            onClick={() => copyToClipboard(p.installCmd!, `inst-${p.id}`)}
+                            className="text-foreground-muted hover:text-foreground ml-1"
+                            title="Copy install command"
+                          >
+                            {copiedKey === `inst-${p.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : auth?.state === 'authentication_required' ? (
+                    <div className="pt-2 border-t border-border/40 text-[10px] space-y-1">
+                      <span className="text-foreground-muted block">Login / Auth Command:</span>
+                      {p.authCmd && (
+                        <div className="flex items-center justify-between bg-background border border-border/70 rounded px-1.5 py-0.5 font-mono text-[9px]">
+                          <span className="truncate text-foreground-secondary">{p.authCmd}</span>
+                          <button
+                            onClick={() => copyToClipboard(p.authCmd!, `auth-${p.id}`)}
+                            className="text-foreground-muted hover:text-foreground ml-1"
+                            title="Copy auth command"
+                          >
+                            {copiedKey === `auth-${p.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

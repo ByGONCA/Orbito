@@ -200,7 +200,7 @@ export const CommandPalette: React.FC = () => {
             <span>↵ Select</span>
             <span>ESC Close</span>
           </div>
-          <span className="text-[#A4A8AF] font-medium">AI Workspace</span>
+          <span className="text-[#A4A8AF] font-medium">Orbito</span>
         </div>
       </div>
     </div>

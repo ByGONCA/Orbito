@@ -26,16 +26,19 @@ import {
   HardDrive,
   RefreshCw,
   ExternalLink,
-  Cpu
+  Cpu,
+  Radio,
+  Share2,
+  AlertTriangle
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
-import type { MemoryRecord } from '../../../shared/types';
+import type { MemoryRecord, DiscordStatusResponse } from '../../../shared/types';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
 import { Badge } from './ui/Badge';
 import { FileIcon } from '../utils/file-icons';
 
-type SettingsSection = 'appearance' | 'workspace' | 'security' | 'memory' | 'shortcuts' | 'about';
+type SettingsSection = 'appearance' | 'workspace' | 'security' | 'memory' | 'integrations' | 'shortcuts' | 'about';
 
 export const SettingsModal: React.FC = () => {
   const {
@@ -66,6 +69,30 @@ export const SettingsModal: React.FC = () => {
   const [memories, setMemories] = useState<MemoryRecord[]>([]);
   const [memorySearch, setMemorySearch] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+
+  // Discord Rich Presence state
+  const [discordStatus, setDiscordStatus] = useState<DiscordStatusResponse | null>(null);
+  const [isDiscordToggling, setIsDiscordToggling] = useState(false);
+  const [customClientIdInput, setCustomClientIdInput] = useState('');
+  const [isSavingClientId, setIsSavingClientId] = useState(false);
+  const [clientIdSavedNotice, setClientIdSavedNotice] = useState(false);
+
+  // Load Discord status
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    window.api?.getDiscordStatus?.()
+      .then((status) => {
+        setDiscordStatus(status);
+        setCustomClientIdInput(status?.clientId || '');
+      })
+      .catch(() => {});
+
+    const unsub = window.api?.onDiscordStatusChange?.((status) => {
+      setDiscordStatus(status);
+      if (status?.clientId) setCustomClientIdInput(status.clientId);
+    });
+    return () => unsub?.();
+  }, [isSettingsOpen]);
 
   // Handle window maximize sync
   useEffect(() => {
@@ -131,6 +158,51 @@ export const SettingsModal: React.FC = () => {
     setTheme(newTheme);
     await window.api.updateSettings({ theme: newTheme });
     addLog(`Switched theme to [${newTheme.toUpperCase()}]`, 'info');
+  };
+
+  const handleToggleDiscord = async () => {
+    if (!discordStatus || isDiscordToggling) return;
+    setIsDiscordToggling(true);
+    try {
+      const targetState = !discordStatus.enabled;
+      const res = await window.api.updateDiscordSettings({ enabled: targetState });
+      setDiscordStatus(res);
+      addLog(`Discord Rich Presence ${targetState ? 'ativado' : 'desativado'}.`, 'info');
+    } catch (err: any) {
+      addLog(`Erro ao alterar Discord Rich Presence: ${err.message}`, 'error');
+    } finally {
+      setIsDiscordToggling(false);
+    }
+  };
+
+  const handleSaveClientId = async () => {
+    setIsSavingClientId(true);
+    setClientIdSavedNotice(false);
+    try {
+      const res = await window.api.updateDiscordSettings({ clientId: customClientIdInput.trim() });
+      setDiscordStatus(res);
+      setClientIdSavedNotice(true);
+      setTimeout(() => setClientIdSavedNotice(false), 2000);
+      addLog(`Discord Client ID atualizado.`, 'info');
+    } catch (err: any) {
+      addLog(`Erro ao atualizar Client ID: ${err.message}`, 'error');
+    } finally {
+      setIsSavingClientId(false);
+    }
+  };
+
+  const handleResetClientId = async () => {
+    setIsSavingClientId(true);
+    try {
+      const res = await window.api.updateDiscordSettings({ clientId: '' });
+      setDiscordStatus(res);
+      setCustomClientIdInput(res.clientId || '');
+      addLog(`Discord Client ID restaurado para a predefinição.`, 'info');
+    } catch (err: any) {
+      addLog(`Erro ao restaurar Client ID: ${err.message}`, 'error');
+    } finally {
+      setIsSavingClientId(false);
+    }
   };
 
   const isGlass = theme !== 'solid';
@@ -277,6 +349,32 @@ export const SettingsModal: React.FC = () => {
             <span>Memória & Agentes</span>
           </button>
 
+          <button
+            onClick={() => setActiveTab('integrations')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
+              activeTab === 'integrations'
+                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
+                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+            }`}
+          >
+            <Radio className="w-4 h-4 text-[#A4A8AF]" />
+            <div className="flex-1 flex items-center justify-between">
+              <span>Integrações (Discord)</span>
+              {discordStatus?.enabled && (
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    discordStatus.connected
+                      ? 'bg-[#22C55E]'
+                      : discordStatus.status === 'connecting'
+                        ? 'bg-[#EAB308]'
+                        : 'bg-[#EF4444]'
+                  }`}
+                  title={discordStatus.connected ? 'Discord Ligado' : 'Discord Desligado / Erro'}
+                />
+              )}
+            </div>
+          </button>
+
           <div className="pt-3 pb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#747982] font-mono">
             Sistema
           </div>
@@ -302,7 +400,7 @@ export const SettingsModal: React.FC = () => {
             }`}
           >
             <Info className="w-4 h-4 text-[#A4A8AF]" />
-            <span>Sobre o AI Workspace</span>
+            <span>Sobre o Orbito</span>
           </button>
         </aside>
 
@@ -801,16 +899,227 @@ export const SettingsModal: React.FC = () => {
             </div>
           )}
 
+          {/* TAB: INTEGRAÇÕES & DISCORD RICH PRESENCE */}
+          {activeTab === 'integrations' && (
+            <div className="space-y-8 animate-in fade-in duration-150">
+              {/* Header */}
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
+                  Integrações & Discord Rich Presence
+                </h2>
+                <p className="text-xs text-[#A4A8AF]">
+                  Exiba o projeto e atividade atuais do Orbito diretamente no seu perfil do Discord através do protocolo RPC oficial.
+                </p>
+              </div>
+
+              {/* 1. Global Discord Enable/Disable Switch & Status */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-2">
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium text-[#ECEDEF]">
+                      Ativar Integração Discord Rich Presence
+                    </div>
+                    <div className="text-xs text-[#747982]">
+                      Permite que o Orbito comunique com a aplicação Discord Desktop local.
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleToggleDiscord}
+                    disabled={isDiscordToggling}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      discordStatus?.enabled ? 'bg-white' : 'bg-white/[0.15]'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#101113] shadow ring-0 transition duration-200 ease-in-out ${
+                        discordStatus?.enabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Connection Status Indicator */}
+                <div className="flex items-center gap-2.5 text-xs">
+                  <span className="text-[#747982]">Estado de Conexão:</span>
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        !discordStatus?.enabled
+                          ? 'bg-[#747982]'
+                          : discordStatus.connected
+                            ? 'bg-emerald-400 animate-pulse'
+                            : discordStatus.status === 'connecting'
+                              ? 'bg-amber-400 animate-ping'
+                              : 'bg-rose-400'
+                      }`}
+                    />
+                    <span
+                      className={
+                        !discordStatus?.enabled
+                          ? 'text-[#747982]'
+                          : discordStatus.connected
+                            ? 'text-emerald-300'
+                            : discordStatus.status === 'connecting'
+                              ? 'text-amber-300'
+                              : 'text-rose-300'
+                      }
+                    >
+                      {!discordStatus?.enabled
+                        ? 'Desativado globalmente'
+                        : discordStatus.connected
+                          ? 'Conectado ao Discord Desktop'
+                          : discordStatus.status === 'connecting'
+                            ? 'A ligar ao Discord Desktop...'
+                            : 'Discord Desktop indisponível'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Error feedback if Discord not running */}
+                {discordStatus?.enabled && !discordStatus.connected && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 space-y-1">
+                    <div className="flex items-center gap-2 font-medium">
+                      <AlertTriangle className="w-4 h-4 text-rose-400" />
+                      <span>{discordStatus.error || 'Discord Desktop não detetado'}</span>
+                    </div>
+                    <p className="text-[11px] text-rose-300/80 pl-6 leading-relaxed">
+                      Certifique-se de que a aplicação Discord Desktop está aberta no seu computador. O Orbito tenta reconectar automaticamente com backoff progressivo.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Live Discord Presence Preview */}
+              <div className="space-y-3 pt-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#747982] font-mono">
+                  Pré-visualização da Atividade no Discord
+                </div>
+
+                <div className="max-w-md rounded-xl bg-[#1e1f22] p-4 text-[#dbdee1] font-sans shadow-lg space-y-3 border border-white/[0.04]">
+                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#b5bac1]">
+                    <span>Em Jogo / Atividade</span>
+                    <span className="text-[10px] font-mono text-[#949ba4]">Discord RPC</span>
+                  </div>
+
+                  <div className="flex gap-3.5 items-start">
+                    <div className="w-12 h-12 rounded-xl bg-[#2b2d31] border border-white/[0.06] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <img src="/Orbit.png" alt="Orbito" className="w-9 h-9 object-contain" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="text-sm font-semibold text-white truncate">Orbito</div>
+                      <div className="text-xs text-[#dbdee1] truncate">
+                        {discordStatus?.enabled
+                          ? discordStatus.currentPresence?.details || 'Using Orbito'
+                          : 'Integração desativada'}
+                      </div>
+                      <div className="text-xs text-[#949ba4] truncate">
+                        {discordStatus?.enabled
+                          ? discordStatus.currentPresence?.state || 'Workspace ready'
+                          : 'Sem atividade publicada'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Buttons Preview */}
+                  {discordStatus?.enabled && (
+                    <div className="space-y-1.5 pt-1">
+                      {(
+                        discordStatus.currentPresence?.buttons || [
+                          { label: 'Get Orbito', url: 'https://github.com/ByGONCA/Orbito' }
+                        ]
+                      ).map((btn, idx) => (
+                        <div
+                          key={idx}
+                          className="w-full py-1.5 px-3 rounded bg-[#4e5058]/40 hover:bg-[#4e5058]/60 text-xs text-white font-medium text-center truncate cursor-default transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <span>{btn.label}</span>
+                          <ExternalLink className="w-3 h-3 text-[#b5bac1]" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. Privacy & Security Protections */}
+              <div className="space-y-2.5 pt-2 border-t border-white/[0.06]">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#747982] font-mono">
+                  Privacidade & Segurança
+                </div>
+                <div className="text-xs text-[#A4A8AF] space-y-2 leading-relaxed">
+                  <p>
+                    <strong className="text-white">Opt-in por Projeto:</strong> Por predefinição, nenhum projeto é publicado no Discord. Cada projeto requer a sua autorização explícita nas Definições do Projeto (<code className="text-[#ECEDEF] font-mono">Mostrar este projeto no Discord</code>).
+                  </p>
+                  <p>
+                    <strong className="text-white">O que é publicado:</strong> Apenas o nome público do projeto, o botão do repositório Git (se existir e for um URL público seguro) e o número de agentes em execução quando uma orquestração estiver ativa.
+                  </p>
+                  <p>
+                    <strong className="text-white">O que NUNCA é partilhado:</strong> Caminhos absolutos do disco, nomes de utilizador do sistema operativo, conteúdo de ficheiros, prompts, saídas do terminal, chaves de API ou variáveis de ambiente.
+                  </p>
+                </div>
+              </div>
+
+              {/* 4. Advanced: Custom Discord Client ID */}
+              <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-[#747982] font-mono">
+                      Discord Application Client ID (Opcional)
+                    </div>
+                    <p className="text-xs text-[#747982]">
+                      Configure um Application ID próprio criado no Discord Developer Portal caso deseje um ícone e nome personalizados.
+                    </p>
+                  </div>
+                  {clientIdSavedNotice && (
+                    <span className="text-xs text-emerald-400 font-medium animate-fade-in">
+                      Guardado com sucesso!
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex gap-2 max-w-lg">
+                  <input
+                    type="text"
+                    value={customClientIdInput}
+                    onChange={(e) => setCustomClientIdInput(e.target.value)}
+                    placeholder="383226320970055681"
+                    className="flex-1 bg-[#101113] border border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-[#ECEDEF] placeholder:text-[#747982] focus:outline-none focus:border-white/30 font-mono"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSavingClientId}
+                    onClick={handleSaveClientId}
+                  >
+                    Guardar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isSavingClientId}
+                    onClick={handleResetClientId}
+                    title="Restaurar Application ID predefinido"
+                  >
+                    Restaurar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 6: SOBRE & DIAGNÓSTICO */}
           {activeTab === 'about' && (
             <div className="space-y-6 animate-in fade-in duration-150">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-                  Sobre o AI Workspace
-                </h2>
-                <p className="text-xs text-[#A4A8AF]">
-                  Ambiente de Desenvolvimento de Agentes Locais de Primeira Classe.
-                </p>
+              <div className="flex items-center gap-3">
+                <img src="/Orbit.png" alt="Orbito" className="w-10 h-10 object-contain drop-shadow select-none pointer-events-none" />
+                <div className="space-y-0.5">
+                  <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
+                    Sobre o Orbito
+                  </h2>
+                  <p className="text-xs text-[#A4A8AF]">
+                    Ambiente de Desenvolvimento Unificado com Agentes Locais e Nuvem.
+                  </p>
+                </div>
               </div>
 
               <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 space-y-3 font-mono text-xs">

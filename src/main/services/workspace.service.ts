@@ -15,7 +15,7 @@ import type {
   PersistedWorkspaceTab,
   PersistedTerminalSession
 } from '../../shared/types';
-import { securityService } from './security.service';
+import { securityService, SecurityViolationException } from './security.service';
 import { databaseService } from '../db/database.service';
 import { astParserService } from '../context/parser/ast-parser.service';
 import { WorktreeManager } from '../agents/worktree-manager';
@@ -420,23 +420,59 @@ export class WorkspaceService {
 
   /**
    * Safely writes modified file content within the workspace boundary using an atomic temp-file-and-rename pattern.
+   * Disallows writing through symlinks and prevents TOCTOU escaping.
    */
   public saveFileContent(filePath: string, projectPath: string, content: string): boolean {
     const canonicalPath = securityService.assertWithinWorkspace(filePath, projectPath);
     securityService.assertFileOperationPermitted('write', 'standard');
 
+    // Reject writing through existing symbolic links
+    try {
+      const lstat = fs.lstatSync(canonicalPath);
+      if (lstat.isSymbolicLink()) {
+        throw new SecurityViolationException('Writing directly to or through symbolic links is strictly forbidden.');
+      }
+    } catch (err: any) {
+      if (err.code !== 'ENOENT' && !(err instanceof SecurityViolationException)) {
+        throw err;
+      }
+    }
+
     const parentDir = path.dirname(canonicalPath);
+    const canonicalParent = fs.realpathSync(parentDir);
+    securityService.assertWithinWorkspace(canonicalParent, projectPath);
+
     const tempFile = path.join(parentDir, `.tmp-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`);
 
     try {
-      // Write to sibling temporary file
+      // Write to sibling temporary file exclusively to prevent hijack
       fs.writeFileSync(tempFile, content, { encoding: 'utf8', flag: 'wx' });
       securityService.assertWithinWorkspace(tempFile, projectPath);
 
-      // Atomic rename
-      fs.renameSync(tempFile, canonicalPath);
+      // Pre-rename guard: ensure target has not been replaced by a symlink during write
+      try {
+        const destLstat = fs.lstatSync(canonicalPath);
+        if (destLstat.isSymbolicLink()) {
+          throw new SecurityViolationException('Target was replaced by a symbolic link during save operation.');
+        }
+      } catch (e: any) {
+        if (e instanceof SecurityViolationException) throw e;
+      }
 
-      // Re-verify canonical destination path remains within workspace
+      // Atomic rename
+      try {
+        fs.renameSync(tempFile, canonicalPath);
+      } catch (renameErr: any) {
+        // On Windows, renameSync over an existing file can throw EPERM or EEXIST
+        if (renameErr.code === 'EPERM' || renameErr.code === 'EEXIST') {
+          fs.copyFileSync(tempFile, canonicalPath);
+          try { fs.unlinkSync(tempFile); } catch {}
+        } else {
+          throw renameErr;
+        }
+      }
+
+      // Re-verify canonical destination path remains strictly within authorized workspace
       const finalCanonical = fs.realpathSync(canonicalPath);
       securityService.assertWithinWorkspace(finalCanonical, projectPath);
       return true;
@@ -452,7 +488,7 @@ export class WorkspaceService {
 
   /**
    * Creates a new file safely within the workspace boundary without overwriting existing files.
-   * Employs exclusive flag ('wx') to prevent TOCTOU race conditions.
+   * Employs exclusive flag ('wx') and lstat inspection to prevent TOCTOU race conditions.
    */
   public createFile(filePath: string, projectPath: string, content = ''): { success: boolean; path: string } {
     const baseName = path.basename(filePath).trim();
@@ -461,6 +497,12 @@ export class WorkspaceService {
     }
     if (/[<>:"/\\|?*]/.test(baseName)) {
       throw new Error('Filename contains invalid characters (<>:"/\\|?*).');
+    }
+
+    // Windows reserved device names check
+    const nameWithoutExt = baseName.replace(/\.[^/.]+$/, '').toUpperCase();
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(nameWithoutExt)) {
+      throw new Error('Filename uses a reserved system device name.');
     }
 
     const canonicalPath = securityService.assertWithinWorkspace(filePath, projectPath);
@@ -472,10 +514,25 @@ export class WorkspaceService {
       throw new Error('Cannot create files inside the protected Git repository directory.');
     }
 
+    // Check if target already exists using lstatSync to detect broken symlinks as well
+    try {
+      fs.lstatSync(canonicalPath);
+      throw new Error(`A file or directory already exists at: ${baseName}`);
+    } catch (err: any) {
+      if (err.code !== 'ENOENT' && !err.message.includes('already exists')) {
+        throw err;
+      }
+      if (err.message.includes('already exists')) {
+        throw err;
+      }
+    }
+
     const parentDir = path.dirname(canonicalPath);
     if (!fs.existsSync(parentDir)) {
       fs.mkdirSync(parentDir, { recursive: true });
     }
+    const canonicalParent = fs.realpathSync(parentDir);
+    securityService.assertWithinWorkspace(canonicalParent, projectPath);
 
     // Atomic exclusive creation ('wx') prevents TOCTOU overwrites
     try {
@@ -506,6 +563,11 @@ export class WorkspaceService {
       throw new Error('Folder name contains invalid characters (<>:"/\\|?*).');
     }
 
+    const nameWithoutExt = baseName.replace(/\.[^/.]+$/, '').toUpperCase();
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(nameWithoutExt)) {
+      throw new Error('Folder name uses a reserved system device name.');
+    }
+
     const canonicalPath = securityService.assertWithinWorkspace(directoryPath, projectPath);
     securityService.assertFileOperationPermitted('write', 'standard');
 
@@ -515,8 +577,21 @@ export class WorkspaceService {
       throw new Error('Cannot create directories inside the protected Git repository directory.');
     }
 
-    if (fs.existsSync(canonicalPath)) {
+    try {
+      fs.lstatSync(canonicalPath);
       throw new Error(`A folder or file already exists at: ${baseName}`);
+    } catch (err: any) {
+      if (err.code !== 'ENOENT' && !err.message.includes('already exists')) {
+        throw err;
+      }
+      if (err.message.includes('already exists')) {
+        throw err;
+      }
+    }
+
+    const parentDir = path.dirname(canonicalPath);
+    if (fs.existsSync(parentDir)) {
+      securityService.assertWithinWorkspace(fs.realpathSync(parentDir), projectPath);
     }
 
     fs.mkdirSync(canonicalPath, { recursive: true });
@@ -538,6 +613,11 @@ export class WorkspaceService {
       throw new Error('New name contains invalid characters (<>:"/\\|?*).');
     }
 
+    const nameWithoutExt = trimmedNewName.replace(/\.[^/.]+$/, '').toUpperCase();
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(nameWithoutExt)) {
+      throw new Error('New name uses a reserved system device name.');
+    }
+
     const canonicalOld = securityService.assertWithinWorkspace(oldPath, projectPath);
     securityService.assertFileOperationPermitted('write', 'standard');
 
@@ -551,16 +631,30 @@ export class WorkspaceService {
       throw new Error('Cannot rename protected Git repository items.');
     }
 
-    if (!fs.existsSync(canonicalOld)) {
+    try {
+      fs.lstatSync(canonicalOld);
+    } catch {
       throw new Error('Target item does not exist on disk.');
     }
 
     const parentDir = path.dirname(canonicalOld);
+    securityService.assertWithinWorkspace(fs.realpathSync(parentDir), projectPath);
+
     const targetPath = path.join(parentDir, trimmedNewName);
     const canonicalNew = securityService.assertWithinWorkspace(targetPath, projectPath);
 
-    if (fs.existsSync(canonicalNew) && canonicalOld.toLowerCase() !== canonicalNew.toLowerCase()) {
-      throw new Error(`An item named "${trimmedNewName}" already exists in this folder.`);
+    try {
+      fs.lstatSync(canonicalNew);
+      if (canonicalOld.toLowerCase() !== canonicalNew.toLowerCase()) {
+        throw new Error(`An item named "${trimmedNewName}" already exists in this folder.`);
+      }
+    } catch (err: any) {
+      if (err.code !== 'ENOENT' && !err.message.includes('already exists')) {
+        throw err;
+      }
+      if (err.message.includes('already exists')) {
+        throw err;
+      }
     }
 
     fs.renameSync(canonicalOld, canonicalNew);
@@ -572,6 +666,7 @@ export class WorkspaceService {
 
   /**
    * Safely deletes a file or directory within the workspace boundary with protected path checks.
+   * If the target is a symbolic link, unlinks only the symlink itself without following it.
    */
   public deleteItem(targetPath: string, projectPath: string): { success: boolean; path: string } {
     const canonicalTarget = securityService.assertWithinWorkspace(targetPath, projectPath);
@@ -587,12 +682,21 @@ export class WorkspaceService {
       throw new Error('Cannot delete protected Git repository items.');
     }
 
-    if (!fs.existsSync(canonicalTarget)) {
+    const resolvedTarget = path.isAbsolute(targetPath) ? path.resolve(targetPath) : path.resolve(canonicalRoot, targetPath);
+    let resolvedLstat: fs.Stats;
+    try {
+      resolvedLstat = fs.lstatSync(resolvedTarget);
+    } catch {
       throw new Error('Target item does not exist on disk.');
     }
 
-    const stat = fs.statSync(canonicalTarget);
-    if (stat.isDirectory()) {
+    // If the target item is a symbolic link, unlink only the symlink itself; never follow into the target
+    if (resolvedLstat.isSymbolicLink()) {
+      fs.unlinkSync(resolvedTarget);
+      return { success: true, path: resolvedTarget };
+    }
+
+    if (resolvedLstat.isDirectory()) {
       fs.rmSync(canonicalTarget, { recursive: true, force: true });
     } else {
       fs.unlinkSync(canonicalTarget);
@@ -619,16 +723,24 @@ export class WorkspaceService {
       throw new Error('Cannot move protected Git repository items.');
     }
 
-    if (!fs.existsSync(canonicalSource)) {
+    try {
+      fs.lstatSync(canonicalSource);
+    } catch {
       throw new Error('Source item does not exist on disk.');
     }
 
-    if (!fs.existsSync(canonicalDestDir)) {
+    let destLstat: fs.Stats;
+    try {
+      destLstat = fs.lstatSync(canonicalDestDir);
+    } catch {
       throw new Error('Destination folder does not exist.');
     }
 
-    const destStat = fs.statSync(canonicalDestDir);
-    if (!destStat.isDirectory()) {
+    if (destLstat.isSymbolicLink()) {
+      throw new SecurityViolationException('Moving into a symbolic link directory is forbidden.');
+    }
+
+    if (!destLstat.isDirectory()) {
       throw new Error('Destination must be a directory.');
     }
 
@@ -641,8 +753,18 @@ export class WorkspaceService {
     const targetFilePath = path.join(canonicalDestDir, path.basename(canonicalSource));
     const canonicalTarget = securityService.assertWithinWorkspace(targetFilePath, projectPath);
 
-    if (fs.existsSync(canonicalTarget) && canonicalSource.toLowerCase() !== canonicalTarget.toLowerCase()) {
-      throw new Error(`An item named "${path.basename(canonicalSource)}" already exists in destination folder.`);
+    try {
+      fs.lstatSync(canonicalTarget);
+      if (canonicalSource.toLowerCase() !== canonicalTarget.toLowerCase()) {
+        throw new Error(`An item named "${path.basename(canonicalSource)}" already exists in destination folder.`);
+      }
+    } catch (err: any) {
+      if (err.code !== 'ENOENT' && !err.message.includes('already exists')) {
+        throw err;
+      }
+      if (err.message.includes('already exists')) {
+        throw err;
+      }
     }
 
     fs.renameSync(canonicalSource, canonicalTarget);

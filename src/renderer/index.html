@@ -7,7 +7,8 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http: ws: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' http:; style-src 'self' 'unsafe-inline' http:; img-src 'self' data: https: http: blob:; font-src 'self' data:; connect-src 'self' ws: http: https:;"
     />
-    <title>AI Workspace</title>
+    <title>Orbito</title>
+    <link rel="icon" type="image/png" href="/Orbit.png" />
     <style>
       /* Initial zero-latency launch splash styling */
       html, body {
@@ -70,34 +71,42 @@
       }
 
       .preloader-bar-bg {
-        width: 100%;
-        height: 4px;
+        width: 220px;
+        max-width: 80vw;
+        height: 3px;
         background: rgba(255, 255, 255, 0.08);
         border-radius: 999px;
         overflow: hidden;
         position: relative;
+        margin: 6px auto 0;
       }
 
       .preloader-bar-fill {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
         height: 100%;
-        width: 35%;
-        background: #ECEDEF;
         border-radius: 999px;
-        animation: preloader-indeterminate 1.4s infinite ease-in-out;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(236, 237, 239, 0.25) 20%,
+          #ECEDEF 50%,
+          rgba(236, 237, 239, 0.25) 80%,
+          transparent 100%
+        );
+        animation: preloader-fluid 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        will-change: transform;
       }
 
-      @keyframes preloader-indeterminate {
+      @keyframes preloader-fluid {
         0% {
           transform: translateX(-100%);
-          width: 30%;
-        }
-        50% {
-          transform: translateX(100%);
-          width: 60%;
         }
         100% {
-          transform: translateX(250%);
-          width: 30%;
+          transform: translateX(100%);
         }
       }
 
@@ -138,13 +147,9 @@
       <div id="preloader-splash">
         <div class="preloader-card">
           <div class="preloader-icon-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ECEDEF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-              <polyline points="2 17 12 22 22 17"></polyline>
-              <polyline points="2 12 12 17 22 12"></polyline>
-            </svg>
+            <img src="/Orbit.png" alt="Orbito" width="34" height="34" style="object-fit: contain;" />
           </div>
-          <div class="preloader-title">AI Workspace</div>
+          <div class="preloader-title">Orbito</div>
           <div class="preloader-subtitle" id="preloader-text">A inicializar ambiente de trabalho...</div>
           <div class="preloader-bar-bg" id="preloader-bar-wrap">
             <div class="preloader-bar-fill"></div>
