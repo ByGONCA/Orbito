@@ -18,7 +18,6 @@ import {
   Terminal,
   Database,
   Layers,
-  Sparkles,
   Palette,
   Wrench,
   Globe,
@@ -169,9 +168,6 @@ export const FileIcon: React.FC<FileIconProps> = ({
   }
   if (lowerName.startsWith('.env')) {
     return <FileKey className={`${className} text-[#EAB308]`} />;
-  }
-  if (lowerName.includes('vite.config')) {
-    return <Sparkles className={`${className} text-[#BD34FE]`} />;
   }
   if (lowerName.includes('tailwind.config')) {
     return <Devicon name="tailwindcss" className={className} />;
