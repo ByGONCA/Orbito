@@ -2,11 +2,15 @@ import { z } from 'zod';
 import type {
   ProjectDescriptor,
   WorkspaceConfig,
+  AppLayoutConfig,
+  ProjectWorkspaceState,
   FileNode,
   MemoryRecord,
   SystemResourceMetrics,
+  DetailedResourceMetrics,
   PermissionLevel,
-  UIMode
+  UIMode,
+  ProjectGraphData
 } from './types';
 import type {
   CLIInstallationStatus,
@@ -97,6 +101,18 @@ export const OpenDirectorySchema = z.object({
   targetPath: z.string().optional()
 });
 
+export const CreateProjectSchema = z.object({
+  name: z.string().min(1),
+  parentDirectory: z.string().min(1),
+  template: z.enum(['empty', 'node', 'react', 'python']),
+  initGit: z.boolean().default(true)
+});
+
+export const ToggleProjectFavoriteSchema = z.object({
+  projectId: z.string().min(1),
+  isFavorite: z.boolean().optional()
+});
+
 export const ListFilesSchema = z.object({
   projectPath: z.string().min(1),
   maxDepth: z.number().int().min(1).max(20).optional().default(8)
@@ -107,10 +123,86 @@ export const ReadFileSchema = z.object({
   projectPath: z.string().min(1)
 });
 
+export const SaveFileSchema = z.object({
+  filePath: z.string().min(1),
+  projectPath: z.string().min(1),
+  content: z.string()
+});
+
+export const CreateFileSchema = z.object({
+  filePath: z.string().min(1),
+  projectPath: z.string().min(1),
+  content: z.string().optional().default('')
+});
+
+export const CreateDirectorySchema = z.object({
+  directoryPath: z.string().min(1),
+  projectPath: z.string().min(1)
+});
+
+export const RenameItemSchema = z.object({
+  oldPath: z.string().min(1),
+  newName: z.string().min(1),
+  projectPath: z.string().min(1)
+});
+
+export const DeleteItemSchema = z.object({
+  targetPath: z.string().min(1),
+  projectPath: z.string().min(1)
+});
+
+export const MoveItemSchema = z.object({
+  sourcePath: z.string().min(1),
+  destinationDir: z.string().min(1),
+  projectPath: z.string().min(1)
+});
+
+export const RevealInFileManagerSchema = z.object({
+  filePath: z.string().min(1)
+});
+
+export const GetFileSymbolsSchema = z.object({
+  filePath: z.string().min(1),
+  projectPath: z.string().min(1)
+});
+
+export const GetProjectGraphSchema = z.object({
+  projectPath: z.string().min(1)
+});
+
 export const UpdateSettingsSchema = z.object({
+  currentProjectId: z.string().optional(),
   uiMode: z.enum(['simple', 'advanced']).optional(),
-  theme: z.enum(['dark', 'light', 'system']).optional(),
-  autoIndex: z.boolean().optional()
+  theme: z.enum(['glass', 'solid', 'dark', 'light', 'system']).optional(),
+  autoIndex: z.boolean().optional(),
+  fileIconTheme: z.enum(['material', 'minimal']).optional(),
+  showGitFileColors: z.boolean().optional()
+});
+
+export const SaveAppLayoutSchema = z.object({
+  layout: z.record(z.any())
+});
+
+export const SaveProjectWorkspaceStateSchema = z.object({
+  projectId: z.string().min(1),
+  state: z.record(z.any())
+});
+
+export const GetProjectWorkspaceStateSchema = z.object({
+  projectId: z.string().min(1)
+});
+
+export const UpdateProjectSchema = z.object({
+  projectId: z.string().min(1),
+  updates: z.object({
+    customName: z.string().optional(),
+    customColor: z.string().optional(),
+    customIcon: z.string().optional(),
+    description: z.string().optional(),
+    tag: z.string().optional(),
+    isFavorite: z.boolean().optional(),
+    settings: z.record(z.any()).optional()
+  })
 });
 
 export const StoreSecretSchema = z.object({
@@ -293,13 +385,38 @@ export const ClearCacheSchema = z.object({}).optional();
 export interface IElectronAPI {
   // Workspace & File Management
   openDirectoryDialog: (params?: z.input<typeof OpenDirectorySchema>) => Promise<ProjectDescriptor | null>;
+  createProject: (params: z.input<typeof CreateProjectSchema>) => Promise<ProjectDescriptor>;
+  selectDirectory: (title?: string) => Promise<string | null>;
+  verifyProjectPath: (projectPath: string) => Promise<boolean>;
   listFiles: (params: z.input<typeof ListFilesSchema>) => Promise<FileNode[]>;
   readFileContent: (params: z.input<typeof ReadFileSchema>) => Promise<string>;
+  saveFileContent: (params: z.input<typeof SaveFileSchema>) => Promise<boolean>;
+  createFile: (params: z.input<typeof CreateFileSchema>) => Promise<{ success: boolean; path: string }>;
+  createDirectory: (params: z.input<typeof CreateDirectorySchema>) => Promise<{ success: boolean; path: string }>;
+  renameItem: (params: z.input<typeof RenameItemSchema>) => Promise<{ success: boolean; oldPath: string; newPath: string }>;
+  deleteItem: (params: z.input<typeof DeleteItemSchema>) => Promise<{ success: boolean; path: string }>;
+  moveItem: (params: z.input<typeof MoveItemSchema>) => Promise<{ success: boolean; oldPath: string; newPath: string }>;
+  getFileSymbols: (params: z.input<typeof GetFileSymbolsSchema>) => Promise<any[]>;
   getRecentProjects: () => Promise<ProjectDescriptor[]>;
+  removeProject: (projectId: string) => Promise<boolean>;
+  updateProject: (params: { projectId: string; updates: Partial<ProjectDescriptor> }) => Promise<ProjectDescriptor>;
+  toggleProjectFavorite: (params: { projectId: string; isFavorite?: boolean }) => Promise<boolean>;
+  getProjectSettings: (projectId: string) => Promise<any>;
+  saveProjectSettings: (params: { projectId: string; settings: any }) => Promise<boolean>;
+  openInExplorer: (projectPath: string) => Promise<string>;
+  revealInFileManager: (params: z.input<typeof RevealInFileManagerSchema>) => Promise<boolean>;
+  createWorktree: (params: { projectPath: string; branchName: string }) => Promise<any>;
+  removeWorktree: (params: { projectPath: string; worktreePath: string; branchName?: string }) => Promise<boolean>;
+  getGitStatus: (projectPath: string) => Promise<any>;
+  getProjectGraph: (params: { projectPath: string }) => Promise<ProjectGraphData>;
   
   // Settings & App Configuration
   getSettings: () => Promise<WorkspaceConfig>;
   updateSettings: (params: z.input<typeof UpdateSettingsSchema>) => Promise<WorkspaceConfig>;
+  getAppLayout: () => Promise<AppLayoutConfig>;
+  saveAppLayout: (params: z.input<typeof SaveAppLayoutSchema>) => Promise<boolean>;
+  getProjectWorkspaceState: (params: z.input<typeof GetProjectWorkspaceStateSchema>) => Promise<ProjectWorkspaceState | null>;
+  saveProjectWorkspaceState: (params: z.input<typeof SaveProjectWorkspaceStateSchema>) => Promise<boolean>;
   
   // Credentials (safeStorage)
   storeSecret: (params: z.input<typeof StoreSecretSchema>) => Promise<{ success: boolean }>;
@@ -310,8 +427,15 @@ export interface IElectronAPI {
   saveMemory: (params: z.input<typeof SaveMemorySchema>) => Promise<MemoryRecord>;
   deleteMemory: (params: z.input<typeof DeleteMemorySchema>) => Promise<{ success: boolean }>;
   
-  // System Metrics
+  // System Metrics & Diagnostics
   getSystemMetrics: () => Promise<SystemResourceMetrics>;
+  getDetailedResources: () => Promise<DetailedResourceMetrics>;
+  toggleKeepAwake: (enable?: boolean) => Promise<{ enabled: boolean }>;
+  getKeepAwake: () => Promise<{ enabled: boolean }>;
+  cleanupWorkspaces: () => Promise<{ success: boolean; freedMb: number }>;
+  getActivePorts: () => Promise<Array<{ port: number; service?: string }>>;
+  getSystemLogs: () => Promise<Array<{ id: string; timestamp: string; component: string; level: 'info' | 'warn' | 'error' | 'debug'; message: string }>>;
+  onSystemLog: (callback: (log: { id: string; timestamp: string; message: string; level: 'info' | 'warn' | 'error' }) => void) => () => void;
 
   // CLI Engine (Phase 2)
   detectCLIs: (params?: z.input<typeof DetectCLIsSchema>) => Promise<Record<CLIProvider, CLIInstallationStatus>>;
@@ -393,4 +517,11 @@ export interface IElectronAPI {
   composeSkills: (params: z.input<typeof ComposeSkillsSchema>) => Promise<ComposedSkillInstructions>;
   getIntelligenceCacheStats: () => Promise<any>;
   clearIntelligenceCache: () => Promise<{ success: boolean }>;
+
+  // Window Controls (Frameless Titlebar)
+  minimizeWindow?: () => Promise<void>;
+  maximizeWindow?: () => Promise<boolean>;
+  closeWindow?: () => Promise<void>;
+  isWindowMaximized?: () => Promise<boolean>;
+  onWindowStateChange?: (callback: (state: { isMaximized: boolean }) => void) => () => void;
 }

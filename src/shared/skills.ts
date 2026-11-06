@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CLIProvider, CLIProviderEnum } from './cli';
 
 export type SkillCategory =
   | 'analysis'
@@ -53,7 +54,7 @@ export const SkillManifestSchema = z.object({
     'architecture'
   ]),
   tags: z.array(z.string()).default([]),
-  supportedProviders: z.array(z.enum(['claude', 'codex', 'gemini', 'ollama'])).min(1),
+  supportedProviders: z.array(CLIProviderEnum).min(1),
   requiredCapabilities: z.array(z.string()).default([]),
   requiredPermissions: SkillPermissionsSchema,
   contextRequirements: SkillContextRequirementsSchema.default({}),
@@ -75,7 +76,7 @@ export interface SkillMetadata {
   author: string;
   category: SkillCategory;
   tags: string[];
-  supportedProviders: ('claude' | 'codex' | 'gemini' | 'ollama')[];
+  supportedProviders: CLIProvider[];
   isBuiltIn: boolean;
   enabled: boolean;
   checksum: string;

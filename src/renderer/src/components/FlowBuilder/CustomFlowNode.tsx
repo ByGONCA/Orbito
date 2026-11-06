@@ -31,34 +31,34 @@ import type { FlowNodeData } from '../../../../shared/workflows';
 
 const CATEGORY_COLORS = {
   ai: {
-    bg: 'bg-purple-500/10',
-    border: 'border-purple-500/30',
-    text: 'text-purple-400',
-    glow: 'shadow-purple-500/20'
+    bg: 'bg-white/[0.04]',
+    border: 'border-white/[0.12]',
+    text: 'text-[#ECEDEF]',
+    glow: 'shadow-sm'
   },
   context: {
-    bg: 'bg-cyan-500/10',
-    border: 'border-cyan-500/30',
-    text: 'text-cyan-400',
-    glow: 'shadow-cyan-500/20'
+    bg: 'bg-white/[0.03]',
+    border: 'border-white/[0.10]',
+    text: 'text-[#A4A8AF]',
+    glow: 'shadow-sm'
   },
   logic: {
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/30',
-    text: 'text-amber-400',
-    glow: 'shadow-amber-500/20'
+    bg: 'bg-white/[0.04]',
+    border: 'border-white/[0.12]',
+    text: 'text-[#ECEDEF]',
+    glow: 'shadow-sm'
   },
   io: {
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/30',
-    text: 'text-emerald-400',
-    glow: 'shadow-emerald-500/20'
+    bg: 'bg-white/[0.03]',
+    border: 'border-white/[0.10]',
+    text: 'text-[#A4A8AF]',
+    glow: 'shadow-sm'
   },
   dev: {
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/30',
-    text: 'text-rose-400',
-    glow: 'shadow-rose-500/20'
+    bg: 'bg-white/[0.04]',
+    border: 'border-white/[0.12]',
+    text: 'text-[#ECEDEF]',
+    glow: 'shadow-sm'
   }
 };
 

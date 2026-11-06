@@ -32,14 +32,14 @@ import type {
 } from '../../../shared/agents';
 
 const ROLE_COLORS: Record<SpecialistRole, { bg: string; text: string; border: string }> = {
-  coordinator: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
-  architect: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/30' },
-  backend: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },
-  frontend: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-  testing: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },
-  security: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' },
-  documentation: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/30' },
-  reviewer: { bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-400', border: 'border-fuchsia-500/30' }
+  coordinator: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
+  architect: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
+  backend: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
+  frontend: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
+  testing: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
+  security: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
+  documentation: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
+  reviewer: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' }
 };
 
 export const AgentsWorkspace: React.FC = () => {
@@ -116,7 +116,7 @@ export const AgentsWorkspace: React.FC = () => {
         projectPath: project.path,
         userGoal: prompt,
         mode,
-        provider: activeProvider
+        provider: (['claude', 'codex', 'gemini', 'ollama'].includes(activeProvider) ? activeProvider : 'claude') as any
       });
 
       setActiveOrchestration(orch);
@@ -192,9 +192,9 @@ export const AgentsWorkspace: React.FC = () => {
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col h-full bg-transparent overflow-hidden">
       {/* Top Header Bar */}
-      <div className="border-b border-border bg-card/60 px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="border-b border-border bg-surface/40 backdrop-blur-glass px-5 py-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
             <Bot className="w-4 h-4 text-emerald-400" />
@@ -257,7 +257,7 @@ export const AgentsWorkspace: React.FC = () => {
       </div>
 
       {/* Goal Formulation Bar */}
-      <div className="p-3 border-b border-border bg-card/20">
+      <div className="p-3 border-b border-border bg-surface/30 backdrop-blur-glass">
         <form onSubmit={handleStartOrchestration} className="flex items-center gap-2">
           <input
             type="text"
@@ -269,7 +269,7 @@ export const AgentsWorkspace: React.FC = () => {
                 ? "Describe a multi-step task (e.g. 'Build an authentication API with tests and security review')..."
                 : "Please open a project workspace first..."
             }
-            className="flex-1 bg-secondary/50 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary font-sans"
+            className="flex-1 glass-input rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-foreground-muted focus:outline-hidden font-sans"
           />
 
           <select
@@ -371,9 +371,9 @@ export const AgentsWorkspace: React.FC = () => {
 
                             <div className="flex items-center gap-1.5 text-xs">
                               {task.status === 'completed' && <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />}
-                              {task.status === 'running' && <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
+                              {task.status === 'running' && <RefreshCw className="w-3.5 h-3.5 text-[#ECEDEF] animate-spin" />}
                               {task.status === 'waiting_approval' && <AlertTriangle className="w-3.5 h-3.5 text-amber-400 animate-pulse" />}
-                              {task.status === 'reviewing' && <Eye className="w-3.5 h-3.5 text-fuchsia-400" />}
+                              {task.status === 'reviewing' && <Eye className="w-3.5 h-3.5 text-[#A4A8AF]" />}
                               {task.status === 'failed' && <XCircle className="w-3.5 h-3.5 text-rose-400" />}
                               {task.status === 'blocked' && <Ban className="w-3.5 h-3.5 text-muted-foreground" />}
                               {task.status === 'ready' && <Activity className="w-3.5 h-3.5 text-primary" />}

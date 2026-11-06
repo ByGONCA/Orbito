@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
-export type CLIProvider = 'claude' | 'codex' | 'gemini' | 'ollama';
+export type CLIProvider =
+  | 'powershell'
+  | 'cmd'
+  | 'bash'
+  | 'claude'
+  | 'codex'
+  | 'gemini'
+  | 'antigravity'
+  | 'ollama';
 
 export type AuthType = 'oauth' | 'api-key' | 'adc' | 'missing';
 
@@ -79,18 +87,29 @@ export const DetectCLIsSchema = z.object({
   customPaths: z.record(z.string()).optional()
 });
 
+export const CLIProviderEnum = z.enum([
+  'powershell',
+  'cmd',
+  'bash',
+  'claude',
+  'codex',
+  'gemini',
+  'antigravity',
+  'ollama'
+]);
+
 export const CheckCLIAuthSchema = z.object({
-  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']),
+  provider: CLIProviderEnum,
   customPath: z.string().optional()
 });
 
 export const ExecuteCLIPromptSchema = z.object({
-  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']),
+  provider: CLIProviderEnum,
   prompt: z.string().min(1),
   projectId: z.string().optional(),
   workingDirectory: z.string().min(1),
   customPath: z.string().optional(),
-  timeoutSeconds: z.number().int().min(5).max(600).default(120),
+  timeoutSeconds: z.number().int().min(5).max(3600).default(300),
   resumeSessionId: z.string().optional()
 });
 
@@ -100,7 +119,7 @@ export const CancelCLISessionSchema = z.object({
 
 export const ListCLISessionsSchema = z.object({
   projectId: z.string().optional(),
-  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']).optional()
+  provider: CLIProviderEnum.optional()
 });
 
 export const GetSessionMessagesSchema = z.object({

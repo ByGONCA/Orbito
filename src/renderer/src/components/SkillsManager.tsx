@@ -110,7 +110,7 @@ export const SkillsManager: React.FC = () => {
         prompt: testPrompt,
         projectId: project.id,
         projectPath: project.path,
-        provider: activeProvider
+        provider: (['claude', 'codex', 'gemini', 'ollama'].includes(activeProvider) ? activeProvider : 'claude') as any
       });
 
       if (res.success) {
@@ -279,11 +279,11 @@ export const SkillsManager: React.FC = () => {
                       {skill.category}
                     </span>
                     {skill.isBuiltIn ? (
-                      <span className="text-[10px] font-medium bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-medium bg-white/[0.06] text-[#ECEDEF] border border-white/[0.08] px-2 py-0.5 rounded">
                         Built-in
                       </span>
                     ) : (
-                      <span className="text-[10px] font-medium bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-medium bg-white/[0.04] text-[#A4A8AF] border border-white/[0.06] px-2 py-0.5 rounded">
                         Custom
                       </span>
                     )}

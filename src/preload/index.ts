@@ -3,12 +3,37 @@ import type { IElectronAPI } from '../shared/ipc';
 
 const api: IElectronAPI = {
   openDirectoryDialog: (params) => ipcRenderer.invoke('workspace:openDirectory', params),
+  createProject: (params) => ipcRenderer.invoke('workspace:createProject', params),
+  selectDirectory: (title) => ipcRenderer.invoke('workspace:selectDirectory', title),
+  verifyProjectPath: (projectPath) => ipcRenderer.invoke('workspace:verifyProjectPath', projectPath),
   listFiles: (params) => ipcRenderer.invoke('workspace:listFiles', params),
   readFileContent: (params) => ipcRenderer.invoke('workspace:readFileContent', params),
+  saveFileContent: (params) => ipcRenderer.invoke('workspace:saveFileContent', params),
+  createFile: (params) => ipcRenderer.invoke('workspace:createFile', params),
+  createDirectory: (params) => ipcRenderer.invoke('workspace:createDirectory', params),
+  renameItem: (params) => ipcRenderer.invoke('workspace:renameItem', params),
+  deleteItem: (params) => ipcRenderer.invoke('workspace:deleteItem', params),
+  moveItem: (params) => ipcRenderer.invoke('workspace:moveItem', params),
+  getFileSymbols: (params) => ipcRenderer.invoke('workspace:getFileSymbols', params),
   getRecentProjects: () => ipcRenderer.invoke('workspace:getRecentProjects'),
+  removeProject: (projectId) => ipcRenderer.invoke('workspace:removeProject', projectId),
+  updateProject: (params) => ipcRenderer.invoke('workspace:updateProject', params),
+  toggleProjectFavorite: (params) => ipcRenderer.invoke('workspace:toggleFavorite', params),
+  getProjectSettings: (projectId) => ipcRenderer.invoke('workspace:getProjectSettings', projectId),
+  saveProjectSettings: (params) => ipcRenderer.invoke('workspace:saveProjectSettings', params),
+  openInExplorer: (projectPath) => ipcRenderer.invoke('workspace:openInExplorer', projectPath),
+  revealInFileManager: (params) => ipcRenderer.invoke('workspace:revealInFileManager', params),
+  createWorktree: (params) => ipcRenderer.invoke('workspace:createWorktree', params),
+  removeWorktree: (params) => ipcRenderer.invoke('workspace:removeWorktree', params),
+  getGitStatus: (projectPath) => ipcRenderer.invoke('workspace:getGitStatus', projectPath),
+  getProjectGraph: (params) => ipcRenderer.invoke('workspace:getProjectGraph', params),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (params) => ipcRenderer.invoke('settings:update', params),
+  getAppLayout: () => ipcRenderer.invoke('workspace:getAppLayout'),
+  saveAppLayout: (params) => ipcRenderer.invoke('workspace:saveAppLayout', params),
+  getProjectWorkspaceState: (params) => ipcRenderer.invoke('workspace:getProjectWorkspaceState', params),
+  saveProjectWorkspaceState: (params) => ipcRenderer.invoke('workspace:saveProjectWorkspaceState', params),
 
   storeSecret: (params) => ipcRenderer.invoke('secret:store', params),
   getSecret: (params) => ipcRenderer.invoke('secret:get', params),
@@ -18,6 +43,19 @@ const api: IElectronAPI = {
   deleteMemory: (params) => ipcRenderer.invoke('memory:delete', params),
 
   getSystemMetrics: () => ipcRenderer.invoke('system:getMetrics'),
+  getDetailedResources: () => ipcRenderer.invoke('system:getDetailedResources'),
+  toggleKeepAwake: (enable?: boolean) => ipcRenderer.invoke('system:toggleKeepAwake', enable),
+  getKeepAwake: () => ipcRenderer.invoke('system:getKeepAwake'),
+  cleanupWorkspaces: () => ipcRenderer.invoke('system:cleanupWorkspaces'),
+  getActivePorts: () => ipcRenderer.invoke('system:getActivePorts'),
+  getSystemLogs: () => ipcRenderer.invoke('system:getLogs'),
+  onSystemLog: (callback) => {
+    const handler = (_: any, log: any) => callback(log);
+    ipcRenderer.on('system:log-event', handler);
+    return () => {
+      ipcRenderer.removeListener('system:log-event', handler);
+    };
+  },
 
   // CLI Engine (Phase 2)
   detectCLIs: (params) => ipcRenderer.invoke('cli:detect', params),
@@ -128,7 +166,20 @@ const api: IElectronAPI = {
   assemblePrompt: (params) => ipcRenderer.invoke('intelligence:assemblePrompt', params),
   composeSkills: (params) => ipcRenderer.invoke('intelligence:composeSkills', params),
   getIntelligenceCacheStats: () => ipcRenderer.invoke('intelligence:getCacheStats'),
-  clearIntelligenceCache: () => ipcRenderer.invoke('intelligence:clearCache')
+  clearIntelligenceCache: () => ipcRenderer.invoke('intelligence:clearCache'),
+
+  // Window Controls (Frameless Titlebar)
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  onWindowStateChange: (callback) => {
+    const handler = (_: any, state: any) => callback(state);
+    ipcRenderer.on('window:state-changed', handler);
+    return () => {
+      ipcRenderer.removeListener('window:state-changed', handler);
+    };
+  }
 };
 
 contextBridge.exposeInMainWorld('api', api);

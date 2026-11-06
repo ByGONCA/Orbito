@@ -137,46 +137,46 @@ export const AnalyticsDashboard: React.FC = () => {
         <>
           {/* Key Metric KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg border border-border bg-card shadow-xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs">
+            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+              <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Total Invocations</span>
-                <Cpu className="w-4 h-4 text-blue-400" />
+                <Cpu className="w-4 h-4 text-[#A4A8AF]" />
               </div>
-              <div className="text-2xl font-bold mt-2">{summary?.totalCalls || 0}</div>
-              <div className="text-[11px] text-muted-foreground mt-1">Across CLI, Workflows, Agents</div>
+              <div className="text-2xl font-bold mt-2 text-[#ECEDEF]">{summary?.totalCalls || 0}</div>
+              <div className="text-[11px] text-[#747982] mt-1">Across CLI, Workflows, Agents</div>
             </div>
 
-            <div className="p-4 rounded-lg border border-border bg-card shadow-xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs">
+            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+              <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Total Tokens (In / Out)</span>
-                <FileText className="w-4 h-4 text-emerald-400" />
+                <FileText className="w-4 h-4 text-[#A4A8AF]" />
               </div>
-              <div className="text-2xl font-bold mt-2">
+              <div className="text-2xl font-bold mt-2 text-[#ECEDEF]">
                 {((summary?.totalTokensIn || 0) + (summary?.totalTokensOut || 0)).toLocaleString()}
               </div>
-              <div className="text-[11px] text-muted-foreground mt-1">
+              <div className="text-[11px] text-[#747982] mt-1">
                 {(summary?.totalTokensIn || 0).toLocaleString()} In / {(summary?.totalTokensOut || 0).toLocaleString()} Out
               </div>
             </div>
 
-            <div className="p-4 rounded-lg border border-border bg-card shadow-xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs">
+            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+              <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Total Estimated Cost</span>
-                <DollarSign className="w-4 h-4 text-amber-400" />
+                <DollarSign className="w-4 h-4 text-[#A4A8AF]" />
               </div>
-              <div className="text-2xl font-bold mt-2">${(summary?.totalCostUsd || 0).toFixed(4)}</div>
-              <div className="text-[11px] text-muted-foreground mt-1">Local models (Ollama) = $0.00</div>
+              <div className="text-2xl font-bold mt-2 text-[#ECEDEF]">${(summary?.totalCostUsd || 0).toFixed(4)}</div>
+              <div className="text-[11px] text-[#747982] mt-1">Local models (Ollama) = $0.00</div>
             </div>
 
-            <div className="p-4 rounded-lg border border-border bg-card shadow-xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs">
+            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+              <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Latency (Avg / p95)</span>
-                <Clock className="w-4 h-4 text-purple-400" />
+                <Clock className="w-4 h-4 text-[#A4A8AF]" />
               </div>
-              <div className="text-2xl font-bold mt-2">
+              <div className="text-2xl font-bold mt-2 text-[#ECEDEF]">
                 {summary?.avgDurationMs || 0} ms
               </div>
-              <div className="text-[11px] text-muted-foreground mt-1">
+              <div className="text-[11px] text-[#747982] mt-1">
                 p50: {summary?.p50DurationMs || 0}ms | p95: {summary?.p95DurationMs || 0}ms
               </div>
             </div>

@@ -1,9 +1,26 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { app, powerSaveBlocker, ipcMain, BrowserWindow, shell } from 'electron';
+import path from 'path';
+import fs from 'fs';
+import net from 'net';
 import {
   OpenDirectorySchema,
+  CreateProjectSchema,
+  ToggleProjectFavoriteSchema,
   ListFilesSchema,
   ReadFileSchema,
+  SaveFileSchema,
+  CreateFileSchema,
+  CreateDirectorySchema,
+  RenameItemSchema,
+  DeleteItemSchema,
+  MoveItemSchema,
+  RevealInFileManagerSchema,
+  GetFileSymbolsSchema,
+  GetProjectGraphSchema,
   UpdateSettingsSchema,
+  SaveAppLayoutSchema,
+  SaveProjectWorkspaceStateSchema,
+  GetProjectWorkspaceStateSchema,
   StoreSecretSchema,
   GetSecretSchema,
   SaveMemorySchema,
@@ -89,7 +106,43 @@ import { analyticsService } from '../services/analytics.service';
 import { auditService } from '../services/audit.service';
 import { airGapManager } from '../services/air-gap.manager';
 import { ollamaAdapter } from '../cli/adapters/ollama.adapter';
-import type { SystemResourceMetrics } from '../../shared/types';
+import { appLogger } from '../services/app-logger';
+import type { SystemResourceMetrics, DetailedResourceMetrics } from '../../shared/types';
+
+let keepAwakeBlockerId: number | null = null;
+
+const COMMON_DEV_PORTS = [
+  { port: 5173, service: 'Vite Dev Server' },
+  { port: 5174, service: 'Vite Secondary' },
+  { port: 3000, service: 'React / Next.js' },
+  { port: 3001, service: 'Node Service' },
+  { port: 8080, service: 'API Backend' },
+  { port: 8000, service: 'Python / FastServer' },
+  { port: 4200, service: 'Angular Dev' },
+  { port: 11434, service: 'Ollama Daemon' },
+  { port: 9000, service: 'Microservice' },
+  { port: 5000, service: 'Flask / Python' }
+];
+
+async function checkPortOpen(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(80);
+    socket.on('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.connect(port, '127.0.0.1');
+  });
+}
 
 export function registerIpcHandlers(): void {
   // Global stream event broadcast to all browser windows
@@ -126,6 +179,19 @@ export function registerIpcHandlers(): void {
     return await workspaceService.openDirectoryDialog(validated.targetPath);
   });
 
+  ipcMain.handle('workspace:createProject', async (_, args) => {
+    const validated = CreateProjectSchema.parse(args);
+    return await workspaceService.createProject(validated);
+  });
+
+  ipcMain.handle('workspace:selectDirectory', async (_, title?: string) => {
+    return await workspaceService.selectDirectoryDialog(title);
+  });
+
+  ipcMain.handle('workspace:verifyProjectPath', (_, projectPath: string) => {
+    return workspaceService.verifyProjectPath(projectPath);
+  });
+
   ipcMain.handle('workspace:listFiles', (_, args) => {
     const validated = ListFilesSchema.parse(args);
     return workspaceService.listFiles(validated.projectPath, validated.maxDepth);
@@ -136,8 +202,111 @@ export function registerIpcHandlers(): void {
     return workspaceService.readFileContent(validated.filePath, validated.projectPath);
   });
 
+  ipcMain.handle('workspace:saveFileContent', (_, args) => {
+    const validated = SaveFileSchema.parse(args);
+    return workspaceService.saveFileContent(validated.filePath, validated.projectPath, validated.content);
+  });
+
+  ipcMain.handle('workspace:createFile', (_, args) => {
+    const validated = CreateFileSchema.parse(args);
+    return workspaceService.createFile(validated.filePath, validated.projectPath, validated.content);
+  });
+
+  ipcMain.handle('workspace:createDirectory', (_, args) => {
+    const validated = CreateDirectorySchema.parse(args);
+    return workspaceService.createDirectory(validated.directoryPath, validated.projectPath);
+  });
+
+  ipcMain.handle('workspace:renameItem', (_, args) => {
+    const validated = RenameItemSchema.parse(args);
+    return workspaceService.renameItem(validated.oldPath, validated.newName, validated.projectPath);
+  });
+
+  ipcMain.handle('workspace:deleteItem', (_, args) => {
+    const validated = DeleteItemSchema.parse(args);
+    return workspaceService.deleteItem(validated.targetPath, validated.projectPath);
+  });
+
+  ipcMain.handle('workspace:moveItem', (_, args) => {
+    const validated = MoveItemSchema.parse(args);
+    return workspaceService.moveItem(validated.sourcePath, validated.destinationDir, validated.projectPath);
+  });
+
+  ipcMain.handle('workspace:getFileSymbols', async (_, args) => {
+    const validated = GetFileSymbolsSchema.parse(args);
+    return await workspaceService.getFileSymbols(validated.filePath, validated.projectPath);
+  });
+
   ipcMain.handle('workspace:getRecentProjects', () => {
-    return databaseService.getRecentProjects();
+    let recents = databaseService.getRecentProjects();
+    if (recents.length === 0) {
+      try {
+        const cwd = process.cwd();
+        const projectName = path.basename(cwd) || 'Orc';
+        const isGit = fs.existsSync(path.join(cwd, '.git'));
+        const defaultProj = {
+          id: `proj-${Buffer.from(cwd).toString('base64url').substring(0, 16)}`,
+          name: projectName,
+          path: cwd,
+          lastOpenedAt: Date.now(),
+          isGitRepo: isGit,
+          permissionLevel: 'full' as const
+        };
+        databaseService.recordProjectOpen(defaultProj);
+        recents = [defaultProj];
+      } catch {
+        // Fallback to empty if cwd read fails
+      }
+    }
+    return recents;
+  });
+
+  ipcMain.handle('workspace:removeProject', (_, projectId: string) => {
+    databaseService.removeProject(projectId);
+    return true;
+  });
+
+  ipcMain.handle('workspace:updateProject', (_, { projectId, updates }: { projectId: string; updates: any }) => {
+    return databaseService.updateProject(projectId, updates);
+  });
+
+  ipcMain.handle('workspace:toggleFavorite', (_, { projectId, isFavorite }: { projectId: string; isFavorite?: boolean }) => {
+    return databaseService.toggleProjectFavorite(projectId, isFavorite);
+  });
+
+  ipcMain.handle('workspace:getProjectSettings', (_, projectId: string) => {
+    return databaseService.getProjectSettings(projectId);
+  });
+
+  ipcMain.handle('workspace:saveProjectSettings', (_, { projectId, settings }: { projectId: string; settings: any }) => {
+    return databaseService.saveProjectSettings(projectId, settings);
+  });
+
+  ipcMain.handle('workspace:openInExplorer', async (_, projectPath: string) => {
+    return await shell.openPath(projectPath);
+  });
+
+  ipcMain.handle('workspace:revealInFileManager', async (_, args) => {
+    const validated = RevealInFileManagerSchema.parse(args);
+    shell.showItemInFolder(validated.filePath);
+    return true;
+  });
+
+  ipcMain.handle('workspace:createWorktree', async (_, { projectPath, branchName }: { projectPath: string; branchName: string }) => {
+    return await workspaceService.createWorktree(projectPath, branchName);
+  });
+
+  ipcMain.handle('workspace:removeWorktree', async (_, { projectPath, worktreePath, branchName }: { projectPath: string; worktreePath: string; branchName?: string }) => {
+    return await workspaceService.removeWorktree(projectPath, worktreePath, branchName);
+  });
+
+  ipcMain.handle('workspace:getGitStatus', async (_, projectPath: string) => {
+    return await workspaceService.getGitStatus(projectPath);
+  });
+
+  ipcMain.handle('workspace:getProjectGraph', async (_, args) => {
+    const validated = GetProjectGraphSchema.parse(args);
+    return await workspaceService.getProjectGraph(validated.projectPath);
   });
 
   // 2. Settings
@@ -148,6 +317,25 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('settings:update', (_, args) => {
     const validated = UpdateSettingsSchema.parse(args);
     return databaseService.updateSettings(validated);
+  });
+
+  ipcMain.handle('workspace:getAppLayout', () => {
+    return workspaceService.getAppLayout();
+  });
+
+  ipcMain.handle('workspace:saveAppLayout', (_, args) => {
+    const validated = SaveAppLayoutSchema.parse(args);
+    return workspaceService.saveAppLayout(validated.layout);
+  });
+
+  ipcMain.handle('workspace:getProjectWorkspaceState', (_, args) => {
+    const validated = GetProjectWorkspaceStateSchema.parse(args);
+    return workspaceService.getProjectWorkspaceState(validated.projectId);
+  });
+
+  ipcMain.handle('workspace:saveProjectWorkspaceState', (_, args) => {
+    const validated = SaveProjectWorkspaceStateSchema.parse(args);
+    return workspaceService.saveProjectWorkspaceState(validated.projectId, validated.state);
   });
 
   // 3. Secrets (safeStorage)
@@ -176,15 +364,136 @@ export function registerIpcHandlers(): void {
     return { success: databaseService.deleteMemory(validated.id) };
   });
 
-  // 5. System Metrics
+  // 5. System Metrics & Logs
   ipcMain.handle('system:getMetrics', async (): Promise<SystemResourceMetrics> => {
+    let wsMb = 0;
+    let privMb = 0;
+    let cpuPct = 0;
+    try {
+      const appMetrics = app.getAppMetrics();
+      for (const m of appMetrics) {
+        wsMb += Math.round((m.memory.workingSetSize || 0) / 1024);
+        privMb += Math.round((m.memory.privateBytes || 0) / 1024);
+        cpuPct += m.cpu.percentCPUUsage || 0;
+      }
+    } catch {
+      // fallback
+    }
     const memInfo = process.memoryUsage();
     return {
       mainProcessMemoryMb: Math.round(memInfo.rss / (1024 * 1024)),
-      totalAppMemoryMb: Math.round(memInfo.heapUsed / (1024 * 1024)),
-      cpuPercent: 0,
+      totalAppMemoryMb: wsMb > 0 ? wsMb : Math.round(memInfo.heapUsed / (1024 * 1024)),
+      workingSetMemoryMb: wsMb,
+      privateMemoryMb: privMb,
+      cpuPercent: Math.round(cpuPct * 10) / 10,
       uptimeSeconds: Math.round(process.uptime())
     };
+  });
+
+  ipcMain.handle('system:getDetailedResources', async (): Promise<DetailedResourceMetrics> => {
+    let wsMb = 0;
+    let privMb = 0;
+    let cpuPct = 0;
+    const processList: Array<{ pid: number; type: string; cpuPercent: number; memoryMb: number }> = [];
+    try {
+      const appMetrics = app.getAppMetrics();
+      for (const m of appMetrics) {
+        const mem = Math.round((m.memory.workingSetSize || 0) / 1024);
+        wsMb += mem;
+        privMb += Math.round((m.memory.privateBytes || 0) / 1024);
+        cpuPct += m.cpu.percentCPUUsage || 0;
+        processList.push({
+          pid: m.pid,
+          type: m.type,
+          cpuPercent: Math.round((m.cpu.percentCPUUsage || 0) * 10) / 10,
+          memoryMb: mem
+        });
+      }
+    } catch {
+      // fallback
+    }
+
+    const activePorts: Array<{ port: number; service?: string }> = [];
+    const portChecks = COMMON_DEV_PORTS.map(async (entry) => {
+      const isOpen = await checkPortOpen(entry.port);
+      if (isOpen) {
+        activePorts.push(entry);
+      }
+    });
+    await Promise.all(portChecks);
+
+    const isKeepAwake = keepAwakeBlockerId !== null && powerSaveBlocker.isStarted(keepAwakeBlockerId);
+
+    return {
+      cpuPercent: Math.round(cpuPct * 10) / 10,
+      workingSetMemoryMb: wsMb,
+      privateMemoryMb: privMb,
+      uptimeSeconds: Math.round(process.uptime()),
+      keepAwakeActive: isKeepAwake,
+      processes: processList,
+      activePorts: activePorts.sort((a, b) => a.port - b.port)
+    };
+  });
+
+  ipcMain.handle('system:toggleKeepAwake', (_, enable?: boolean) => {
+    if (enable === undefined) {
+      if (keepAwakeBlockerId !== null && powerSaveBlocker.isStarted(keepAwakeBlockerId)) {
+        powerSaveBlocker.stop(keepAwakeBlockerId);
+        keepAwakeBlockerId = null;
+        return { enabled: false };
+      } else {
+        keepAwakeBlockerId = powerSaveBlocker.start('prevent-app-suspension');
+        return { enabled: true };
+      }
+    } else if (enable) {
+      if (keepAwakeBlockerId === null || !powerSaveBlocker.isStarted(keepAwakeBlockerId)) {
+        keepAwakeBlockerId = powerSaveBlocker.start('prevent-app-suspension');
+      }
+      return { enabled: true };
+    } else {
+      if (keepAwakeBlockerId !== null && powerSaveBlocker.isStarted(keepAwakeBlockerId)) {
+        powerSaveBlocker.stop(keepAwakeBlockerId);
+        keepAwakeBlockerId = null;
+      }
+      return { enabled: false };
+    }
+  });
+
+  ipcMain.handle('system:getKeepAwake', () => {
+    const isStarted = keepAwakeBlockerId !== null && powerSaveBlocker.isStarted(keepAwakeBlockerId);
+    return { enabled: isStarted };
+  });
+
+  ipcMain.handle('system:cleanupWorkspaces', async () => {
+    try {
+      const beforeMem = process.memoryUsage().heapUsed;
+      MultiTierCacheService.clearAll();
+      if ((global as any).gc) {
+        (global as any).gc();
+      }
+      const afterMem = process.memoryUsage().heapUsed;
+      const freedBytes = Math.max(0, beforeMem - afterMem);
+      const freedMb = Number((freedBytes / (1024 * 1024)).toFixed(1));
+      return { success: true, freedMb };
+    } catch {
+      return { success: false, freedMb: 0 };
+    }
+  });
+
+  ipcMain.handle('system:getActivePorts', async () => {
+    const activePorts: Array<{ port: number; service?: string }> = [];
+    const portChecks = COMMON_DEV_PORTS.map(async (entry) => {
+      const isOpen = await checkPortOpen(entry.port);
+      if (isOpen) {
+        activePorts.push(entry);
+      }
+    });
+    await Promise.all(portChecks);
+    return activePorts.sort((a, b) => a.port - b.port);
+  });
+
+  ipcMain.handle('system:getLogs', () => {
+    return appLogger.getRecentLogs();
   });
 
   // 6. CLI Engine (Phase 2)
@@ -544,5 +853,33 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('intelligence:clearCache', () => {
     MultiTierCacheService.clearAll();
     return { success: true };
+  });
+
+  // Window Controls (Frameless Titlebar)
+  ipcMain.handle('window:minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.minimize();
+  });
+
+  ipcMain.handle('window:maximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return false;
+    if (win.isMaximized()) {
+      win.unmaximize();
+      return false;
+    } else {
+      win.maximize();
+      return true;
+    }
+  });
+
+  ipcMain.handle('window:close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.close();
+  });
+
+  ipcMain.handle('window:isMaximized', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win?.isMaximized() ?? false;
   });
 }

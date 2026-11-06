@@ -128,23 +128,60 @@ export class WorktreeManager {
    * Retrieves changed files in a worktree compared to base branch.
    */
   public static async getChangedFiles(worktreePath: string): Promise<string[]> {
+    const list = await this.getChangedFilesWithStatus(worktreePath);
+    return list.map((item) => item.path);
+  }
+
+  /**
+   * Retrieves changed files with their git status code (M, A, D, R, U)
+   */
+  public static async getChangedFilesWithStatus(
+    worktreePath: string
+  ): Promise<Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' | 'U' }>> {
     if (!fs.existsSync(worktreePath)) return [];
-    // git status --porcelain
-    const res = await this.runGit(['status', '--porcelain'], worktreePath);
+    // git status --porcelain -uall to report untracked files inside subfolders
+    const res = await this.runGit(['status', '--porcelain', '-uall'], worktreePath);
     if (res.exitCode !== 0) return [];
 
     const lines = res.stdout.split('\n');
-    const files: string[] = [];
+    const result: Array<{ path: string; status: 'M' | 'A' | 'D' | 'R' | 'U' }> = [];
 
     for (const line of lines) {
       if (!line.trim()) continue;
-      const filePart = line.substring(3).trim();
+      const code = line.substring(0, 2);
+      let filePart = line.substring(3).trim();
+
+      // Handle renames: R  old -> new
+      if (filePart.includes('->')) {
+        filePart = filePart.split('->').pop()!.trim();
+      }
+      // Strip quotes if present
+      if (filePart.startsWith('"') && filePart.endsWith('"')) {
+        filePart = filePart.slice(1, -1);
+      }
+
+      let status: 'M' | 'A' | 'D' | 'R' | 'U' = 'M';
+      if (code.includes('?') || code === '??') {
+        status = 'U'; // Untracked
+      } else if (code.includes('A')) {
+        status = 'A'; // Added
+      } else if (code.includes('D')) {
+        status = 'D'; // Deleted
+      } else if (code.includes('R')) {
+        status = 'R'; // Renamed
+      } else if (code.includes('M')) {
+        status = 'M'; // Modified
+      }
+
       if (filePart) {
-        files.push(filePart);
+        result.push({
+          path: filePart.replace(/\\/g, '/'),
+          status
+        });
       }
     }
 
-    return files;
+    return result;
   }
 
   /**
@@ -255,5 +292,45 @@ export class WorktreeManager {
     }
 
     return true;
+  }
+
+  /**
+   * Lists all git worktrees for a repository.
+   */
+  public static async listWorktrees(projectPath: string): Promise<Array<{ path: string; head: string; branch: string; isMain: boolean }>> {
+    const isRepo = await this.isGitRepo(projectPath);
+    if (!isRepo) return [];
+    const res = await this.runGit(['worktree', 'list', '--porcelain'], projectPath);
+    if (res.exitCode !== 0) return [];
+
+    const lines = res.stdout.split('\n');
+    const worktrees: Array<{ path: string; head: string; branch: string; isMain: boolean }> = [];
+    let current: Partial<{ path: string; head: string; branch: string; isMain: boolean }> = {};
+
+    for (const line of lines) {
+      if (line.startsWith('worktree ')) {
+        if (current.path) {
+          worktrees.push(current as any);
+        }
+        const wtPath = line.substring(9).trim();
+        current = {
+          path: wtPath,
+          head: '',
+          branch: 'main',
+          isMain: path.resolve(wtPath) === path.resolve(projectPath)
+        };
+      } else if (line.startsWith('HEAD ')) {
+        current.head = line.substring(5).trim();
+      } else if (line.startsWith('branch ')) {
+        current.branch = line.substring(7).trim().replace('refs/heads/', '');
+      } else if (!line.trim() && current.path) {
+        worktrees.push(current as any);
+        current = {};
+      }
+    }
+    if (current.path) {
+      worktrees.push(current as any);
+    }
+    return worktrees;
   }
 }

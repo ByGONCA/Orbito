@@ -1,7 +1,16 @@
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
-import type { ProjectDescriptor, WorkspaceConfig, MemoryRecord, MemoryTier } from '../../shared/types';
+import type {
+  ProjectDescriptor,
+  WorkspaceConfig,
+  AppLayoutConfig,
+  ProjectWorkspaceState,
+  PersistedWorkspaceTab,
+  PersistedTerminalSession,
+  MemoryRecord,
+  MemoryTier
+} from '../../shared/types';
 import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider } from '../../shared/cli';
 import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shared/context';
 import type { SkillMetadata, SkillExecutionRecord, SkillManifest } from '../../shared/skills';
@@ -68,6 +77,8 @@ export class DatabaseService {
         ui_mode TEXT NOT NULL DEFAULT 'simple',
         theme TEXT NOT NULL DEFAULT 'system',
         auto_index INTEGER NOT NULL DEFAULT 1,
+        file_icon_theme TEXT NOT NULL DEFAULT 'material',
+        show_git_file_colors INTEGER NOT NULL DEFAULT 1,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -350,6 +361,65 @@ export class DatabaseService {
     } catch {
       // Column already exists
     }
+
+    try {
+      db.exec(`ALTER TABLE workspaces ADD COLUMN file_icon_theme TEXT DEFAULT 'material'`);
+    } catch {
+      // Column already exists
+    }
+
+    try {
+      db.exec(`ALTER TABLE workspaces ADD COLUMN show_git_file_colors INTEGER DEFAULT 1`);
+    } catch {
+      // Column already exists
+    }
+
+    // Projects table customization columns
+    try {
+      db.exec(`ALTER TABLE projects ADD COLUMN custom_name TEXT`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE projects ADD COLUMN custom_color TEXT`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE projects ADD COLUMN custom_icon TEXT`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE projects ADD COLUMN description TEXT`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE projects ADD COLUMN tag TEXT`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE projects ADD COLUMN is_favorite INTEGER DEFAULT 0`);
+    } catch {}
+    try {
+      db.exec(`ALTER TABLE projects ADD COLUMN settings_json TEXT DEFAULT '{}'`);
+    } catch {}
+
+    // Layout configuration persistence
+    try {
+      db.exec(`ALTER TABLE workspaces ADD COLUMN layout_json TEXT DEFAULT '{}'`);
+    } catch {}
+
+    // Per-project workspace states (isolated tabs, active file, expanded folders, terminals)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS project_workspace_states (
+        project_id TEXT PRIMARY KEY,
+        open_tabs_json TEXT NOT NULL DEFAULT '[]',
+        active_tab_id TEXT,
+        active_file_path TEXT,
+        expanded_dirs_json TEXT NOT NULL DEFAULT '[]',
+        file_filter TEXT NOT NULL DEFAULT '',
+        terminal_sessions_json TEXT NOT NULL DEFAULT '[]',
+        active_terminal_id TEXT,
+        target_editor_line INTEGER,
+        view_state_json TEXT NOT NULL DEFAULT '{}',
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_pws_updated ON project_workspace_states(updated_at);
+    `);
   }
 
   private migrateIndexSchema(db: Database.Database): void {
@@ -500,11 +570,150 @@ export class DatabaseService {
     return merged;
   }
 
+  public getAppLayout(): AppLayoutConfig {
+    const db = this.getAppDb();
+    const row = db.prepare('SELECT layout_json FROM workspaces LIMIT 1').get() as any;
+    const defaults: AppLayoutConfig = {
+      isLeftSidebarOpen: true,
+      leftSidebarWidth: 240,
+      isRightPanelOpen: true,
+      rightPanelWidth: 280,
+      isBottomPanelOpen: false,
+      bottomPanelHeight: 220,
+      activeSection: 'editor',
+      activeSidebarSection: 'projects',
+      rightPanelTab: 'files',
+      bottomPanelTab: 'terminal',
+      terminalLayout: '1'
+    };
+
+    if (!row || !row.layout_json) {
+      return defaults;
+    }
+
+    try {
+      const parsed = JSON.parse(row.layout_json);
+      return {
+        isLeftSidebarOpen: parsed.isLeftSidebarOpen ?? defaults.isLeftSidebarOpen,
+        leftSidebarWidth: typeof parsed.leftSidebarWidth === 'number' ? parsed.leftSidebarWidth : defaults.leftSidebarWidth,
+        isRightPanelOpen: parsed.isRightPanelOpen ?? defaults.isRightPanelOpen,
+        rightPanelWidth: typeof parsed.rightPanelWidth === 'number' ? parsed.rightPanelWidth : defaults.rightPanelWidth,
+        isBottomPanelOpen: parsed.isBottomPanelOpen ?? defaults.isBottomPanelOpen,
+        bottomPanelHeight: typeof parsed.bottomPanelHeight === 'number' ? parsed.bottomPanelHeight : defaults.bottomPanelHeight,
+        activeSection: parsed.activeSection ?? defaults.activeSection,
+        activeSidebarSection: parsed.activeSidebarSection ?? defaults.activeSidebarSection,
+        rightPanelTab: parsed.rightPanelTab ?? defaults.rightPanelTab,
+        bottomPanelTab: parsed.bottomPanelTab ?? defaults.bottomPanelTab,
+        terminalLayout: parsed.terminalLayout ?? defaults.terminalLayout
+      };
+    } catch {
+      return defaults;
+    }
+  }
+
+  public updateAppLayout(updates: Partial<AppLayoutConfig>): AppLayoutConfig {
+    const current = this.getAppLayout();
+    const merged = { ...current, ...updates };
+    const db = this.getAppDb();
+    db.prepare('UPDATE workspaces SET layout_json = ?, updated_at = ?').run(
+      JSON.stringify(merged),
+      Date.now()
+    );
+    return merged;
+  }
+
+  public getProjectWorkspaceState(projectId: string): ProjectWorkspaceState | null {
+    const db = this.getAppDb();
+    const row = db.prepare('SELECT * FROM project_workspace_states WHERE project_id = ?').get(projectId) as any;
+    if (!row) return null;
+
+    let openTabs: PersistedWorkspaceTab[] = [];
+    try {
+      openTabs = JSON.parse(row.open_tabs_json || '[]');
+      if (!Array.isArray(openTabs)) openTabs = [];
+    } catch {
+      openTabs = [];
+    }
+
+    let expandedDirs: string[] = [];
+    try {
+      expandedDirs = JSON.parse(row.expanded_dirs_json || '[]');
+      if (!Array.isArray(expandedDirs)) expandedDirs = [];
+    } catch {
+      expandedDirs = [];
+    }
+
+    let terminalSessions: PersistedTerminalSession[] = [];
+    try {
+      terminalSessions = JSON.parse(row.terminal_sessions_json || '[]');
+      if (!Array.isArray(terminalSessions)) terminalSessions = [];
+    } catch {
+      terminalSessions = [];
+    }
+
+    return {
+      projectId: row.project_id,
+      openTabs,
+      activeTabId: row.active_tab_id || null,
+      activeFilePath: row.active_file_path || null,
+      expandedDirs,
+      fileFilter: row.file_filter || '',
+      terminalSessions,
+      activeTerminalId: row.active_terminal_id || null,
+      targetEditorLine: row.target_editor_line !== null ? Number(row.target_editor_line) : null,
+      updatedAt: Number(row.updated_at)
+    };
+  }
+
+  public saveProjectWorkspaceState(projectId: string, state: Partial<ProjectWorkspaceState>): void {
+    const db = this.getAppDb();
+    const existing = this.getProjectWorkspaceState(projectId);
+
+    const openTabs = state.openTabs !== undefined ? state.openTabs : (existing?.openTabs || []);
+    const activeTabId = state.activeTabId !== undefined ? state.activeTabId : (existing?.activeTabId || null);
+    const activeFilePath = state.activeFilePath !== undefined ? state.activeFilePath : (existing?.activeFilePath || null);
+    const expandedDirs = state.expandedDirs !== undefined ? state.expandedDirs : (existing?.expandedDirs || []);
+    const fileFilter = state.fileFilter !== undefined ? state.fileFilter : (existing?.fileFilter || '');
+    const terminalSessions = state.terminalSessions !== undefined ? state.terminalSessions : (existing?.terminalSessions || []);
+    const activeTerminalId = state.activeTerminalId !== undefined ? state.activeTerminalId : (existing?.activeTerminalId || null);
+    const targetEditorLine = state.targetEditorLine !== undefined ? state.targetEditorLine : (existing?.targetEditorLine || null);
+
+    db.prepare(`
+      INSERT INTO project_workspace_states (
+        project_id, open_tabs_json, active_tab_id, active_file_path,
+        expanded_dirs_json, file_filter, terminal_sessions_json,
+        active_terminal_id, target_editor_line, view_state_json, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(project_id) DO UPDATE SET
+        open_tabs_json = excluded.open_tabs_json,
+        active_tab_id = excluded.active_tab_id,
+        active_file_path = excluded.active_file_path,
+        expanded_dirs_json = excluded.expanded_dirs_json,
+        file_filter = excluded.file_filter,
+        terminal_sessions_json = excluded.terminal_sessions_json,
+        active_terminal_id = excluded.active_terminal_id,
+        target_editor_line = excluded.target_editor_line,
+        updated_at = excluded.updated_at
+    `).run(
+      projectId,
+      JSON.stringify(openTabs),
+      activeTabId,
+      activeFilePath,
+      JSON.stringify(expandedDirs),
+      fileFilter,
+      JSON.stringify(terminalSessions),
+      activeTerminalId,
+      targetEditorLine,
+      '{}',
+      Date.now()
+    );
+  }
+
   public recordProjectOpen(project: ProjectDescriptor): void {
     const db = this.getAppDb();
     db.prepare(`
-      INSERT INTO projects (id, name, path, last_opened_at, is_git_repo, active_branch, permission_level)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO projects (id, name, path, last_opened_at, is_git_repo, active_branch, permission_level, is_favorite, settings_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(path) DO UPDATE SET
         last_opened_at = excluded.last_opened_at,
         is_git_repo = excluded.is_git_repo,
@@ -517,23 +726,145 @@ export class DatabaseService {
       Date.now(),
       project.isGitRepo ? 1 : 0,
       project.activeBranch || null,
-      project.permissionLevel
+      project.permissionLevel,
+      project.isFavorite ? 1 : 0,
+      project.settings ? JSON.stringify(project.settings) : '{}'
     );
   }
 
-  public getRecentProjects(): ProjectDescriptor[] {
-    const db = this.getAppDb();
-    const rows = db.prepare('SELECT * FROM projects ORDER BY last_opened_at DESC LIMIT 10').all() as any[];
+  private mapProjectRow(r: any): ProjectDescriptor {
+    let parsedSettings = {};
+    try {
+      if (r.settings_json) {
+        parsedSettings = JSON.parse(r.settings_json);
+      }
+    } catch {}
 
-    return rows.map((r) => ({
+    return {
       id: r.id,
       name: r.name,
       path: r.path,
       lastOpenedAt: r.last_opened_at,
       isGitRepo: Boolean(r.is_git_repo),
       activeBranch: r.active_branch || undefined,
-      permissionLevel: r.permission_level
-    }));
+      permissionLevel: r.permission_level,
+      customName: r.custom_name || undefined,
+      customColor: r.custom_color || undefined,
+      customIcon: r.custom_icon || undefined,
+      description: r.description || undefined,
+      tag: r.tag || undefined,
+      isFavorite: Boolean(r.is_favorite),
+      settings: parsedSettings
+    };
+  }
+
+  public getProject(projectId: string): ProjectDescriptor | null {
+    const db = this.getAppDb();
+    const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId) as any;
+    return row ? this.mapProjectRow(row) : null;
+  }
+
+  public getProjectByPath(projectPath: string): ProjectDescriptor | null {
+    const db = this.getAppDb();
+    // Normalize path comparison
+    const norm = projectPath.replace(/[/\\]+$/, '');
+    const row = db.prepare('SELECT * FROM projects WHERE path = ? OR path = ?').get(norm, projectPath) as any;
+    return row ? this.mapProjectRow(row) : null;
+  }
+
+  public getRecentProjects(): ProjectDescriptor[] {
+    const db = this.getAppDb();
+    const rows = db.prepare('SELECT * FROM projects ORDER BY last_opened_at DESC LIMIT 20').all() as any[];
+    return rows.map((r) => this.mapProjectRow(r));
+  }
+
+  public updateProject(projectId: string, updates: Partial<ProjectDescriptor>): ProjectDescriptor {
+    const db = this.getAppDb();
+    const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId) as any;
+    if (!existing) {
+      throw new Error(`Project not found with id: ${projectId}`);
+    }
+
+    const customName = updates.customName !== undefined ? updates.customName : existing.custom_name;
+    const customColor = updates.customColor !== undefined ? updates.customColor : existing.custom_color;
+    const customIcon = updates.customIcon !== undefined ? updates.customIcon : existing.custom_icon;
+    const description = updates.description !== undefined ? updates.description : existing.description;
+    const tag = updates.tag !== undefined ? updates.tag : existing.tag;
+    const isFavorite = updates.isFavorite !== undefined ? (updates.isFavorite ? 1 : 0) : (existing.is_favorite || 0);
+
+    let settingsJson = existing.settings_json || '{}';
+    if (updates.settings !== undefined) {
+      settingsJson = JSON.stringify(updates.settings);
+    }
+
+    db.prepare(`
+      UPDATE projects
+      SET custom_name = ?, custom_color = ?, custom_icon = ?, description = ?, tag = ?, is_favorite = ?, settings_json = ?
+      WHERE id = ?
+    `).run(
+      customName || null,
+      customColor || null,
+      customIcon || null,
+      description || null,
+      tag || null,
+      isFavorite,
+      settingsJson,
+      projectId
+    );
+
+    let parsedSettings = {};
+    try {
+      parsedSettings = JSON.parse(settingsJson);
+    } catch {}
+
+    return {
+      id: existing.id,
+      name: existing.name,
+      path: existing.path,
+      lastOpenedAt: existing.last_opened_at,
+      isGitRepo: Boolean(existing.is_git_repo),
+      activeBranch: existing.active_branch || undefined,
+      permissionLevel: existing.permission_level,
+      customName: customName || undefined,
+      customColor: customColor || undefined,
+      customIcon: customIcon || undefined,
+      description: description || undefined,
+      tag: tag || undefined,
+      isFavorite: Boolean(isFavorite),
+      settings: parsedSettings
+    };
+  }
+
+  public toggleProjectFavorite(projectId: string, isFavorite?: boolean): boolean {
+    const db = this.getAppDb();
+    const existing = db.prepare('SELECT is_favorite FROM projects WHERE id = ?').get(projectId) as any;
+    if (!existing) return false;
+    const nextVal = isFavorite !== undefined ? (isFavorite ? 1 : 0) : (existing.is_favorite ? 0 : 1);
+    db.prepare('UPDATE projects SET is_favorite = ? WHERE id = ?').run(nextVal, projectId);
+    return Boolean(nextVal);
+  }
+
+  public getProjectSettings(projectId: string): any {
+    const db = this.getAppDb();
+    const row = db.prepare('SELECT settings_json FROM projects WHERE id = ?').get(projectId) as any;
+    if (!row || !row.settings_json) return {};
+    try {
+      return JSON.parse(row.settings_json);
+    } catch {
+      return {};
+    }
+  }
+
+  public saveProjectSettings(projectId: string, settings: any): boolean {
+    const db = this.getAppDb();
+    const json = JSON.stringify(settings || {});
+    db.prepare('UPDATE projects SET settings_json = ? WHERE id = ?').run(json, projectId);
+    return true;
+  }
+
+  public removeProject(projectId: string): void {
+    const db = this.getAppDb();
+    db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
   }
 
   public listMemories(tier?: string): MemoryRecord[] {
@@ -1562,6 +1893,37 @@ export class DatabaseService {
       recoveredOrchestrations: activeOrchs.length,
       recoveredTasks: activeTasks.length
     };
+  }
+
+  /**
+   * Recovers CLI sessions stuck in 'running' status on application restart.
+   * Interrupted sessions are marked 'failed' with exitCode 130 and a descriptive system message.
+   */
+  public recoverCLISessionsOnStartup(): { recoveredSessions: number } {
+    const db = this.getAppDb();
+    const active = db.prepare(`SELECT id FROM cli_sessions WHERE status = 'running'`).all() as any[];
+    for (const sess of active) {
+      db.prepare(`
+        UPDATE cli_sessions
+        SET status = 'failed',
+            exit_code = 130,
+            duration_ms = CASE WHEN duration_ms IS NULL OR duration_ms = 0 THEN 0 ELSE duration_ms END,
+            updated_at = ?
+        WHERE id = ?
+      `).run(Date.now(), sess.id);
+
+      try {
+        this.addCLISessionMessage({
+          id: `msg-recovery-${Date.now()}-${sess.id}`,
+          sessionId: sess.id,
+          role: 'system',
+          content: '[Session interrupted by application restart/shutdown]',
+          timestamp: Date.now()
+        });
+      } catch {}
+    }
+
+    return { recoveredSessions: active.length };
   }
 
   // ==========================================

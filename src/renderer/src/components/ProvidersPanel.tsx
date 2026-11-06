@@ -6,9 +6,10 @@ import {
   AlertTriangle,
   RefreshCw,
   ExternalLink,
-  Key,
   FolderSearch,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 import type { CLIProvider } from '../../../shared/cli';
@@ -17,7 +18,7 @@ interface ProviderCardProps {
   id: CLIProvider;
   name: string;
   tagline: string;
-  badgeColor: string;
+  badge: string;
 }
 
 const PROVIDERS: ProviderCardProps[] = [
@@ -25,25 +26,25 @@ const PROVIDERS: ProviderCardProps[] = [
     id: 'claude',
     name: 'Claude Code CLI',
     tagline: 'Interactive agentic coding by Anthropic (@anthropic-ai/claude-code)',
-    badgeColor: 'border-amber-500/30 bg-amber-500/10 text-amber-500'
+    badge: 'Anthropic'
   },
   {
     id: 'codex',
     name: 'OpenAI Codex CLI',
     tagline: 'Command-line execution and code automation via OpenAI tools',
-    badgeColor: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+    badge: 'OpenAI'
   },
   {
     id: 'gemini',
     name: 'Google Gemini CLI',
     tagline: 'Multimodal and code intelligence via Google GenAI developer CLI',
-    badgeColor: 'border-blue-500/30 bg-blue-500/10 text-blue-500'
+    badge: 'Google'
   },
   {
     id: 'ollama',
     name: 'Ollama (Local Models)',
     tagline: 'Local air-gapped LLM inference (Llama 3, Mistral, DeepSeek-R1)',
-    badgeColor: 'border-purple-500/30 bg-purple-500/10 text-purple-500'
+    badge: 'Air-Gap / Local'
   }
 ];
 
@@ -106,27 +107,27 @@ export const ProvidersPanel: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-primary" />
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-foreground" />
             <span>AI Providers & CLI Integrations</span>
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Phase 2: Decoupled adapters for Claude Code, OpenAI Codex, and Google Gemini.
+          <p className="text-xs text-foreground-secondary mt-0.5 font-mono">
+            Decoupled adapters with streaming parsers for Claude, Codex, Gemini, and local Ollama air-gap models.
           </p>
         </div>
 
         <button
           onClick={refreshStatuses}
           disabled={isLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 text-foreground text-xs font-medium transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-surface-elevated hover:bg-surface-hover text-foreground text-xs font-medium transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           <span>{isLoading ? 'Scanning...' : 'Refresh Status'}</span>
         </button>
       </div>
 
-      {/* Provider Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Provider Cards Grid (4 columns) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {PROVIDERS.map((p) => {
           const status = cliStatuses ? cliStatuses[p.id] : null;
           const auth = cliAuthStatuses ? cliAuthStatuses[p.id] : null;
@@ -135,153 +136,111 @@ export const ProvidersPanel: React.FC = () => {
           return (
             <div
               key={p.id}
-              className={`rounded-xl border p-4 flex flex-col justify-between transition-all ${
+              className={`rounded border p-3.5 flex flex-col justify-between transition-all ${
                 isSelected
-                  ? 'border-primary ring-1 ring-primary bg-card shadow-sm'
-                  : 'border-border bg-card/60 hover:border-border/80'
+                  ? 'border-foreground/80 bg-surface-elevated shadow-xs'
+                  : 'border-border bg-surface hover:border-border/80'
               }`}
             >
               <div className="space-y-3">
                 {/* Title & Badge */}
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-sm text-foreground">{p.name}</h3>
-                    <p className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                    <h3 className="font-semibold text-xs text-foreground">{p.name}</h3>
+                    <p className="text-[10px] text-foreground-secondary leading-normal mt-0.5">
                       {p.tagline}
                     </p>
                   </div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${p.badgeColor}`}>
-                    {p.id}
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border border-border bg-background text-foreground-muted">
+                    {p.badge}
                   </span>
                 </div>
 
                 {/* Installation Badge */}
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between py-1 border-b border-border/50">
-                    <span className="text-muted-foreground">Installation:</span>
+                <div className="space-y-1 text-[11px] font-mono">
+                  <div className="flex items-center justify-between py-1 border-b border-border/40">
+                    <span className="text-foreground-muted">Installed:</span>
                     {status?.isInstalled ? (
-                      <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                        <CheckCircle2 className="w-3 h-3" />
                         <span>v{status.version}</span>
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-muted-foreground italic">
-                        <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>Not Detected</span>
+                      <span className="flex items-center gap-1 text-foreground-muted italic">
+                        <XCircle className="w-3 h-3 text-foreground-muted" />
+                        <span>Not Found</span>
                       </span>
                     )}
                   </div>
 
                   {/* Auth Badge */}
-                  <div className="flex flex-col py-1 border-b border-border/50 gap-0.5">
+                  <div className="flex flex-col py-1 border-b border-border/40 gap-0.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Authentication:</span>
+                      <span className="text-foreground-muted">Auth Status:</span>
                       {auth?.state === 'authenticated' ? (
-                        <span className="flex items-center gap-1 text-emerald-500 font-medium capitalize">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Authenticated ({auth.authType})</span>
+                        <span className="flex items-center gap-1 text-emerald-400 font-medium capitalize">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{auth.state}</span>
                         </span>
-                      ) : auth?.state === 'authentication_expired' ? (
-                        <span className="flex items-center gap-1 text-red-500 font-medium">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Expired</span>
-                        </span>
-                      ) : auth?.state === 'configured' ? (
-                        <span className="flex items-center gap-1 text-amber-500 font-medium">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Configured (No Keys)</span>
-                        </span>
-                      ) : auth?.state === 'error' ? (
-                        <span className="flex items-center gap-1 text-red-500 font-medium">
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Error</span>
-                        </span>
-                      ) : auth?.state === 'not_installed' ? (
-                        <span className="flex items-center gap-1 text-muted-foreground italic">
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Not Installed</span>
+                      ) : auth?.state === 'authentication_required' ? (
+                        <span className="flex items-center gap-1 text-amber-400 font-medium">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Needs Login</span>
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-amber-500 font-medium">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Login Required</span>
-                        </span>
+                        <span className="text-foreground-muted italic">{auth?.state || '--'}</span>
                       )}
                     </div>
                     {auth?.details && (
-                      <span className="text-[10px] text-muted-foreground leading-tight">
+                      <span className="text-[9px] text-foreground-muted truncate" title={auth.details}>
                         {auth.details}
                       </span>
                     )}
                   </div>
 
-                  {/* Resolved Binary Path */}
-                  {status?.resolvedPath && (
-                    <div className="py-1">
-                      <span className="text-[10px] text-muted-foreground block">Binary Path:</span>
-                      <span className="font-mono text-[10px] text-foreground/80 break-all select-text">
-                        {status.resolvedPath}
-                      </span>
+                  {/* Executable Path */}
+                  <div className="py-1">
+                    <span className="text-foreground-muted text-[10px] block mb-0.5">Custom Path:</span>
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        placeholder={status?.resolvedPath || 'Auto PATH'}
+                        value={editingPath[p.id] ?? customPaths[p.id] ?? ''}
+                        onChange={(e) => setEditingPath({ ...editingPath, [p.id]: e.target.value })}
+                        className="flex-1 bg-background border border-border rounded px-1.5 py-0.5 text-[10px] text-foreground focus:outline-none"
+                      />
+                      <button
+                        onClick={() => handleSaveCustomPath(p.id)}
+                        className="px-2 py-0.5 bg-surface-elevated hover:bg-surface-hover text-foreground rounded border border-border text-[10px]"
+                      >
+                        Set
+                      </button>
                     </div>
-                  )}
-                </div>
-
-                {/* Custom Path Override Input */}
-                <div className="pt-1 space-y-1">
-                  <label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <FolderSearch className="w-3 h-3" />
-                    <span>Custom Executable Path (Optional):</span>
-                  </label>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      placeholder={`e.g. C:\\bin\\${p.id}.cmd`}
-                      value={
-                        editingPath[p.id] !== undefined
-                          ? editingPath[p.id]
-                          : customPaths[p.id] || ''
-                      }
-                      onChange={(e) =>
-                        setEditingPath({ ...editingPath, [p.id]: e.target.value })
-                      }
-                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-[11px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <button
-                      onClick={() => handleSaveCustomPath(p.id)}
-                      className="px-2 py-1 bg-secondary hover:bg-secondary/80 rounded border border-border text-[11px] font-medium"
-                    >
-                      Save
-                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Card Footer Actions */}
-              <div className="pt-4 border-t border-border/60 mt-4 flex items-center justify-between">
-                {status?.installGuideUrl && (
-                  <a
-                    href={status.installGuideUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-primary hover:underline flex items-center gap-1"
-                  >
-                    <span>Guide</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-
+              {/* Action Button */}
+              <div className="pt-3">
                 <button
                   onClick={() => {
                     setActiveProvider(p.id);
-                    addLog(`Active provider selected: ${p.name}`, 'info');
+                    addLog(`Active AI Provider set to: ${p.name}`, 'info');
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  className={`w-full py-1 rounded text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors border ${
                     isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary hover:bg-secondary/80 text-foreground'
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-surface-elevated hover:bg-surface-hover text-foreground border-border'
                   }`}
                 >
-                  {isSelected ? 'Active Provider' : 'Select'}
+                  {isSelected ? (
+                    <>
+                      <Check className="w-3 h-3" />
+                      <span>Active Provider</span>
+                    </>
+                  ) : (
+                    <span>Select for CLI</span>
+                  )}
                 </button>
               </div>
             </div>

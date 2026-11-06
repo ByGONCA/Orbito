@@ -53,7 +53,7 @@ export class OllamaAdapter implements ICLIAdapter {
         return {
           provider: this.provider,
           isInstalled: true,
-          resolvedPath: 'http://127.0.0.1:11434',
+          resolvedPath: undefined, // Binary does not exist on PATH; HTTP API fallback is used
           version: 'daemon-active',
           isCompatible: true,
           requiresUpdate: false,
@@ -136,6 +136,159 @@ export class OllamaAdapter implements ICLIAdapter {
         details: 'Ollama daemon responding locally.'
       };
     }
+  }
+
+  /**
+   * Evaluates how Ollama can execute: via binary CLI or HTTP REST API.
+   */
+  public async canExecute(customPath?: string): Promise<{
+    canExecute: boolean;
+    mode: 'cli' | 'http' | 'none';
+    resolvedPath?: string;
+    error?: string;
+  }> {
+    const status = await this.detect(customPath);
+    if (status.resolvedPath) {
+      return { canExecute: true, mode: 'cli', resolvedPath: status.resolvedPath };
+    }
+    const isDaemonAlive = await this.pingDaemon();
+    if (isDaemonAlive) {
+      return { canExecute: true, mode: 'http' };
+    }
+    return {
+      canExecute: false,
+      mode: 'none',
+      error:
+        "Cannot execute: Ollama CLI binary is not installed on PATH and local daemon is not running (http://127.0.0.1:11434). Start with 'ollama serve' or install from https://ollama.com/download."
+    };
+  }
+
+  /**
+   * Executes prompt via Ollama's local HTTP REST API (/api/generate) with real-time JSON streaming.
+   * Completely avoids child_process.spawn() when the CLI binary is not installed.
+   */
+  public executeHttpStream(params: {
+    prompt: string;
+    model?: string;
+    timeoutSeconds?: number;
+    onChunk: (delta: string) => void;
+    onError: (errorMessage: string) => void;
+    onDone: (exitCode: number) => void;
+  }): { abort: () => void } {
+    const modelToUse = params.model || this.activeModel;
+    const timeoutMs = (params.timeoutSeconds || 120) * 1000;
+
+    const postData = JSON.stringify({
+      model: modelToUse,
+      prompt: params.prompt,
+      stream: true
+    });
+
+    let isCompleted = false;
+    let timeoutTimer: NodeJS.Timeout | null = null;
+
+    const req = http.request(
+      {
+        hostname: this.defaultHost,
+        port: this.defaultPort,
+        path: '/api/generate',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      },
+      (res) => {
+        if (res.statusCode && res.statusCode >= 400) {
+          let errBody = '';
+          res.on('data', (c) => (errBody += c));
+          res.on('end', () => {
+            if (isCompleted) return;
+            isCompleted = true;
+            if (timeoutTimer) clearTimeout(timeoutTimer);
+            try {
+              const parsed = JSON.parse(errBody);
+              params.onError(parsed.error || `Ollama API error (HTTP ${res.statusCode})`);
+            } catch {
+              params.onError(`Ollama API error: HTTP ${res.statusCode} - ${errBody}`);
+            }
+            params.onDone(1);
+          });
+          return;
+        }
+
+        let buffer = '';
+        res.on('data', (chunk: Buffer) => {
+          buffer += chunk.toString('utf8');
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.response) {
+                params.onChunk(parsed.response);
+              }
+              if (parsed.done) {
+                if (isCompleted) return;
+                isCompleted = true;
+                if (timeoutTimer) clearTimeout(timeoutTimer);
+                params.onDone(0);
+                return;
+              }
+            } catch {
+              // Ignore non-json chunks
+            }
+          }
+        });
+
+        res.on('end', () => {
+          if (buffer.trim()) {
+            try {
+              const parsed = JSON.parse(buffer);
+              if (parsed.response) params.onChunk(parsed.response);
+            } catch {}
+          }
+          if (!isCompleted) {
+            isCompleted = true;
+            if (timeoutTimer) clearTimeout(timeoutTimer);
+            params.onDone(0);
+          }
+        });
+      }
+    );
+
+    timeoutTimer = setTimeout(() => {
+      if (!isCompleted) {
+        isCompleted = true;
+        req.destroy(new Error('Ollama execution timeout exceeded.'));
+        params.onError('Ollama execution timed out.');
+        params.onDone(124);
+      }
+    }, timeoutMs);
+
+    req.on('error', (err: any) => {
+      if (isCompleted) return;
+      isCompleted = true;
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      params.onError(`Ollama connection error: ${err.message || 'Daemon unreachable'}`);
+      params.onDone(1);
+    });
+
+    req.write(postData);
+    req.end();
+
+    return {
+      abort: () => {
+        if (!isCompleted) {
+          isCompleted = true;
+          if (timeoutTimer) clearTimeout(timeoutTimer);
+          req.destroy();
+          params.onDone(130);
+        }
+      }
+    };
   }
 
   public buildCommand(prompt: string, _workingDirectory: string, _resumeSessionId?: string): CommandSpec {

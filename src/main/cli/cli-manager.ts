@@ -43,6 +43,16 @@ export class CLIManager {
   }
 
   public async checkAuth(provider: CLIProvider, customPath?: string): Promise<CLIAuthStatus> {
+    if (['powershell', 'cmd', 'bash'].includes(provider)) {
+      return {
+        provider,
+        state: 'authenticated',
+        isAuthenticated: true,
+        authType: 'oauth',
+        details: 'Native system shell ready'
+      };
+    }
+
     const adapter = this.getAdapter(provider);
     const detection = await adapter.detect(customPath);
 

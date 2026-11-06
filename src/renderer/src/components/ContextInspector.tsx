@@ -243,52 +243,52 @@ export const ContextInspector: React.FC = () => {
 
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1">
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-            <FileCode2 className="w-3.5 h-3.5 text-blue-500" />
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-1">
+          <span className="text-[11px] text-[#A4A8AF] flex items-center gap-1.5">
+            <FileCode2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
             <span>Indexed Files</span>
           </span>
-          <p className="text-xl font-bold font-mono text-foreground">{indexStats?.totalFiles || 0}</p>
-          <span className="text-[10px] text-muted-foreground">Incremental hashing</span>
+          <p className="text-xl font-bold font-mono text-[#ECEDEF]">{indexStats?.totalFiles || 0}</p>
+          <span className="text-[10px] text-[#747982]">Incremental hashing</span>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1">
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-            <Cpu className="w-3.5 h-3.5 text-emerald-500" />
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-1">
+          <span className="text-[11px] text-[#A4A8AF] flex items-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5 text-[#A4A8AF]" />
             <span>AST Symbols</span>
           </span>
-          <p className="text-xl font-bold font-mono text-foreground">{indexStats?.totalSymbols || 0}</p>
-          <span className="text-[10px] text-muted-foreground">Tree-sitter extracted</span>
+          <p className="text-xl font-bold font-mono text-[#ECEDEF]">{indexStats?.totalSymbols || 0}</p>
+          <span className="text-[10px] text-[#747982]">Tree-sitter extracted</span>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1">
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-amber-500" />
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-1">
+          <span className="text-[11px] text-[#A4A8AF] flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-[#A4A8AF]" />
             <span>FTS5 Chunks</span>
           </span>
-          <p className="text-xl font-bold font-mono text-foreground">{indexStats?.totalChunks || 0}</p>
-          <span className="text-[10px] text-muted-foreground">BM25 searchable</span>
+          <p className="text-xl font-bold font-mono text-[#ECEDEF]">{indexStats?.totalChunks || 0}</p>
+          <span className="text-[10px] text-[#747982]">BM25 searchable</span>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1">
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-purple-500" />
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-1">
+          <span className="text-[11px] text-[#A4A8AF] flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-[#A4A8AF]" />
             <span>Status</span>
           </span>
           <div className="flex items-center gap-1.5 pt-0.5">
             {indexStats?.isIndexing ? (
-              <span className="text-xs font-semibold text-amber-500 flex items-center gap-1">
+              <span className="text-xs font-semibold text-amber-400 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3 animate-spin" /> Indexing
               </span>
             ) : indexStats?.isWatching ? (
-              <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Watching
+              <span className="text-xs font-semibold text-[#ECEDEF] flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-[#A4A8AF]" /> Watching
               </span>
             ) : (
-              <span className="text-xs font-semibold text-muted-foreground">Idle</span>
+              <span className="text-xs font-semibold text-[#747982]">Idle</span>
             )}
           </div>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-[#747982] block">
             {indexStats?.lastIndexedAt
               ? `Last updated: ${new Date(indexStats.lastIndexedAt).toLocaleTimeString()}`
               : 'Never indexed'}
@@ -506,7 +506,7 @@ export const ContextInspector: React.FC = () => {
                       </span>
                       <div className="flex items-center gap-2">
                         {f.isLiveDiskRead && (
-                          <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-500 text-[10px] font-bold">
+                          <span className="px-1.5 py-0.2 rounded bg-white/[0.08] text-[#ECEDEF] border border-white/[0.10] text-[10px] font-bold">
                             Live Read
                           </span>
                         )}

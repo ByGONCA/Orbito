@@ -79,12 +79,133 @@ export class SecurityService {
   }
 
   /**
-   * Validates shell command execution safety.
-   * Blocks shell chaining operators (&&, ;, |, `, $()) when in restricted/standard mode.
+   * Classifies whether a shell command is strictly read-only inspection.
+   * Disqualifies any command containing redirection (>), pipes (|), chaining (&&, ;, ||),
+   * subshell substitution ($(), ``), or write/modifying subcommands.
    */
-  public validateCommandSafety(command: string, level: PermissionLevel): void {
+  public isReadOnlyCommand(command: string): boolean {
+    if (!command || !command.trim()) return false;
+    const trimmed = command.trim();
+
+    // Any shell chaining, backgrounding, piping, redirection, or command substitution makes it unsafe
+    if (/[;&|`$<>]/m.test(trimmed) || /\r|\n/.test(trimmed)) {
+      return false;
+    }
+
+    const tokens = trimmed.split(/\s+/);
+    const base = tokens[0].toLowerCase().replace(/^.*[/\\]/, '');
+
+    // Allow benign directory/file listings and location inspection
+    const readOnlyListingCommands = new Set([
+      'dir',
+      'ls',
+      'pwd',
+      'get-location',
+      'gl',
+      'get-childitem',
+      'gci'
+    ]);
+    if (readOnlyListingCommands.has(base)) {
+      return true;
+    }
+
+    // Allow benign file content inspection
+    const readOnlyViewerCommands = new Set([
+      'cat',
+      'type',
+      'get-content',
+      'gc',
+      'head',
+      'tail',
+      'more',
+      'less'
+    ]);
+    if (readOnlyViewerCommands.has(base)) {
+      return true;
+    }
+
+    // Allow benign system / environmental / text inspection
+    const readOnlyEnvCommands = new Set([
+      'echo',
+      'write-output',
+      'write-host',
+      'whoami',
+      'date',
+      'get-date',
+      'hostname',
+      'uname',
+      'which',
+      'where',
+      'where.exe'
+    ]);
+    if (readOnlyEnvCommands.has(base)) {
+      return true;
+    }
+
+    // Git inspection commands
+    if (base === 'git') {
+      const sub = tokens[1]?.toLowerCase();
+      if (!sub) return true; // Just `git`
+
+      const allowedGitSub = new Set([
+        'status',
+        'log',
+        'diff',
+        'show',
+        'rev-parse',
+        'describe',
+        'version'
+      ]);
+      if (allowedGitSub.has(sub)) {
+        return true;
+      }
+
+      // `git branch` or `git tag` only in listing mode (no modifying flags)
+      if (sub === 'branch' || sub === 'tag') {
+        const hasModifyingFlag = tokens.slice(2).some((t) =>
+          /^-[dDmaMc]/.test(t) || t === '--delete' || t === '--create'
+        );
+        return !hasModifyingFlag;
+      }
+
+      return false;
+    }
+
+    // Version probes for development runtimes
+    const runtimeProbes = new Set(['node', 'npm', 'npx', 'python', 'python3', 'tsc', 'git', 'pnpm', 'yarn', 'cargo', 'rustc', 'go']);
+    if (runtimeProbes.has(base) && tokens.length === 2) {
+      const arg = tokens[1].toLowerCase();
+      if (arg === '-v' || arg === '--version' || arg === '-version' || arg === '-V') {
+        return true;
+      }
+    }
+
+    // Fail closed for all other unclassified commands
+    return false;
+  }
+
+  /**
+   * Validates shell command execution safety against active permission tier.
+   * - 'restricted': rejects destructive/write commands. Preserves verified read-only inspection commands when allowReadOnly=true.
+   * - 'standard': allows single commands, blocks compound/chaining operators (&&, ;, |, `, $()).
+   * - 'full': allows all commands without restriction.
+   */
+  public validateCommandSafety(
+    command: string,
+    level: PermissionLevel,
+    options?: { allowReadOnly?: boolean }
+  ): void {
     if (level === 'restricted') {
-      const err = `Command execution forbidden under 'restricted' permission tier.`;
+      if (options?.allowReadOnly && this.isReadOnlyCommand(command)) {
+        auditService.logAccess('permission_manager', 'read_only_shell_permitted', undefined, undefined, 'info', {
+          command
+        });
+        return;
+      }
+
+      const err = this.isReadOnlyCommand(command)
+        ? `Command execution forbidden under 'restricted' permission tier.`
+        : `Command execution rejected: write or destructive command forbidden under 'restricted' permission tier.`;
       auditService.logSecurityViolation('permission_manager', 'command_forbidden_restricted', err, command);
       throw new SecurityViolationException(err);
     }
