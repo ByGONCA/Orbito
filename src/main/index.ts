@@ -26,7 +26,9 @@ process.on('unhandledRejection', (reason) => {
 
 function createWindow(): BrowserWindow {
   const isDev = !app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
-  const iconPath = path.join(__dirname, '../../resources/Orbit.png');
+  const icoPath = path.join(__dirname, '../../resources/icon.ico');
+  const pngPath = path.join(__dirname, '../../resources/Orbit.png');
+  const iconPath = process.platform === 'win32' && fs.existsSync(icoPath) ? icoPath : pngPath;
 
   const win = new BrowserWindow({
     width: 1280,
@@ -182,6 +184,9 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    if (process.platform === 'win32') {
+      app.setAppUserModelId('com.orbito.workspace');
+    }
     const isDev = !app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
     appLogger.info('Main', `========================================================`);
     appLogger.info('Main', `Orbito v0.1.0 starting [Mode: ${isDev ? 'DEVELOPMENT' : 'PRODUCTION'}]`);
