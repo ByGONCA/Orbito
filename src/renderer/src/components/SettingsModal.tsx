@@ -1076,26 +1076,42 @@ export const SettingsModal: React.FC = () => {
               </div>
 
               {/* 2. Live Discord Presence Preview */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-4 pt-2">
                 <div className="text-xs font-semibold uppercase tracking-wider text-[#747982] font-mono">
                   Pré-visualização da Atividade no Discord
                 </div>
 
-                <div className="max-w-md rounded-xl bg-[#1e1f22] p-4 text-[#dbdee1] font-sans shadow-lg space-y-3 border border-white/[0.04]">
-                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#b5bac1]">
-                    <span>Em Jogo / Atividade</span>
-                    <span className="text-[10px] font-mono text-[#949ba4]">Discord RPC</span>
+                <div className="max-w-md rounded-2xl bg-[#1e1f22] p-4 text-[#dbdee1] font-sans shadow-2xl space-y-3.5 border border-white/[0.06]">
+                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#949ba4]">
+                    <span>PLAYING A GAME</span>
+                    <span className="text-[10px] font-mono text-[#949ba4] bg-white/[0.05] px-1.5 py-0.5 rounded">Discord RPC</span>
                   </div>
 
                   <div className="flex gap-3.5 items-start">
-                    <div className="w-12 h-12 rounded-xl bg-[#2b2d31] border border-white/[0.06] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      <img src="/Orbit.png" alt="Orbito" className="w-9 h-9 object-contain" />
+                    <div className="relative w-14 h-14 rounded-2xl bg-[#111214] border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+                      <img src="/Orbit.png" alt="Orbito" className="w-10 h-10 object-contain rounded-xl" />
+                      {/* Badge indicator in bottom right matching Discord spec */}
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-[#1e1f22] flex items-center justify-center overflow-hidden shadow-sm bg-[#00A8FF]">
+                        {discordStatus?.currentPresence?.state?.includes('Agent working') ? (
+                          <div className="flex items-end gap-0.5 h-2.5">
+                            <span className="w-0.5 h-1.5 bg-black rounded-full" />
+                            <span className="w-0.5 h-2.5 bg-black rounded-full" />
+                            <span className="w-0.5 h-2 bg-black rounded-full" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-0.5">
+                            <span className="w-1 h-1 bg-black rounded-full" />
+                            <span className="w-1 h-1 bg-black rounded-full" />
+                            <span className="w-1 h-1 bg-black rounded-full" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <div className="text-sm font-semibold text-white truncate">Orbito</div>
+                      <div className="text-[15px] font-bold text-white truncate leading-tight">Orbito</div>
                       <div className="text-xs text-[#dbdee1] truncate">
                         {discordStatus?.enabled
-                          ? discordStatus.currentPresence?.details || 'Using Orbito'
+                          ? discordStatus.currentPresence?.details || 'Working in Orbito'
                           : 'Integração desativada'}
                       </div>
                       <div className="text-xs text-[#949ba4] truncate">
@@ -1103,20 +1119,26 @@ export const SettingsModal: React.FC = () => {
                           ? discordStatus.currentPresence?.state || 'Workspace ready'
                           : 'Sem atividade publicada'}
                       </div>
+                      {discordStatus?.enabled && (
+                        <div className="text-xs text-[#23a55a] font-medium pt-0.5 flex items-center gap-1.5 font-mono">
+                          <span>00:42:17 elapsed</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Buttons Preview */}
                   {discordStatus?.enabled && (
-                    <div className="space-y-1.5 pt-1">
+                    <div className="space-y-2 pt-1">
                       {(
                         discordStatus.currentPresence?.buttons || [
+                          { label: 'View on GitHub', url: 'https://github.com/ByGONCA/Orbito' },
                           { label: 'Get Orbito', url: 'https://github.com/ByGONCA/Orbito' }
                         ]
                       ).map((btn, idx) => (
                         <div
                           key={idx}
-                          className="w-full py-1.5 px-3 rounded bg-[#4e5058]/40 hover:bg-[#4e5058]/60 text-xs text-white font-medium text-center truncate cursor-default transition-colors flex items-center justify-center gap-1.5"
+                          className="w-full py-1.5 px-3 rounded-lg bg-[#4e5058]/40 hover:bg-[#4e5058]/60 text-xs text-white font-medium text-center truncate cursor-default transition-colors flex items-center justify-center gap-1.5"
                         >
                           <span>{btn.label}</span>
                           <ExternalLink className="w-3 h-3 text-[#b5bac1]" />
@@ -1124,6 +1146,50 @@ export const SettingsModal: React.FC = () => {
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* 4 Status Badges Legend matching reference */}
+                <div className="pt-2">
+                  <div className="text-[11px] text-[#747982] mb-2 font-mono uppercase tracking-wider">
+                    Estados dos Agentes no Discord
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-[#A4A8AF]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-[#00A8FF] flex items-center justify-center">
+                        <div className="flex items-end gap-0.5 h-2.5">
+                          <span className="w-0.5 h-1.5 bg-black rounded-full" />
+                          <span className="w-0.5 h-2.5 bg-black rounded-full" />
+                          <span className="w-0.5 h-2 bg-black rounded-full" />
+                        </div>
+                      </div>
+                      <span className="text-[11px]">Agente Ativo</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-[#F59E0B] flex items-center justify-center">
+                        <div className="flex items-center gap-0.5">
+                          <span className="w-0.5 h-0.5 bg-black rounded-full" />
+                          <span className="w-0.5 h-0.5 bg-black rounded-full" />
+                          <span className="w-0.5 h-0.5 bg-black rounded-full" />
+                        </div>
+                      </div>
+                      <span className="text-[11px]">Em Espera / Idle</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-[#EF4444] flex items-center justify-center text-[10px] font-bold text-black">
+                        !
+                      </div>
+                      <span className="text-[11px]">Alerta / Erro</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-[#64748B] flex items-center justify-center text-[9px] font-bold text-black">
+                        ⏸
+                      </div>
+                      <span className="text-[11px]">Pausado</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

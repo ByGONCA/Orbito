@@ -320,8 +320,8 @@ describe('Discord Rich Presence Suite', () => {
       (service as any).activeAgentsCount = 3;
 
       const presence = service.computePresencePayload();
-      expect(presence?.details).toBe('Agents working in Orbito');
-      expect(presence?.state).toBe('3 agents active');
+      expect(presence?.details).toBe('Working in Orbito');
+      expect(presence?.state).toBe('Agent working · 3 agents');
       expect(presence?.buttons?.[0]).toEqual({
         label: 'Get Orbito',
         url: OFFICIAL_ORBITO_URL
@@ -330,7 +330,7 @@ describe('Discord Rich Presence Suite', () => {
       // Singular agent
       (service as any).activeAgentsCount = 1;
       const presence1 = service.computePresencePayload();
-      expect(presence1?.state).toBe('1 agent active');
+      expect(presence1?.state).toBe('Agent working · 1 agent');
     });
 
     it('strictly enforces the Discord maximum limit of TWO buttons', async () => {

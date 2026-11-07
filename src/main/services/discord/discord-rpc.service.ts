@@ -9,6 +9,13 @@ export const DEFAULT_DISCORD_CLIENT_ID = '1568419446719127684';
 export const OFFICIAL_ORBITO_URL = 'https://github.com/ByGONCA/Orbito';
 export const OFFICIAL_ORBITO_ICON_URL = 'https://cdn.discordapp.com/app-icons/1568419446719127684/d3fcb37422664c5e4e15a8448d5091a8.png?size=512';
 
+export const DISCORD_BADGE_URLS = {
+  working: 'https://raw.githubusercontent.com/ByGONCA/Orbito/master/resources/badges/agent-working.png',
+  idle: 'https://raw.githubusercontent.com/ByGONCA/Orbito/master/resources/badges/agent-idle.png',
+  error: 'https://raw.githubusercontent.com/ByGONCA/Orbito/master/resources/badges/agent-error.png',
+  paused: 'https://raw.githubusercontent.com/ByGONCA/Orbito/master/resources/badges/agent-paused.png'
+};
+
 export type DiscordConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';
 
 export interface DiscordActivitySnapshot {
@@ -73,7 +80,7 @@ export class DiscordRpcService {
         const project = databaseService.getProject(settings.currentProjectId);
         if (project) {
           this.activeProject = project;
-          if (project.isGitRepo) {
+          if (project.path) {
             this.activeGitRemote = await detectProjectGitRemote(project.path);
           }
         }
@@ -140,7 +147,7 @@ export class DiscordRpcService {
     this.activeProject = project;
     this.activeGitRemote = null;
 
-    if (project && project.isGitRepo) {
+    if (project?.path) {
       try {
         this.activeGitRemote = await detectProjectGitRemote(project.path);
       } catch {
@@ -197,26 +204,33 @@ export class DiscordRpcService {
     // Case 1: Active agents running
     if (this.activeAgentsCount > 0) {
       const count = this.activeAgentsCount;
+      const projectName = this.activeProject ? (this.activeProject.customName || this.activeProject.name) : 'Orbito';
       const buttons: Array<{ label: string; url: string }> = [];
 
+      const remote = this.activeGitRemote || (
+        (projectName.toLowerCase().includes('orbito') || this.activeProject?.path?.toLowerCase().includes('orbito'))
+          ? { provider: 'github' as const, providerLabel: 'View on GitHub', browserUrl: OFFICIAL_ORBITO_URL, rawUrl: OFFICIAL_ORBITO_URL, remoteName: 'origin' }
+          : null
+      );
+
       // If project opted in and has remote, include repo button first
-      if (isProjectOptedIn && this.activeGitRemote?.browserUrl) {
+      if (isProjectOptedIn && remote?.browserUrl) {
         buttons.push({
-          label: this.activeGitRemote.providerLabel,
-          url: this.activeGitRemote.browserUrl
+          label: remote.providerLabel,
+          url: remote.browserUrl
         });
       }
       buttons.push(orbitoButton);
 
       return {
-        details: this.activeProject ? `Agents in ${this.activeProject.customName || this.activeProject.name}` : 'Agents working in Orbito',
-        state: `${count} ${count === 1 ? 'agent' : 'agents'} active`,
+        details: `Working in ${projectName}`,
+        state: `Agent working · ${count} ${count === 1 ? 'agent' : 'agents'}`,
         buttons: buttons.slice(0, 2),
         startTimestamp: this.sessionStartedAt,
         largeImageKey: largeImage,
         largeImageText: 'Orbito - AI Workspace',
-        smallImageKey: this.configuredClientId === DEFAULT_DISCORD_CLIENT_ID ? undefined : 'bot',
-        smallImageText: 'AI Agent Running'
+        smallImageKey: DISCORD_BADGE_URLS.working,
+        smallImageText: `Agent working · ${count} active`
       };
     }
 
@@ -225,10 +239,16 @@ export class DiscordRpcService {
       const projectName = this.activeProject.customName || this.activeProject.name;
       const buttons: Array<{ label: string; url: string }> = [];
 
-      if (this.activeGitRemote?.browserUrl) {
+      const remote = this.activeGitRemote || (
+        (projectName.toLowerCase().includes('orbito') || this.activeProject?.path?.toLowerCase().includes('orbito'))
+          ? { provider: 'github' as const, providerLabel: 'View on GitHub', browserUrl: OFFICIAL_ORBITO_URL, rawUrl: OFFICIAL_ORBITO_URL, remoteName: 'origin' }
+          : null
+      );
+
+      if (remote?.browserUrl) {
         buttons.push({
-          label: this.activeGitRemote.providerLabel,
-          url: this.activeGitRemote.browserUrl
+          label: remote.providerLabel,
+          url: remote.browserUrl
         });
         buttons.push(orbitoButton);
 
@@ -238,7 +258,9 @@ export class DiscordRpcService {
           buttons: buttons.slice(0, 2),
           startTimestamp: this.sessionStartedAt,
           largeImageKey: largeImage,
-          largeImageText: 'Orbito - AI Workspace'
+          largeImageText: 'Orbito - AI Workspace',
+          smallImageKey: DISCORD_BADGE_URLS.idle,
+          smallImageText: 'Workspace ready'
         };
       } else {
         buttons.push(orbitoButton);
@@ -249,7 +271,9 @@ export class DiscordRpcService {
           buttons: buttons.slice(0, 2),
           startTimestamp: this.sessionStartedAt,
           largeImageKey: largeImage,
-          largeImageText: 'Orbito - AI Workspace'
+          largeImageText: 'Orbito - AI Workspace',
+          smallImageKey: DISCORD_BADGE_URLS.idle,
+          smallImageText: 'Local project'
         };
       }
     }
@@ -261,7 +285,9 @@ export class DiscordRpcService {
       buttons: [orbitoButton],
       startTimestamp: this.sessionStartedAt,
       largeImageKey: largeImage,
-      largeImageText: 'Orbito - AI Workspace'
+      largeImageText: 'Orbito - AI Workspace',
+      smallImageKey: DISCORD_BADGE_URLS.idle,
+      smallImageText: 'Orbito ready'
     };
   }
 
