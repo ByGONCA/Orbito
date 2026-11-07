@@ -314,113 +314,99 @@ export const TopTabBar: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Section: Tabs Strip & Plus Button */}
+        {/* Center Section: Tabs Strip (Files, Graph, Browser) - Terminals have their own scoped pane headers */}
         <div
           className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0 pl-1.5 pr-2 h-full"
           style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         >
-          {openTabs.map((tab) => {
-            const isActive = activeTabId === tab.id;
-            const isFile = tab.type === 'file';
-            const isTerminal = tab.type === 'terminal';
-            const term = isTerminal
-              ? terminalSessions.find((ts) => ts.id === tab.terminalId)
-              : null;
-            const Icon = getTabIcon(tab.type);
+          {openTabs
+            .filter((tab) => tab.type !== 'terminal')
+            .map((tab) => {
+              const isActive = activeTabId === tab.id;
+              const isFile = tab.type === 'file';
+              const Icon = getTabIcon(tab.type);
 
-            return (
-              <div
-                key={tab.id}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('text/plain', tab.id);
-                  e.dataTransfer.setData('application/orc-tab-id', tab.id);
-                  if (tab.terminalId) {
-                    e.dataTransfer.setData('application/orc-term-id', tab.terminalId);
-                  }
-                }}
-                onClick={() => {
-                  setActiveTabId(tab.id);
-                  if (isTerminal) {
-                    useWorkspaceStore.getState().setActiveSection('terminal');
-                    if (tab.terminalId) {
-                      useWorkspaceStore.getState().setActiveTerminalId(tab.terminalId);
-                    }
-                  }
-                }}
-                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-                className={`group relative flex items-center gap-2 px-3 h-7 rounded-md text-xs cursor-pointer transition-all max-w-[210px] flex-shrink-0 ${
-                  isActive
-                    ? 'bg-[#1e2129] text-white font-medium shadow-xs'
-                    : 'bg-transparent hover:bg-white/[0.05] text-[#A4A8AF] hover:text-[#ECEDEF]'
-                }`}
-              >
-                {/* Official Icon & Status badge */}
-                {isTerminal ? (
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        term?.status === 'running'
-                          ? 'bg-emerald-400 animate-pulse'
-                          : 'bg-emerald-400'
+              return (
+                <div
+                  key={tab.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', tab.id);
+                    e.dataTransfer.setData('application/orc-tab-id', tab.id);
+                  }}
+                  onClick={() => {
+                    setActiveTabId(tab.id);
+                  }}
+                  style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                  className={`group relative flex items-center gap-2 px-3 h-7 rounded-md text-xs cursor-pointer transition-all max-w-[210px] flex-shrink-0 ${
+                    isActive
+                      ? 'bg-[#1e2129] text-white font-medium shadow-xs'
+                      : 'bg-transparent hover:bg-white/[0.05] text-[#A4A8AF] hover:text-[#ECEDEF]'
+                  }`}
+                >
+                  {tab.type === 'browser' ? (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Globe className="w-3.5 h-3.5 text-[#A4A8AF] flex-shrink-0" />
+                    </div>
+                  ) : isFile ? (
+                    <FileIcon
+                      name={tab.title}
+                      isDirectory={false}
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      theme="material"
+                    />
+                  ) : (
+                    <Icon
+                      className={`w-3.5 h-3.5 flex-shrink-0 ${
+                        isActive ? 'text-[#ECEDEF]' : 'text-[#747982]'
                       }`}
                     />
-                    <OfficialLogoRenderer
-                      provider={term?.provider}
-                      title={tab.title}
-                      className="w-3.5 h-3.5 flex-shrink-0"
-                    />
-                  </div>
-                ) : tab.type === 'browser' ? (
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <Globe className="w-3.5 h-3.5 text-[#A4A8AF] flex-shrink-0" />
-                  </div>
-                ) : isFile ? (
-                  <FileIcon
-                    name={tab.title}
-                    isDirectory={false}
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                    theme="material"
-                  />
-                ) : (
-                  <Icon
-                    className={`w-3.5 h-3.5 flex-shrink-0 ${
-                      isActive ? 'text-[#ECEDEF]' : 'text-[#747982]'
-                    }`}
-                  />
-                )}
+                  )}
 
-                <span className="truncate text-[11px] font-mono">{tab.title}</span>
+                  <span className="truncate text-[11px] font-mono">{tab.title}</span>
 
-                {/* Modified badge */}
-                {tab.isDirty && (
-                  <span className="text-[10px] text-amber-400 font-mono font-bold">M</span>
-                )}
+                  {/* Modified badge */}
+                  {tab.isDirty && (
+                    <span className="text-[10px] text-amber-400 font-mono font-bold">M</span>
+                  )}
 
-                {/* Tab Close Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeTab(tab.id);
-                  }}
-                  className="p-0.5 hover:bg-white/20 rounded text-[#747982] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 cursor-pointer"
-                  title="Close Tab"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
-              </div>
-            );
-          })}
+                  {/* Tab Close Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTab(tab.id);
+                    }}
+                    className="p-0.5 hover:bg-white/20 rounded text-[#747982] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 cursor-pointer"
+                    title="Close Tab"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              );
+            })}
 
-          {/* Plus Button (+) - Opens Arc Launcher */}
-          <button
-            onClick={() => setArcLauncherOpen(true)}
-            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-            className="p-1 hover:bg-white/[0.08] rounded-md text-[#A4A8AF] hover:text-[#ECEDEF] flex-shrink-0 transition-colors cursor-pointer"
-            title="New Terminal / Tab (Ctrl+T)"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+          {/* Plus Button (+) - Opens Arc Launcher when files exist */}
+          {openTabs.filter((t) => t.type !== 'terminal').length > 0 && (
+            <button
+              onClick={() => setArcLauncherOpen(true)}
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+              className="p-1 hover:bg-white/[0.08] rounded-md text-[#A4A8AF] hover:text-[#ECEDEF] flex-shrink-0 transition-colors cursor-pointer"
+              title="New File / Tab (Ctrl+T)"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Clean project title in header when no file tabs are open */}
+          {openTabs.filter((t) => t.type !== 'terminal').length === 0 && project && (
+            <div
+              className="flex items-center gap-2 text-xs text-[#747982] px-2 font-mono select-none"
+              style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            >
+              <FolderGit2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span className="text-[#A4A8AF] font-medium">{project.customName || project.name}</span>
+            </div>
+          )}
         </div>
 
         {/* Right Section: Right Sidebar Toggle & Window Controls (— □ ✕) */}

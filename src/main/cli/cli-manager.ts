@@ -9,6 +9,7 @@ import {
   codexAdapter,
   geminiAdapter,
   ollamaAdapter,
+  antigravityAdapter,
   aiderAdapter,
   ampAdapter,
   anteAdapter,

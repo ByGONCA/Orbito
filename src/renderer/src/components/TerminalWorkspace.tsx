@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useWorkspaceStore, TerminalSessionItem } from '../stores/workspace.store';
 import type { CLIProvider } from '../../../shared/cli';
+import { OfficialLogoRenderer } from './OfficialLogos';
 
 // Terminal Pane Header (matching screenshot: tab items with >_ name [x], +, >_ Command dropdown, ...)
 interface TerminalPaneHeaderProps {
@@ -58,10 +59,10 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="h-8 bg-[#121418] border-b border-white/[0.08] flex items-center justify-between px-2 select-none z-10 flex-shrink-0"
+      className="h-9 bg-[#0e1015] border-b border-white/[0.08] flex items-center justify-between px-2.5 select-none z-10 flex-shrink-0"
     >
-      {/* Left Tabs Strip */}
-      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 min-w-0 pr-2">
+      {/* Left Tabs Strip - Styled with the exact top-tab visual design */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1 min-w-0 pr-2 h-full">
         {sessions.map((sess) => {
           const isActive = sess.id === activeSessionId;
           const displayTitle = sess.title || (sess.provider === 'cmd' ? 'C:\\WINDOWS\\system32\\cmd.exe' : 'PowerShell 1');
@@ -70,15 +71,30 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
             <div
               key={sess.id}
               onClick={() => onSelectSession(sess.id)}
-              className={`group flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer flex-shrink-0 max-w-[220px] ${
+              className={`group relative flex items-center gap-2 px-3 h-7 rounded-md text-xs cursor-pointer transition-all max-w-[210px] flex-shrink-0 ${
                 isActive
-                  ? 'bg-white/[0.08] text-white font-medium border-b border-white/[0.3]'
-                  : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.03]'
+                  ? 'bg-[#1e2129] text-white font-medium shadow-xs'
+                  : 'bg-transparent hover:bg-white/[0.05] text-[#A4A8AF] hover:text-[#ECEDEF]'
               }`}
               title={sess.workingDirectory || displayTitle}
             >
-              <span className="text-[11px] text-[#717784] font-bold select-none">&gt;_</span>
-              <span className="truncate">{displayTitle}</span>
+              {/* Dot & Official Logo matching top tabs */}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    sess.status === 'running'
+                      ? 'bg-emerald-400 animate-pulse'
+                      : 'bg-emerald-400'
+                  }`}
+                />
+                <OfficialLogoRenderer
+                  provider={sess.provider}
+                  title={displayTitle}
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                />
+              </div>
+
+              <span className="truncate text-[11px] font-mono">{displayTitle}</span>
 
               {sessions.length > 1 && (
                 <button
@@ -87,10 +103,10 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
                     e.stopPropagation();
                     onCloseSession(sess.id);
                   }}
-                  className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 text-[#717784] hover:text-white transition-opacity cursor-pointer ml-0.5"
+                  className="p-0.5 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-white/20 text-[#747982] hover:text-white transition-opacity cursor-pointer ml-0.5"
                   title="Close tab"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-2.5 h-2.5" />
                 </button>
               )}
             </div>
@@ -101,15 +117,46 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
         <button
           type="button"
           onClick={() => onNewSession('powershell')}
-          className="p-1 rounded text-[#717784] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
+          className="p-1 hover:bg-white/[0.08] rounded-md text-[#A4A8AF] hover:text-[#ECEDEF] flex-shrink-0 transition-colors cursor-pointer"
           title="New Terminal Tab"
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Right Controls: >_ Command dropdown + ... Menu */}
+      {/* Right Controls: Split actions + >_ Command dropdown + ... Menu */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Split Horizontal */}
+        <button
+          type="button"
+          onClick={onSplitHorizontal}
+          className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
+          title="Split Down (Horizontal)"
+        >
+          <SplitSquareHorizontal className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Split Vertical */}
+        <button
+          type="button"
+          onClick={onSplitVertical}
+          className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
+          title="Split Right (Vertical)"
+        >
+          <SplitSquareVertical className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Unsplit / Close Split (if in split mode) */}
+        {isSplit && onCloseSplit && (
+          <button
+            type="button"
+            onClick={onCloseSplit}
+            className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-rose-400 transition-colors cursor-pointer"
+            title="Close Split View"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
         {/* Command / Shell Selector */}
         <div className="relative">
           <button

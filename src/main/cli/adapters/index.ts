@@ -2,6 +2,7 @@ export * from './claude-code.adapter';
 export * from './codex.adapter';
 export * from './gemini.adapter';
 export * from './ollama.adapter';
+export * from './antigravity.adapter';
 export * from './aider.adapter';
 export * from './amp.adapter';
 export * from './ante.adapter';
