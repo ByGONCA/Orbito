@@ -142,4 +142,102 @@ describe('Interactive PTY Terminal Service & Agent CLI Adapters', () => {
     expect(ptyService.getSession(idA)).toBeUndefined();
     expect(ptyService.getSession(idB)).toBeUndefined();
   });
+
+  it('handles signal propagation including SIGINT and SIGTERM gracefully', async () => {
+    const terminalId = `term-sig-${Date.now()}`;
+    const res = await ptyService.createSession({
+      terminalId,
+      provider: process.platform === 'win32' ? 'cmd' : 'bash',
+      cols: 80,
+      rows: 24
+    });
+
+    expect(res.success).toBe(true);
+    expect(ptyService.isSessionAlive(terminalId)).toBe(true);
+
+    // Send SIGINT (Ctrl+C)
+    const sigIntHandled = ptyService.sendSignal(terminalId, 'SIGINT');
+    expect(sigIntHandled).toBe(true);
+
+    // Send SIGTERM
+    const sigTermHandled = ptyService.sendSignal(terminalId, 'SIGTERM');
+    expect(sigTermHandled).toBe(true);
+
+    // Session is cleaned up after termination
+    expect(ptyService.getSession(terminalId)).toBeUndefined();
+  });
+
+  it('sanitizes invalid and boundary resize parameters without crashing', async () => {
+    const terminalId = `term-resize-${Date.now()}`;
+    const res = await ptyService.createSession({
+      terminalId,
+      provider: process.platform === 'win32' ? 'cmd' : 'bash',
+      cols: 80,
+      rows: 24
+    });
+
+    expect(res.success).toBe(true);
+
+    // Negative and zero values should be safely clamped/ignored without throwing
+    expect(ptyService.resize(terminalId, -50, 0)).toBe(true);
+    expect(ptyService.resize(terminalId, 9999, 5000)).toBe(true);
+
+    ptyService.kill(terminalId);
+    // Resizing non-existent session returns false cleanly
+    expect(ptyService.resize(terminalId, 80, 24)).toBe(false);
+  });
+
+  it('handles invalid working directories by falling back safely to cwd', async () => {
+    const terminalId = `term-invalid-dir-${Date.now()}`;
+    const res = await ptyService.createSession({
+      terminalId,
+      provider: process.platform === 'win32' ? 'cmd' : 'bash',
+      workingDirectory: 'C:\\NonExistent_Fake_Directory_Orbito_404',
+      cols: 80,
+      rows: 24
+    });
+
+    expect(res.success).toBe(true);
+    const session = ptyService.getSession(terminalId);
+    expect(session).toBeDefined();
+    expect(session?.workingDirectory).toBe(process.cwd());
+
+    ptyService.kill(terminalId);
+  });
+
+  it('safely handles write and kill calls on non-existent or terminated sessions', async () => {
+    const ghostId = `ghost-${Date.now()}`;
+    expect(ptyService.write(ghostId, 'echo ghost\r\n')).toBe(false);
+    expect(ptyService.write(ghostId, '')).toBe(false);
+    expect(ptyService.kill(ghostId)).toBe(false);
+    expect(await ptyService.killAsync(ghostId)).toBe(false);
+    expect(ptyService.isSessionAlive(ghostId)).toBe(false);
+    expect(ptyService.hasSession(ghostId)).toBe(false);
+  });
+
+  it('tracks session metadata and supports killAsync and killAllAsync', async () => {
+    const id1 = `term-async-1-${Date.now()}`;
+    const id2 = `term-async-2-${Date.now()}`;
+
+    await ptyService.createSession({
+      terminalId: id1,
+      provider: process.platform === 'win32' ? 'cmd' : 'bash'
+    });
+    await ptyService.createSession({
+      terminalId: id2,
+      provider: process.platform === 'win32' ? 'cmd' : 'bash'
+    });
+
+    const sessions = ptyService.listSessions();
+    expect(sessions.length).toBeGreaterThanOrEqual(2);
+    expect(sessions.some((s) => s.id === id1)).toBe(true);
+    expect(sessions.some((s) => s.id === id2)).toBe(true);
+
+    const killed1 = await ptyService.killAsync(id1);
+    expect(killed1).toBe(true);
+    expect(ptyService.hasSession(id1)).toBe(false);
+
+    await ptyService.killAllAsync();
+    expect(ptyService.listSessions()).toHaveLength(0);
+  });
 });

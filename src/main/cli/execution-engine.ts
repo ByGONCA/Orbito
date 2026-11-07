@@ -651,9 +651,10 @@ export class ExecutionEngine extends EventEmitter {
   }
 
   private async killProcessTree(pid: number): Promise<void> {
+    if (!pid || pid <= 0 || pid === process.pid) return;
     return new Promise((resolve) => {
       if (process.platform === 'win32') {
-        exec(`taskkill /pid ${pid} /T /F`, () => {
+        exec(`taskkill /pid ${pid} /T /F`, { windowsHide: true }, () => {
           resolve();
         });
       } else {
@@ -666,6 +667,9 @@ export class ExecutionEngine extends EventEmitter {
             resolve();
           }, 1500);
         } catch {
+          try {
+            process.kill(pid, 'SIGKILL');
+          } catch {}
           resolve();
         }
       }
@@ -741,6 +745,10 @@ export class ExecutionEngine extends EventEmitter {
     if (session.timeoutTimer) {
       clearTimeout(session.timeoutTimer);
     }
+    const pid = session.process?.pid;
+    if (pid) {
+      this.killProcessTree(pid).catch(() => {});
+    }
     databaseService.updateCLISession(sessionId, 'failed', 1, Date.now() - session.startTime);
     projectExecutionService.afterExecution({ sessionId, status: 'failed' }).catch(() => {});
     this.activeSessions.delete(sessionId);
@@ -749,6 +757,22 @@ export class ExecutionEngine extends EventEmitter {
       sessionId,
       type: 'stderr',
       content: `[Process Error] ${err.message}`,
+      timestamp: Date.now(),
+      exitCode: 1
+    });
+
+    this.emitEvent({
+      sessionId,
+      type: 'status',
+      content: 'failed',
+      timestamp: Date.now(),
+      exitCode: 1
+    });
+
+    this.emitEvent({
+      sessionId,
+      type: 'exit',
+      content: `Process failed: ${err.message}`,
       timestamp: Date.now(),
       exitCode: 1
     });

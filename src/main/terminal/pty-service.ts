@@ -1,10 +1,10 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
+import { exec } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import * as pty from 'node-pty';
 import { cliManager } from '../cli/cli-manager';
-import { buildSanitizedCLIEnv } from '../cli/execution-engine';
 import { findExecutableOnPath } from '../cli/detector.utils';
 import type { CLIProvider } from '../../shared/cli';
 
@@ -46,28 +46,114 @@ export class PtyService extends EventEmitter {
     return this.sessions.get(id);
   }
 
+  public hasSession(id: string): boolean {
+    return this.sessions.has(id);
+  }
+
+  public isSessionAlive(id: string): boolean {
+    const session = this.sessions.get(id);
+    if (!session || !session.ptyProcess || !session.ptyProcess.pid) return false;
+    try {
+      // Sending signal 0 verifies process existence without killing it
+      process.kill(session.ptyProcess.pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public listSessions(): Array<{
+    id: string;
+    provider: CLIProvider;
+    pid: number;
+    createdAt: number;
+    workingDirectory: string;
+  }> {
+    return Array.from(this.sessions.values()).map((s) => ({
+      id: s.id,
+      provider: s.provider,
+      pid: s.ptyProcess.pid,
+      createdAt: s.createdAt,
+      workingDirectory: s.workingDirectory
+    }));
+  }
+
+  /**
+   * Recursively terminates the process tree spawned by a PTY to ensure zero orphaned
+   * processes (e.g. child commands, ConPTY helpers, node servers) linger after exit or kill.
+   */
+  public async cleanUpProcessTree(pid?: number): Promise<void> {
+    if (!pid || pid <= 0 || pid === process.pid) return;
+
+    return new Promise((resolve) => {
+      if (process.platform === 'win32') {
+        exec(`taskkill /pid ${pid} /T /F`, { windowsHide: true }, () => {
+          resolve();
+        });
+      } else {
+        try {
+          process.kill(-pid, 'SIGTERM');
+          setTimeout(() => {
+            try {
+              process.kill(-pid, 'SIGKILL');
+            } catch {}
+            resolve();
+          }, 300);
+        } catch {
+          try {
+            process.kill(pid, 'SIGKILL');
+          } catch {}
+          resolve();
+        }
+      }
+    });
+  }
+
   public async createSession(params: CreateTerminalParams): Promise<CreateTerminalResult> {
     const { terminalId, provider, model, customPath } = params;
 
-    // If session is already running for this ID, reuse it seamlessly without killing or restarting
-    const existing = this.sessions.get(terminalId);
-    if (existing) {
-      if (params.cols && params.rows && params.cols > 10 && params.rows > 4) {
-        try {
-          existing.ptyProcess.resize(params.cols, params.rows);
-        } catch {}
-      }
+    if (!terminalId || typeof terminalId !== 'string') {
       return {
-        success: true,
-        pid: existing.ptyProcess.pid,
-        isExisting: true
+        success: false,
+        error: 'Invalid or missing terminalId.'
       };
     }
 
-    const workingDirectory =
-      params.workingDirectory && fs.existsSync(params.workingDirectory)
-        ? path.resolve(params.workingDirectory)
-        : process.cwd();
+    // If session is already running for this ID, check if alive and reuse it seamlessly
+    const existing = this.sessions.get(terminalId);
+    if (existing) {
+      if (this.isSessionAlive(terminalId)) {
+        if (params.cols && params.rows && params.cols > 0 && params.rows > 0) {
+          try {
+            const safeCols = Math.min(Math.max(Math.floor(params.cols), 1), 1000);
+            const safeRows = Math.min(Math.max(Math.floor(params.rows), 1), 500);
+            existing.ptyProcess.resize(safeCols, safeRows);
+          } catch {}
+        }
+        return {
+          success: true,
+          pid: existing.ptyProcess.pid,
+          isExisting: true
+        };
+      } else {
+        // Clean up dead session before spawning fresh replacement
+        this.kill(terminalId);
+      }
+    }
+
+    // Safely canonicalize and validate working directory
+    let workingDirectory = process.cwd();
+    if (params.workingDirectory && typeof params.workingDirectory === 'string') {
+      try {
+        const resolved = path.resolve(params.workingDirectory);
+        if (fs.existsSync(resolved)) {
+          const stat = fs.statSync(resolved);
+          workingDirectory = stat.isDirectory() ? resolved : path.dirname(resolved);
+        }
+      } catch {
+        workingDirectory = process.cwd();
+      }
+    }
 
     const isWin = process.platform === 'win32';
     let executable: string | null = null;
@@ -145,7 +231,7 @@ export class PtyService extends EventEmitter {
         if (!executable) {
           return {
             success: false,
-            error: `CLI provider '${provider}' is not available on this system. ${err.message || ''}`,
+            error: `CLI provider '${provider}' is not available on this system. ${err?.message || ''}`,
             installCommand,
             installGuideUrl
           };
@@ -162,6 +248,14 @@ export class PtyService extends EventEmitter {
       };
     }
 
+    // On Windows, if executable is a batch script (.cmd or .bat), wrap with cmd.exe /c
+    // so ConPTY/WinPTY native CreateProcess does not fail with invalid Win32 application error
+    if (isWin && /\.(cmd|bat)$/i.test(executable)) {
+      const comspec = process.env.COMSPEC || 'cmd.exe';
+      args = ['/c', executable, ...args];
+      executable = comspec;
+    }
+
     // 3. Prepare Environment
     // Provide full user environment for interactive PTY while stripping internal Electron overrides
     const env: Record<string, string> = {
@@ -176,8 +270,8 @@ export class PtyService extends EventEmitter {
     delete env.ELECTRON_NO_ASAR;
     delete env.NODE_OPTIONS;
 
-    const cols = params.cols && params.cols > 10 ? params.cols : 80;
-    const rows = params.rows && params.rows > 4 ? params.rows : 24;
+    const cols = params.cols && params.cols > 0 ? Math.min(Math.max(Math.floor(params.cols), 1), 1000) : 80;
+    const rows = params.rows && params.rows > 0 ? Math.min(Math.max(Math.floor(params.rows), 1), 500) : 24;
 
     // 4. Spawn Native PTY (prefer ConPTY on Windows for full VT/TUI support)
     let ptyProcess: pty.IPty;
@@ -230,14 +324,23 @@ export class PtyService extends EventEmitter {
 
     this.sessions.set(terminalId, session);
 
-    // Forward output events
+    // Forward output events safely with error boundary
     ptyProcess.onData((data: string) => {
-      this.emit('data', { terminalId, data });
+      try {
+        this.emit('data', { terminalId, data });
+      } catch {}
     });
 
+    // Handle clean process exit and clean up child process tree
     ptyProcess.onExit(({ exitCode, signal }) => {
+      const current = this.sessions.get(terminalId);
       this.sessions.delete(terminalId);
-      this.emit('exit', { terminalId, exitCode, signal });
+      if (current?.ptyProcess?.pid) {
+        this.cleanUpProcessTree(current.ptyProcess.pid).catch(() => {});
+      }
+      try {
+        this.emit('exit', { terminalId, exitCode, signal });
+      } catch {}
     });
 
     return {
@@ -246,25 +349,59 @@ export class PtyService extends EventEmitter {
     };
   }
 
-  public write(terminalId: string, data: string): void {
+  public write(terminalId: string, data: string): boolean {
+    if (typeof data !== 'string' || data.length === 0) return false;
     const session = this.sessions.get(terminalId);
     if (session) {
       try {
         session.ptyProcess.write(data);
-      } catch (err) {
-        // Process might be exiting
+        return true;
+      } catch {
+        return false;
       }
+    }
+    return false;
+  }
+
+  public resize(terminalId: string, cols: number, rows: number): boolean {
+    const session = this.sessions.get(terminalId);
+    if (!session) return false;
+
+    const safeCols = Math.min(Math.max(Math.floor(cols) || 80, 1), 1000);
+    const safeRows = Math.min(Math.max(Math.floor(rows) || 24, 1), 500);
+
+    try {
+      session.ptyProcess.resize(safeCols, safeRows);
+      return true;
+    } catch {
+      return false;
     }
   }
 
-  public resize(terminalId: string, cols: number, rows: number): void {
+  public sendSignal(terminalId: string, signal: 'SIGINT' | 'SIGTERM' | 'SIGKILL' | string = 'SIGINT'): boolean {
     const session = this.sessions.get(terminalId);
-    if (session && cols > 0 && rows > 0) {
-      try {
-        session.ptyProcess.resize(cols, rows);
-      } catch (err) {
-        // Process might be exiting
+    if (!session) return false;
+
+    try {
+      if (signal === 'SIGINT' || signal === 'INT') {
+        // In interactive PTY, sending ASCII ETX (\x03) sends Ctrl+C to the running foreground process
+        session.ptyProcess.write('\x03');
+        return true;
       }
+
+      if (process.platform !== 'win32') {
+        session.ptyProcess.kill(signal);
+        return true;
+      } else {
+        // On Windows, if SIGKILL/SIGTERM requested, clean up process tree
+        if (signal === 'SIGKILL' || signal === 'SIGTERM') {
+          return this.kill(terminalId);
+        }
+        session.ptyProcess.write('\x03');
+        return true;
+      }
+    } catch {
+      return false;
     }
   }
 
@@ -272,25 +409,62 @@ export class PtyService extends EventEmitter {
     const session = this.sessions.get(terminalId);
     if (session) {
       this.sessions.delete(terminalId);
+      const pid = session.ptyProcess?.pid;
       try {
         session.ptyProcess.kill();
-        return true;
-      } catch (err) {
-        return false;
+      } catch {}
+      if (pid && pid > 0) {
+        this.cleanUpProcessTree(pid).catch(() => {});
       }
+      return true;
+    }
+    return false;
+  }
+
+  public async killAsync(terminalId: string): Promise<boolean> {
+    const session = this.sessions.get(terminalId);
+    if (session) {
+      this.sessions.delete(terminalId);
+      const pid = session.ptyProcess?.pid;
+      try {
+        session.ptyProcess.kill();
+      } catch {}
+      if (pid && pid > 0) {
+        await this.cleanUpProcessTree(pid);
+      }
+      return true;
     }
     return false;
   }
 
   public killAll(): void {
-    for (const [id, session] of this.sessions.entries()) {
+    const pids: number[] = [];
+    for (const [, session] of this.sessions.entries()) {
+      if (session.ptyProcess?.pid) {
+        pids.push(session.ptyProcess.pid);
+      }
       try {
         session.ptyProcess.kill();
-      } catch {
-        // Ignore
-      }
+      } catch {}
     }
     this.sessions.clear();
+    for (const pid of pids) {
+      this.cleanUpProcessTree(pid).catch(() => {});
+    }
+  }
+
+  public async killAllAsync(): Promise<void> {
+    const pids: number[] = [];
+    for (const [, session] of this.sessions.entries()) {
+      if (session.ptyProcess?.pid) {
+        pids.push(session.ptyProcess.pid);
+      }
+      try {
+        session.ptyProcess.kill();
+      } catch {}
+    }
+    this.sessions.clear();
+    await Promise.allSettled(pids.map((pid) => this.cleanUpProcessTree(pid)));
   }
 }
 
