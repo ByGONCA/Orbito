@@ -7,6 +7,7 @@ import { appLogger } from '../app-logger';
 
 export const DEFAULT_DISCORD_CLIENT_ID = '383226320970055681';
 export const OFFICIAL_ORBITO_URL = 'https://github.com/ByGONCA/Orbito';
+export const OFFICIAL_ORBITO_ICON_URL = 'https://raw.githubusercontent.com/ByGONCA/Orbito/master/resources/icon.png';
 
 export type DiscordConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';
 
@@ -182,6 +183,9 @@ export class DiscordRpcService {
 
     const orbitoButton = { label: 'Get Orbito', url: OFFICIAL_ORBITO_URL };
     const isProjectOptedIn = Boolean(this.activeProject && this.activeProject.settings?.discordRpcEnabled !== false);
+    const largeImage = this.configuredClientId === DEFAULT_DISCORD_CLIENT_ID
+      ? OFFICIAL_ORBITO_ICON_URL
+      : 'orbito';
 
     // Case 1: Active agents running
     if (this.activeAgentsCount > 0) {
@@ -202,9 +206,9 @@ export class DiscordRpcService {
         state: `${count} ${count === 1 ? 'agent' : 'agents'} active`,
         buttons: buttons.slice(0, 2),
         startTimestamp: this.sessionStartedAt,
-        largeImageKey: 'orbito',
+        largeImageKey: largeImage,
         largeImageText: 'Orbito - AI Workspace',
-        smallImageKey: 'bot',
+        smallImageKey: this.configuredClientId === DEFAULT_DISCORD_CLIENT_ID ? undefined : 'bot',
         smallImageText: 'AI Agent Running'
       };
     }
@@ -226,7 +230,7 @@ export class DiscordRpcService {
           state: `Project: ${projectName}`,
           buttons: buttons.slice(0, 2),
           startTimestamp: this.sessionStartedAt,
-          largeImageKey: 'orbito',
+          largeImageKey: largeImage,
           largeImageText: 'Orbito - AI Workspace'
         };
       } else {
@@ -237,7 +241,7 @@ export class DiscordRpcService {
           state: 'Local project',
           buttons: buttons.slice(0, 2),
           startTimestamp: this.sessionStartedAt,
-          largeImageKey: 'orbito',
+          largeImageKey: largeImage,
           largeImageText: 'Orbito - AI Workspace'
         };
       }
@@ -249,7 +253,7 @@ export class DiscordRpcService {
       state: 'Workspace ready',
       buttons: [orbitoButton],
       startTimestamp: this.sessionStartedAt,
-      largeImageKey: 'orbito',
+      largeImageKey: largeImage,
       largeImageText: 'Orbito - AI Workspace'
     };
   }

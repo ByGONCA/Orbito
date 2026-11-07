@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@glass-sdk/liquid-glass": "^0.0.2",
+    "@lobehub/icons-static-svg": "^1.102.0",
     "@tanstack/react-virtual": "^3.11.2",
     "@xhayper/discord-rpc": "^1.5.1",
     "@xyflow/react": "^12.12.1",

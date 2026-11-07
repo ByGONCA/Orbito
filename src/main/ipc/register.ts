@@ -367,6 +367,11 @@ export function registerIpcHandlers(): void {
     return discordRpcService.getStatus();
   });
 
+  ipcMain.handle('discord:setActiveProject', async (_, project) => {
+    await discordRpcService.setActiveProject(project || null);
+    return true;
+  });
+
   ipcMain.handle('discord:updateSettings', async (_, args) => {
     const validated = UpdateDiscordSettingsSchema.parse(args || {});
     if (validated.enabled !== undefined) {

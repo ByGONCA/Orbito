@@ -4,13 +4,40 @@ export type CLIProvider =
   | 'powershell'
   | 'cmd'
   | 'bash'
+  | 'antigravity'
   | 'claude'
   | 'codex'
   | 'gemini'
-  | 'antigravity'
-  | 'ollama';
+  | 'ollama'
+  | 'aider'
+  | 'amp'
+  | 'ante'
+  | 'auggie'
+  | 'cline'
+  | 'codebuddy'
+  | 'codebuff'
+  | 'continue'
+  | 'crush'
+  | 'cursor'
+  | 'devin'
+  | 'droid'
+  | 'copilot'
+  | 'goose'
+  | 'hermes'
+  | 'kilocode'
+  | 'kimi'
+  | 'kiro'
+  | 'vibe'
+  | 'opencode'
+  | 'openhands'
+  | 'pi'
+  | 'qwen'
+  | 'roocode'
+  | 'rovo'
+  | 'trae'
+  | 'zed';
 
-export type AuthType = 'oauth' | 'api-key' | 'adc' | 'missing';
+export type AuthType = 'oauth' | 'api-key' | 'adc' | 'token' | 'missing' | 'none';
 
 export type CLIAuthDetailedState =
   | 'not_installed'
@@ -19,6 +46,7 @@ export type CLIAuthDetailedState =
   | 'authenticated'
   | 'authentication_required'
   | 'authentication_expired'
+  | 'unsupported_platform'
   | 'error';
 
 export type CLISessionStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -48,6 +76,36 @@ export interface CLICapabilities {
   supportsListSessions?: boolean;
   supportsHeadlessPrompt: boolean;
   supportsJsonOutput: boolean;
+}
+
+export interface AgentMetadata {
+  id: CLIProvider;
+  name: string;
+  tagline: string;
+  vendor: string;
+  officialWebsite: string;
+  documentationUrl: string;
+  installCommand?: string;
+  installGuideUrl: string;
+  authCommand?: string;
+  authType: AuthType;
+  requiresAuth: boolean;
+  executableName: string;
+  supportedPlatforms: ('win33' | 'win32' | 'darwin' | 'linux')[];
+  minVersion?: string;
+  integrationAvailability: 'standalone_cli' | 'sdk' | 'extension' | 'hosted_service' | 'desktop_app';
+  capabilities: CLICapabilities;
+  description: string;
+  defaultArgs?: string[];
+}
+
+export interface AgentCustomConfig {
+  provider: CLIProvider;
+  customPath?: string;
+  customArgs?: string[];
+  envVars?: Record<string, string>;
+  enabled?: boolean;
+  defaultModel?: string;
 }
 
 export interface CLISessionRecord {
@@ -91,11 +149,38 @@ export const CLIProviderEnum = z.enum([
   'powershell',
   'cmd',
   'bash',
+  'antigravity',
   'claude',
   'codex',
   'gemini',
-  'antigravity',
-  'ollama'
+  'ollama',
+  'aider',
+  'amp',
+  'ante',
+  'auggie',
+  'cline',
+  'codebuddy',
+  'codebuff',
+  'continue',
+  'crush',
+  'cursor',
+  'devin',
+  'droid',
+  'copilot',
+  'goose',
+  'hermes',
+  'kilocode',
+  'kimi',
+  'kiro',
+  'vibe',
+  'opencode',
+  'openhands',
+  'pi',
+  'qwen',
+  'roocode',
+  'rovo',
+  'trae',
+  'zed'
 ]);
 
 export const CheckCLIAuthSchema = z.object({
@@ -124,4 +209,17 @@ export const ListCLISessionsSchema = z.object({
 
 export const GetSessionMessagesSchema = z.object({
   sessionId: z.string().min(1)
+});
+
+export const InstallCLISchema = z.object({
+  provider: CLIProviderEnum
+});
+
+export const SaveAgentConfigSchema = z.object({
+  provider: CLIProviderEnum,
+  customPath: z.string().optional(),
+  customArgs: z.array(z.string()).optional(),
+  envVars: z.record(z.string()).optional(),
+  enabled: z.boolean().default(true),
+  defaultModel: z.string().optional()
 });

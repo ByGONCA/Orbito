@@ -533,6 +533,7 @@ export interface IElectronAPI {
   // Discord Rich Presence Integration
   getDiscordStatus: () => Promise<DiscordStatusResponse>;
   updateDiscordSettings: (params: z.input<typeof UpdateDiscordSettingsSchema>) => Promise<DiscordStatusResponse>;
+  setDiscordActiveProject: (project: ProjectDescriptor | null) => Promise<void>;
   getProjectGitRemote: (params: z.input<typeof GetProjectGitRemoteSchema>) => Promise<{
     provider: 'github' | 'gitlab' | 'bitbucket' | 'other';
     providerLabel: string;

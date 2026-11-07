@@ -575,6 +575,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   // Projects & Navigation
   setProject: (project) => {
+    if (typeof window !== 'undefined' && window.api?.setDiscordActiveProject) {
+      window.api.setDiscordActiveProject(project).catch(() => {});
+    }
+
     if (!project) {
       set({
         project: null,

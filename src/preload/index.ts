@@ -171,6 +171,7 @@ const api: IElectronAPI = {
   // Discord Rich Presence
   getDiscordStatus: () => ipcRenderer.invoke('discord:getStatus'),
   updateDiscordSettings: (params) => ipcRenderer.invoke('discord:updateSettings', params),
+  setDiscordActiveProject: (project) => ipcRenderer.invoke('discord:setActiveProject', project),
   getProjectGitRemote: (params) => ipcRenderer.invoke('discord:getProjectGitRemote', params),
   onDiscordStatusChange: (callback) => {
     const handler = (_: any, status: any) => callback(status);
