@@ -240,18 +240,59 @@
   background: rgba(255, 255, 255, 0.20);
 }
 
-/* Syntax Highlighting Tokens (Neutral Dark) */
-.hl-keyword { color: #CFD4DC; font-weight: 500; }
-.hl-string { color: #A8B1BD; }
-.hl-number { color: #D5D8DD; }
-.hl-comment { color: #636770; font-style: italic; }
-.hl-type { color: #E0E3E8; }
-.hl-function { color: #ECEEF2; }
-.hl-variable { color: #B0B5BF; }
-.hl-punctuation { color: #747982; }
-.hl-operator { color: #A4A8AF; }
-.hl-tag { color: #CFD4DC; }
-.hl-attr { color: #A8B1BD; }
+/* Hide scrollbars cleanly when requested */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* VS Code Dark+ Modern Syntax Theme */
+.hl-control { color: #C586C0; font-weight: 500; } /* import, export, return, if, for, async, await */
+.hl-keyword { color: #569CD6; font-weight: 500; } /* const, let, var, function, class, interface */
+.hl-constant { color: #569CD6; } /* true, false, null, undefined, this, super */
+.hl-string { color: #CE9178; } /* "string", 'string', `template` */
+.hl-number { color: #B5CEA8; } /* 123, 0.5 */
+.hl-comment { color: #6A9955; font-style: italic; } /* // comment, /* comment */ */
+.hl-type { color: #4EC9B0; } /* string, boolean, Promise, User, FileNode */
+.hl-function { color: #DCDCAA; } /* myFunction(), render(), calculate() */
+.hl-property { color: #9CDCFE; } /* obj.prop, { key: ... } */
+.hl-variable { color: #9CDCFE; } /* localVariable, param */
+.hl-punctuation { color: #D4D4D4; } /* ;, ,, ., : */
+.hl-bracket-1 { color: #FFD700; } /* { ( [ level 1 */
+.hl-bracket-2 { color: #DA70D6; } /* { ( [ level 2 */
+.hl-bracket-3 { color: #179FFF; } /* { ( [ level 3 */
+.hl-operator { color: #D4D4D4; } /* =, +, -, *, &&, ||, => */
+.hl-tag { color: #569CD6; font-weight: 500; } /* <div>, </span> */
+.hl-attr { color: #9CDCFE; } /* className, onClick */
+.hl-regex { color: #D16969; } /* /regex/ */
+
+/* Indentation Guide Line */
+.indent-guide-unit {
+  position: relative;
+  display: inline-block;
+  width: 1.25rem;
+  height: 100%;
+}
+.indent-guide-unit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.indent-guide-unit.active::before {
+  background-color: rgba(255, 255, 255, 0.22);
+}
 
 /* Continuous Fluid Loading Bar Keyframe */
 @keyframes orbito-preloader-fluid {

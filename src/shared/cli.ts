@@ -223,3 +223,32 @@ export const SaveAgentConfigSchema = z.object({
   enabled: z.boolean().default(true),
   defaultModel: z.string().optional()
 });
+
+// ==========================================
+// Interactive Terminal Engine Schemas (PTY)
+// ==========================================
+
+export const TerminalCreateSchema = z.object({
+  terminalId: z.string().min(1),
+  provider: CLIProviderEnum,
+  workingDirectory: z.string().optional(),
+  customPath: z.string().optional(),
+  model: z.string().optional(),
+  cols: z.number().int().positive().default(80),
+  rows: z.number().int().positive().default(24)
+});
+
+export const TerminalWriteSchema = z.object({
+  terminalId: z.string().min(1),
+  data: z.string()
+});
+
+export const TerminalResizeSchema = z.object({
+  terminalId: z.string().min(1),
+  cols: z.number().int().positive(),
+  rows: z.number().int().positive()
+});
+
+export const TerminalKillSchema = z.object({
+  terminalId: z.string().min(1)
+});

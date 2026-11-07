@@ -19,15 +19,24 @@ import type {
   CLISessionStatus,
   CLISessionRecord
 } from '../../../shared/cli';
+import type {
+  ProjectExecution,
+  ExecutionFileChange,
+  CodeReview,
+  ReviewComment,
+  AIFinding,
+  ProjectGitDetails,
+  ReviewStatus
+} from '../../../shared/review';
 
 export type RightPanelTab =
   | 'files'
+  | 'changes'
+  | 'review'
   | 'outline'
   | 'agents'
   | 'context'
-  | 'skills'
-  | 'models'
-  | 'changes';
+  | 'skills';
 
 export type AppSection =
   | 'projects'
@@ -143,6 +152,20 @@ export interface WorkspaceState {
 
   // 5. Git & Changes
   gitStatus: GitStatusData | null;
+
+  // Project Explorer: Files, Changes & Review
+  explorerActiveTab: 'files' | 'changes' | 'review';
+  executions: ProjectExecution[];
+  activeExecutionId: string | null;
+  executionFileChanges: Record<string, ExecutionFileChange[]>;
+  codeReview: CodeReview | null;
+  reviewComments: ReviewComment[];
+  aiReviewFindings: AIFinding[];
+  projectGitDetails: ProjectGitDetails | null;
+  selectedDiffFile: string | null;
+  diffViewMode: 'unified' | 'side-by-side';
+  changesFilter: 'all' | 'ai' | 'manual' | 'modified' | 'added' | 'deleted';
+  isAIEvaluationRunning: boolean;
 
   // 6. Context & Knowledge Engine
   indexStats: IndexStats | null;
@@ -269,6 +292,7 @@ export interface WorkspaceState {
   setMaximizedTerminalId: (id: string | null) => void;
   toggleDetachTerminal: (id: string) => void;
   reorderTerminalSessions: (startIndex: number, endIndex: number) => void;
+  reorderTabs: (sourceId: string, targetId: string) => void;
   handleCLIStreamEvent: (event: any) => void;
   setArcLauncherOpen: (open: boolean) => void;
   setSplitTerminalId: (id: string | null) => void;
@@ -302,14 +326,40 @@ export interface WorkspaceState {
   setCommandPaletteOpen: (open: boolean) => void;
   setTargetEditorLine: (line: number | null) => void;
   toggleSettings: (open?: boolean) => void;
+  settingsActiveTab: string;
+  setSettingsActiveTab: (tab: string) => void;
+  openSettingsToTab: (tab: string) => void;
+  agentPermissions: 'full_access' | 'supervised' | 'read_only';
+  setAgentPermissions: (p: 'full_access' | 'supervised' | 'read_only') => void;
+  agentModes: Record<string, 'chat' | 'cli'>;
+  setAgentMode: (agentId: string, mode: 'chat' | 'cli') => void;
+  agentEnabled: Record<string, boolean>;
+  setAgentEnabled: (agentId: string, enabled: boolean) => void;
   setTheme: (theme: 'glass' | 'solid' | 'dark' | 'light' | 'system') => void;
   setUiMode: (uiMode: UIMode) => void;
   toggleDirExpanded: (dirId: string) => void;
+  collapseAllDirs: () => void;
   setMetrics: (metrics: SystemResourceMetrics) => void;
   addLog: (message: string, level?: 'info' | 'warn' | 'error') => void;
   clearLogs: () => void;
   setCustomPath: (provider: CLIProvider, path: string) => void;
   loadGitStatus: (projectPath: string) => Promise<void>;
+
+  // Project Explorer Actions
+  setExplorerActiveTab: (tab: 'files' | 'changes' | 'review') => void;
+  loadProjectExecutions: () => Promise<void>;
+  loadExecutionFileChanges: (executionId: string) => Promise<ExecutionFileChange[]>;
+  loadCodeReview: (executionId?: string) => Promise<void>;
+  updateReviewDecision: (status: ReviewStatus, summary?: string) => Promise<void>;
+  markFileReviewStatus: (filePath: string, status: 'pending' | 'reviewed' | 'changes_requested') => Promise<void>;
+  addReviewComment: (filePath: string, content: string, lineNumber?: number, diffHunk?: string, parentCommentId?: string) => Promise<void>;
+  resolveReviewComment: (commentId: string, resolved: boolean) => Promise<void>;
+  runAICodeReview: () => Promise<void>;
+  loadProjectGitDetails: () => Promise<void>;
+  setSelectedDiffFile: (filePath: string | null) => void;
+  setDiffViewMode: (mode: 'unified' | 'side-by-side') => void;
+  setChangesFilter: (filter: 'all' | 'ai' | 'manual' | 'modified' | 'added' | 'deleted') => void;
+  syncManualChanges: () => Promise<void>;
 
   setCLIStatuses: (statuses: Partial<Record<CLIProvider, CLIInstallationStatus>>) => void;
   setCLIAuthStatuses: (auths: Partial<Record<CLIProvider, CLIAuthStatus>>) => void;
@@ -507,6 +557,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   gitStatus: null,
 
+  explorerActiveTab: 'files',
+  executions: [],
+  activeExecutionId: null,
+  executionFileChanges: {},
+  codeReview: null,
+  reviewComments: [],
+  aiReviewFindings: [],
+  projectGitDetails: null,
+  selectedDiffFile: null,
+  diffViewMode: 'unified',
+  changesFilter: 'all',
+  isAIEvaluationRunning: false,
+
   indexStats: null,
   setIndexStats: (indexStats) => set({ indexStats }),
 
@@ -528,7 +591,29 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   cliStatuses: null,
   cliAuthStatuses: null,
-  activeProvider: 'claude',
+  activeProvider: 'antigravity',
+  settingsActiveTab: 'appearance',
+  agentPermissions: 'full_access',
+  agentModes: {
+    codex: 'cli',
+    copilot: 'cli',
+    opencode: 'cli',
+    gemini: 'cli',
+    antigravity: 'cli',
+    codebuff: 'cli',
+    kimi: 'cli',
+    qwen: 'cli'
+  },
+  agentEnabled: {
+    codex: true,
+    copilot: true,
+    opencode: true,
+    gemini: true,
+    antigravity: true,
+    codebuff: true,
+    kimi: true,
+    qwen: true
+  },
   customPaths: {
     powershell: '',
     cmd: '',
@@ -584,6 +669,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         project: null,
         files: [],
         gitStatus: null,
+
+  explorerActiveTab: 'files',
+  executions: [],
+  activeExecutionId: null,
+  executionFileChanges: {},
+  codeReview: null,
+  reviewComments: [],
+  aiReviewFindings: [],
+  projectGitDetails: null,
+  selectedDiffFile: null,
+  diffViewMode: 'unified',
+  changesFilter: 'all',
+  isAIEvaluationRunning: false,
         activeFilePath: null,
         activeFileContent: null,
         activeFileSymbols: [],
@@ -845,6 +943,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           expandedProjectIds: nextExpanded,
           files: [],
           gitStatus: null,
+
+  explorerActiveTab: 'files',
+  executions: [],
+  activeExecutionId: null,
+  executionFileChanges: {},
+  codeReview: null,
+  reviewComments: [],
+  aiReviewFindings: [],
+  projectGitDetails: null,
+  selectedDiffFile: null,
+  diffViewMode: 'unified',
+  changesFilter: 'all',
+  isAIEvaluationRunning: false,
           activeFilePath: null,
           activeFileContent: null,
           activeFileSymbols: [],
@@ -922,7 +1033,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setFiles: (files) => set({ files }),
   setActiveSection: (activeSection) => {
-    set({ activeSection });
+    if (activeSection === 'tasks' || activeSection === 'flows' || activeSection === 'graph' || activeSection === 'agents') {
+      set({ activeSection, activeTabId: null });
+    } else {
+      set({ activeSection });
+    }
     scheduleSaveLayout(get);
   },
   setActiveSidebarSection: (activeSidebarSection) => {
@@ -944,9 +1059,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeTabId,
         activeFilePath: tab.filePath,
         activeFileContent: tab.content || '',
-        activeSection: 'editor',
-        rightPanelTab: 'outline', // Contextual adaptation: show file symbols & outline
-        explorerTab: 'outline'
+        activeSection: 'editor'
       });
       state.loadFileSymbols(tab.filePath);
     } else if (tab.type === 'terminal' && tab.terminalId) {
@@ -958,45 +1071,35 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeFileContent: null,
         activeSection: 'terminal',
         streamOutput: term ? term.streamOutput : state.streamOutput,
-        sessionStatus: term ? term.status : state.sessionStatus,
-        rightPanelTab: 'models', // Contextual adaptation: show session model & provider
-        explorerTab: 'models'
+        sessionStatus: term ? term.status : state.sessionStatus
       });
     } else if (tab.type === 'project') {
       set({
         activeTabId,
         activeFilePath: null,
         activeFileContent: null,
-        activeSection: 'terminal',
-        rightPanelTab: 'files',
-        explorerTab: 'files'
+        activeSection: 'terminal'
       });
     } else if (tab.type === 'flow') {
       set({
         activeTabId,
         activeFilePath: null,
         activeFileContent: null,
-        activeSection: 'flows',
-        rightPanelTab: 'agents',
-        explorerTab: 'agents'
+        activeSection: 'flows'
       });
     } else if (tab.type === 'graph') {
       set({
         activeTabId,
         activeFilePath: null,
         activeFileContent: null,
-        activeSection: 'graph',
-        rightPanelTab: 'context',
-        explorerTab: 'context'
+        activeSection: 'graph'
       });
     } else if (tab.type === 'browser') {
       set({
         activeTabId,
         activeFilePath: null,
         activeFileContent: null,
-        activeSection: 'terminal',
-        rightPanelTab: 'models',
-        explorerTab: 'models'
+        activeSection: 'terminal'
       });
     }
     scheduleSaveWorkspaceState(get);
@@ -1028,9 +1131,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeTabId: tabId,
         activeFilePath: filePath,
         activeFileContent: content,
-        activeSection: 'editor',
-        rightPanelTab: 'outline',
-        explorerTab: 'outline'
+        activeSection: 'editor'
       };
     });
 
@@ -1079,9 +1180,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeFileContent: null,
         activeSection: 'terminal',
         streamOutput: term ? term.streamOutput : s.streamOutput,
-        sessionStatus: term ? term.status : s.sessionStatus,
-        rightPanelTab: 'models',
-        explorerTab: 'models'
+        sessionStatus: term ? term.status : s.sessionStatus
       };
     });
     scheduleSaveWorkspaceState(get);
@@ -1104,9 +1203,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeTabId: tabId,
         activeFilePath: null,
         activeFileContent: null,
-        activeSection: 'terminal',
-        rightPanelTab: 'files',
-        explorerTab: 'files'
+        activeSection: 'terminal'
       };
     });
   },
@@ -1155,9 +1252,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeWorkflow: workflow,
         activeFilePath: null,
         activeFileContent: null,
-        activeSection: 'flows',
-        rightPanelTab: 'agents',
-        explorerTab: 'agents'
+        activeSection: 'flows'
       };
     });
   },
@@ -1179,9 +1274,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeTabId: tabId,
         activeFilePath: null,
         activeFileContent: null,
-        activeSection: 'graph',
-        rightPanelTab: 'context',
-        explorerTab: 'context'
+        activeSection: 'graph'
       };
     });
     get().loadProjectGraph();
@@ -1202,9 +1295,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeTabId: tabId,
         activeSection: 'terminal',
         activeFilePath: null,
-        activeFileContent: null,
-        rightPanelTab: 'models',
-        explorerTab: 'models'
+        activeFileContent: null
       };
     });
     scheduleSaveWorkspaceState(get);
@@ -1415,6 +1506,39 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const isShell = ['powershell', 'cmd', 'bash'].includes(provider);
     const workDir = state.project?.path || '';
 
+    const agentCommands: Record<string, string> = {
+      antigravity: 'agy --dangerously-skip-permissions',
+      claude: 'claude --dangerously-skip-permissions',
+      codex: 'codex --dangerously-bypass-approvals-and-sandbox',
+      gemini: 'gemini --yolo',
+      copilot: 'copilot --yolo',
+      opencode: 'opencode',
+      qwen: 'qwen --approval-mode yolo',
+      kimi: 'kimi --yolo',
+      codebuff: 'freebuff',
+      cursor: 'cursor --agent',
+      droid: 'droid exec',
+      goose: 'goose run',
+      ante: 'ante',
+      auggie: 'auggie',
+      cline: 'cline',
+      continue: 'continue',
+      crush: 'crush',
+      devin: 'devin',
+      hermes: 'hermes',
+      kilocode: 'kilocode',
+      kiro: 'kiro',
+      vibe: 'vibe',
+      openhands: 'openhands',
+      pi: 'pi',
+      roocode: 'roocode',
+      rovo: 'rovo',
+      trae: 'trae --agent',
+      zed: 'zed --agent'
+    };
+
+    const cmdStr = agentCommands[provider] || `${provider}`;
+
     const defaultTitle =
       provider === 'powershell'
         ? `PowerShell ${count}`
@@ -1422,7 +1546,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         ? `CMD ${count}`
         : provider === 'bash'
         ? `Git Bash ${count}`
-        : `Terminal ${count} (${provider.toUpperCase()})`;
+        : provider === 'antigravity'
+        ? 'Antigravity'
+        : provider === 'claude'
+        ? 'Claude Code'
+        : provider === 'codex'
+        ? 'Codex'
+        : provider === 'gemini'
+        ? 'Gemini'
+        : provider === 'copilot'
+        ? 'GitHub Copilot'
+        : provider === 'qwen'
+        ? 'Qwen Code'
+        : provider === 'kimi'
+        ? 'Kimi'
+        : provider.charAt(0).toUpperCase() + provider.slice(1);
 
     const initialOutput = '';
 
@@ -1434,16 +1572,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       workingDirectory: workDir,
       branch: state.gitStatus?.branch || state.project?.activeBranch || '',
       provider,
-      model:
-        provider === 'claude'
-          ? 'claude-3-7-sonnet'
-          : provider === 'ollama'
-          ? 'llama3:latest'
-          : provider === 'gemini'
-          ? 'gemini-2.5-pro'
-          : provider === 'antigravity'
-          ? 'gemini-2.5-pro'
-          : 'gpt-4o',
+      model: '',
       agentRole: 'coordinator',
       activeSkills: [],
       status: 'idle',
@@ -1496,10 +1625,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeTabId: tabId,
         activeTerminalId: id,
         streamOutput: session ? session.streamOutput : '',
-        sessionStatus: session ? session.status : 'idle',
-        activeSection: 'terminal',
-        rightPanelTab: 'models',
-        explorerTab: 'models'
+        sessionStatus: session ? session.status : 'idle'
       };
     });
     scheduleSaveWorkspaceState(get);
@@ -1527,24 +1653,34 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   appendTerminalOutput: (id, text) => {
     set((s) => {
       const updated = s.terminalSessions.map((ts) =>
-        ts.id === id ? { ...ts, streamOutput: ts.streamOutput + text } : ts
+        ts.id === id ? { ...ts, streamOutput: (ts.streamOutput + text).slice(-100000) } : ts
       );
       const isCurrent = s.activeTerminalId === id;
       return {
         terminalSessions: updated,
-        streamOutput: isCurrent ? s.streamOutput + text : s.streamOutput
+        streamOutput: isCurrent ? (s.streamOutput + text).slice(-100000) : s.streamOutput
       };
     });
+    scheduleSaveWorkspaceState(get);
   },
 
   removeTerminalSession: (id: string) => {
+    try {
+      window.api?.terminalKill?.({ terminalId: id });
+    } catch {}
     set((s) => {
       const remaining = s.terminalSessions.filter((ts) => ts.id !== id);
       const nextActive = s.activeTerminalId === id ? (remaining[0]?.id || null) : s.activeTerminalId;
       const nextTabs = s.openTabs.filter((t) => !(t.type === 'terminal' && t.terminalId === id));
+      const nextActiveTabId =
+        s.activeTabId === `term:${id}`
+          ? (nextTabs[nextTabs.length - 1]?.id || null)
+          : s.activeTabId;
+
       return {
         terminalSessions: remaining,
         activeTerminalId: nextActive,
+        activeTabId: nextActiveTabId,
         openTabs: nextTabs,
         maximizedTerminalId: s.maximizedTerminalId === id ? null : s.maximizedTerminalId,
         detachedTerminalIds: s.detachedTerminalIds.filter((dId) => dId !== id)
@@ -1573,6 +1709,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const [removed] = result.splice(startIndex, 1);
       result.splice(endIndex, 0, removed);
       return { terminalSessions: result };
+    }),
+
+  reorderTabs: (sourceId, targetId) =>
+    set((s) => {
+      const fromIdx = s.openTabs.findIndex((t) => t.id === sourceId);
+      const toIdx = s.openTabs.findIndex((t) => t.id === targetId);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return {};
+      const result = Array.from(s.openTabs);
+      const [removed] = result.splice(fromIdx, 1);
+      result.splice(toIdx, 0, removed);
+      return { openTabs: result };
     }),
 
   setArcLauncherOpen: (isArcLauncherOpen) => set({ isArcLauncherOpen }),
@@ -1630,6 +1777,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   clearTerminalOutput: (id) => {
+    try {
+      window.api?.terminalKill?.({ terminalId: id });
+      window.dispatchEvent(new CustomEvent(`terminal:reset:${id}`));
+    } catch {}
     set((s) => {
       const updated = s.terminalSessions.map((ts) =>
         ts.id === id ? { ...ts, streamOutput: '' } : ts
@@ -1640,6 +1791,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         streamOutput: isCurrent ? '' : s.streamOutput
       };
     });
+    scheduleSaveWorkspaceState(get);
   },
 
   setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
@@ -1788,11 +1940,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setUiMode: (uiMode) => set({ uiMode }),
   toggleDirExpanded: (dirId) => {
     set((s) => {
+      const norm = dirId.replace(/\\/g, '/');
       const next = new Set(s.expandedDirs);
-      if (next.has(dirId)) next.delete(dirId);
-      else next.add(dirId);
+      if (next.has(dirId) || next.has(norm)) {
+        next.delete(dirId);
+        next.delete(norm);
+      } else {
+        next.add(dirId);
+        next.add(norm);
+      }
       return { expandedDirs: next };
     });
+    scheduleSaveWorkspaceState(get);
+  },
+  collapseAllDirs: () => {
+    set({ expandedDirs: new Set() });
     scheduleSaveWorkspaceState(get);
   },
   setMetrics: (metrics) => set({ metrics }),
@@ -1822,12 +1984,200 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       const status = await window.api.getGitStatus(projectPath);
       set({ gitStatus: status });
+      // Trigger execution & review synchronization alongside git status
+      get().loadProjectExecutions().catch(() => {});
+      get().loadProjectGitDetails().catch(() => {});
+      get().loadCodeReview().catch(() => {});
+      get().syncManualChanges().catch(() => {});
     } catch {
       set({ gitStatus: null });
     }
   },
 
+  // Project Explorer Actions
+  setExplorerActiveTab: (explorerActiveTab) => set({ explorerActiveTab, rightPanelTab: explorerActiveTab }),
+
+  loadProjectExecutions: async () => {
+    const project = get().project;
+    if (!project?.id || typeof window === 'undefined' || !window.api?.listProjectExecutions) return;
+    try {
+      const list = await window.api.listProjectExecutions({ projectId: project.id });
+      set({ executions: list });
+      if (list.length > 0 && !get().activeExecutionId) {
+        set({ activeExecutionId: list[0].id });
+      }
+    } catch (e) {
+      console.warn('Failed to load project executions:', e);
+    }
+  },
+
+  loadExecutionFileChanges: async (executionId) => {
+    if (typeof window === 'undefined' || !window.api?.getExecutionFileChanges) return [];
+    try {
+      const changes = await window.api.getExecutionFileChanges({ executionId });
+      set((s) => ({
+        executionFileChanges: { ...s.executionFileChanges, [executionId]: changes }
+      }));
+      return changes;
+    } catch (e) {
+      console.warn('Failed to load execution file changes:', e);
+      return [];
+    }
+  },
+
+  loadCodeReview: async (executionId) => {
+    const project = get().project;
+    if (!project?.id || typeof window === 'undefined' || !window.api?.getCodeReview) return;
+    try {
+      const review = await window.api.getCodeReview({ projectId: project.id, executionId });
+      set({ codeReview: review });
+      if (review) {
+        const comments = await window.api.listReviewComments({ reviewId: review.id });
+        set({ reviewComments: comments });
+      }
+    } catch (e) {
+      console.warn('Failed to load code review:', e);
+    }
+  },
+
+  updateReviewDecision: async (status, summary) => {
+    const review = get().codeReview;
+    if (!review || typeof window === 'undefined' || !window.api?.updateReviewDecision) return;
+    try {
+      const updated = await window.api.updateReviewDecision({
+        reviewId: review.id,
+        status,
+        summary
+      });
+      if (updated) {
+        set({ codeReview: updated });
+        get().addLog(`Review marked as: ${status}`, 'info');
+      }
+    } catch (e: any) {
+      get().addLog(`Failed to update review decision: ${e.message}`, 'error');
+    }
+  },
+
+  markFileReviewStatus: async (filePath, status) => {
+    const review = get().codeReview;
+    if (!review || typeof window === 'undefined' || !window.api?.markFileReviewStatus) return;
+    try {
+      const updated = await window.api.markFileReviewStatus({
+        reviewId: review.id,
+        filePath,
+        status
+      });
+      if (updated) set({ codeReview: updated });
+    } catch (e: any) {
+      get().addLog(`Failed to mark file status: ${e.message}`, 'error');
+    }
+  },
+
+  addReviewComment: async (filePath, content, lineNumber, diffHunk, parentCommentId) => {
+    let review = get().codeReview;
+    const project = get().project;
+    if (!project?.id || typeof window === 'undefined') return;
+    if (!review) {
+      await get().loadCodeReview();
+      review = get().codeReview;
+    }
+    if (!review) return;
+
+    try {
+      const newComment = await window.api.addReviewComment({
+        reviewId: review.id,
+        projectId: project.id,
+        filePath,
+        lineNumber,
+        diffHunk,
+        content,
+        author: 'User',
+        parentCommentId
+      });
+      set((s) => ({ reviewComments: [...s.reviewComments, newComment] }));
+      get().addLog('Review comment added', 'info');
+    } catch (e: any) {
+      get().addLog(`Failed to add comment: ${e.message}`, 'error');
+    }
+  },
+
+  resolveReviewComment: async (commentId, resolved) => {
+    if (typeof window === 'undefined' || !window.api?.resolveReviewComment) return;
+    try {
+      await window.api.resolveReviewComment({ commentId, resolved });
+      set((s) => ({
+        reviewComments: s.reviewComments.map((c) =>
+          c.id === commentId ? { ...c, status: resolved ? 'resolved' : 'open', resolvedAt: resolved ? Date.now() : undefined } : c
+        )
+      }));
+    } catch (e: any) {
+      get().addLog(`Failed to resolve comment: ${e.message}`, 'error');
+    }
+  },
+
+  runAICodeReview: async () => {
+    const project = get().project;
+    const review = get().codeReview;
+    const gitStatus = get().gitStatus;
+    if (!project?.path || !review || typeof window === 'undefined' || !window.api?.runAICodeReview) return;
+
+    set({ isAIEvaluationRunning: true });
+    get().addLog('Running AI-assisted code review...', 'info');
+    try {
+      const findings = await window.api.runAICodeReview({
+        reviewId: review.id,
+        projectPath: project.path,
+        diff: gitStatus?.diff || '',
+        changedFiles: gitStatus?.changedFiles.map((f) => f.path) || []
+      });
+      set({ aiReviewFindings: findings, isAIEvaluationRunning: false });
+      await get().loadCodeReview();
+      get().addLog(`AI code review completed: ${findings.length} findings`, 'info');
+    } catch (e: any) {
+      set({ isAIEvaluationRunning: false });
+      get().addLog(`AI code review failed: ${e.message}`, 'error');
+    }
+  },
+
+  loadProjectGitDetails: async () => {
+    const project = get().project;
+    if (!project?.path || typeof window === 'undefined' || !window.api?.getProjectGitDetails) return;
+    try {
+      const details = await window.api.getProjectGitDetails({ projectPath: project.path });
+      set({ projectGitDetails: details });
+    } catch (e) {
+      console.warn('Failed to load project git details:', e);
+    }
+  },
+
+  setSelectedDiffFile: (selectedDiffFile) => set({ selectedDiffFile }),
+  setDiffViewMode: (diffViewMode) => set({ diffViewMode }),
+  setChangesFilter: (changesFilter) => set({ changesFilter }),
+
+  syncManualChanges: async () => {
+    const project = get().project;
+    if (!project?.path || typeof window === 'undefined' || !window.api?.syncManualChanges) return;
+    try {
+      const manualExec = await window.api.syncManualChanges({
+        projectId: project.id,
+        projectPath: project.path
+      });
+      if (manualExec) {
+        await get().loadProjectExecutions();
+      }
+    } catch (e) {
+      console.warn('Failed to sync manual changes:', e);
+    }
+  },
+
   setCLIStatuses: (cliStatuses) => set({ cliStatuses }),
   setCLIAuthStatuses: (cliAuthStatuses) => set({ cliAuthStatuses }),
-  setActiveProvider: (activeProvider) => set({ activeProvider })
+  setActiveProvider: (activeProvider) => set({ activeProvider }),
+  setSettingsActiveTab: (settingsActiveTab) => set({ settingsActiveTab }),
+  openSettingsToTab: (tab) => set({ settingsActiveTab: tab, isSettingsOpen: true }),
+  setAgentPermissions: (agentPermissions) => set({ agentPermissions }),
+  setAgentMode: (agentId, mode) =>
+    set((s) => ({ agentModes: { ...s.agentModes, [agentId]: mode } })),
+  setAgentEnabled: (agentId, enabled) =>
+    set((s) => ({ agentEnabled: { ...s.agentEnabled, [agentId]: enabled } }))
 }));

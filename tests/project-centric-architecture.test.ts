@@ -93,8 +93,9 @@ describe('Project-Centric Architecture & Contextual Session Tests', () => {
     expect(session2?.streamOutput).not.toContain('Claude session output');
   });
 
-  it('3. Contextual Tab Adaptation: File Selection triggers Outline Panel', () => {
+  it('3. Tab Selection: File Selection sets editor section and preserves sidebar position', () => {
     const store = useWorkspaceStore.getState();
+    store.setRightPanelTab('files');
 
     // Open file tab
     store.openFileTab('src/core/router.ts', 'export class Router {}');
@@ -102,12 +103,13 @@ describe('Project-Centric Architecture & Contextual Session Tests', () => {
     const state = useWorkspaceStore.getState();
     expect(state.activeFilePath).toBe('src/core/router.ts');
     expect(state.activeSection).toBe('editor');
-    // Contextual adaptation: outline tab automatically selected
-    expect(state.rightPanelTab).toBe('outline');
+    // Preserves right panel tab (does not force-switch away from user's current sidebar view)
+    expect(state.rightPanelTab).toBe('files');
   });
 
-  it('4. Contextual Tab Adaptation: Terminal Tab triggers Models/Providers Panel', () => {
+  it('4. Terminal Focus: Terminal Tab preserves user sidebar position without unwanted switches', () => {
     const store = useWorkspaceStore.getState();
+    store.setRightPanelTab('changes');
 
     const termId = store.createTerminalSession('gemini');
     store.openTerminalTab(termId);
@@ -115,8 +117,8 @@ describe('Project-Centric Architecture & Contextual Session Tests', () => {
     const state = useWorkspaceStore.getState();
     expect(state.activeTerminalId).toBe(termId);
     expect(state.activeSection).toBe('terminal');
-    // Contextual adaptation: models tab automatically selected
-    expect(state.rightPanelTab).toBe('models');
+    // Preserves sidebar tab (no unwanted models switch)
+    expect(state.rightPanelTab).toBe('changes');
   });
 
   it('5. Bottom Panel Resizing and Multi-Tab Execution States', () => {
@@ -171,17 +173,15 @@ describe('Project-Centric Architecture & Contextual Session Tests', () => {
     expect(useWorkspaceStore.getState().openTabs[0].isDirty).toBe(true);
     expect(useWorkspaceStore.getState().activeFileContent).toBe('console.log("hello world modified");');
 
-    // Open terminal tab alongside
+    // Open terminal tab alongside (preserves existing rightPanelTab)
     const termId = store.createTerminalSession('codex');
     store.openTerminalTab(termId);
     expect(useWorkspaceStore.getState().openTabs.length).toBe(2);
     expect(useWorkspaceStore.getState().activeTabId).toBe(`term:${termId}`);
-    expect(useWorkspaceStore.getState().rightPanelTab).toBe('models');
 
-    // Switch back to file tab -> restores file context and outline
+    // Switch back to file tab -> restores file context while preserving sidebar
     store.setActiveTabId('file:src/main.ts');
     expect(useWorkspaceStore.getState().activeFilePath).toBe('src/main.ts');
-    expect(useWorkspaceStore.getState().rightPanelTab).toBe('outline');
 
     // Close file tab -> leaves terminal tab active
     store.closeTab('file:src/main.ts');

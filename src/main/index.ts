@@ -12,6 +12,7 @@ import { extensionRegistry } from './extensions/extension-registry';
 import { airGapManager } from './services/air-gap.manager';
 import { appLogger } from './services/app-logger';
 import { discordRpcService } from './services/discord/discord-rpc.service';
+import { ptyService } from './terminal/pty-service';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -266,7 +267,8 @@ if (!gotTheLock) {
   });
 
   app.on('before-quit', () => {
-    appLogger.info('Main', 'Application shutting down, closing database handles...');
+    appLogger.info('Main', 'Application shutting down, terminating PTYs and closing database handles...');
+    ptyService.killAll();
     discordRpcService.shutdown().catch(() => {});
     databaseService.close();
   });

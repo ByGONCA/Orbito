@@ -27,7 +27,11 @@ import {
   ExecuteCLIPromptSchema,
   CancelCLISessionSchema,
   ListCLISessionsSchema,
-  GetSessionMessagesSchema
+  GetSessionMessagesSchema,
+  TerminalCreateSchema,
+  TerminalWriteSchema,
+  TerminalResizeSchema,
+  TerminalKillSchema
 } from './cli';
 import type {
   IndexStats,
@@ -391,6 +395,72 @@ export const GetCacheStatsSchema = z.object({}).optional();
 export const ClearCacheSchema = z.object({}).optional();
 
 // ==========================================
+// Project Explorer: Changes & Code Review Schemas
+// ==========================================
+
+export const ListProjectExecutionsSchema = z.object({
+  projectId: z.string().min(1)
+});
+
+export const GetExecutionFileChangesSchema = z.object({
+  executionId: z.string().min(1)
+});
+
+export const SyncManualChangesSchema = z.object({
+  projectId: z.string().min(1),
+  projectPath: z.string().min(1)
+});
+
+export const GetCodeReviewSchema = z.object({
+  projectId: z.string().min(1),
+  executionId: z.string().optional()
+});
+
+export const UpdateReviewDecisionSchema = z.object({
+  reviewId: z.string().min(1),
+  status: z.enum(['not_reviewed', 'reviewed', 'issues_found', 'changes_requested', 'approved']),
+  reviewer: z.string().optional(),
+  summary: z.string().optional()
+});
+
+export const MarkFileReviewStatusSchema = z.object({
+  reviewId: z.string().min(1),
+  filePath: z.string().min(1),
+  status: z.enum(['pending', 'reviewed', 'changes_requested'])
+});
+
+export const AddReviewCommentSchema = z.object({
+  reviewId: z.string().min(1),
+  projectId: z.string().min(1),
+  filePath: z.string().min(1),
+  lineNumber: z.number().int().optional(),
+  diffHunk: z.string().optional(),
+  content: z.string().min(1),
+  author: z.string().min(1),
+  parentCommentId: z.string().optional()
+});
+
+export const ListReviewCommentsSchema = z.object({
+  reviewId: z.string().min(1)
+});
+
+export const ResolveReviewCommentSchema = z.object({
+  commentId: z.string().min(1),
+  resolved: z.boolean()
+});
+
+export const RunAICodeReviewSchema = z.object({
+  reviewId: z.string().min(1),
+  projectPath: z.string().min(1),
+  diff: z.string(),
+  changedFiles: z.array(z.string())
+});
+
+export const GetProjectGitDetailsSchema = z.object({
+  projectPath: z.string().min(1)
+});
+
+// ==========================================
 // Strongly-Typed IPC Interface Contract
 // ==========================================
 
@@ -457,6 +527,21 @@ export interface IElectronAPI {
   listCLISessions: (params?: z.input<typeof ListCLISessionsSchema>) => Promise<CLISessionRecord[]>;
   getSessionMessages: (params: z.input<typeof GetSessionMessagesSchema>) => Promise<CLISessionMessage[]>;
   onCLIStreamEvent: (callback: (event: CLIStreamEvent) => void) => () => void;
+
+  // Interactive Terminal Engine (PTY & xterm.js)
+  terminalCreate: (params: z.input<typeof TerminalCreateSchema>) => Promise<{
+    success: boolean;
+    pid?: number;
+    error?: string;
+    installCommand?: string;
+    installGuideUrl?: string;
+    isExisting?: boolean;
+  }>;
+  terminalWrite: (params: z.input<typeof TerminalWriteSchema>) => Promise<void>;
+  terminalResize: (params: z.input<typeof TerminalResizeSchema>) => Promise<void>;
+  terminalKill: (params: z.input<typeof TerminalKillSchema>) => Promise<{ success: boolean }>;
+  onTerminalData: (callback: (event: { terminalId: string; data: string }) => void) => () => void;
+  onTerminalExit: (callback: (event: { terminalId: string; exitCode: number; signal?: number }) => void) => () => void;
 
   // Context Engine (Phase 3)
   startIndexing: (params: z.input<typeof StartIndexingSchema>) => Promise<IndexStats>;
@@ -551,4 +636,18 @@ export interface IElectronAPI {
   closeWindow?: () => Promise<void>;
   isWindowMaximized?: () => Promise<boolean>;
   onWindowStateChange?: (callback: (state: { isMaximized: boolean }) => void) => () => void;
+  openDetachedTabWindow?: (params: { tab: any; x?: number; y?: number }) => Promise<{ success: boolean }>;
+
+  // Project Explorer: Changes & Code Review
+  listProjectExecutions: (params: z.input<typeof ListProjectExecutionsSchema>) => Promise<import('./review').ProjectExecution[]>;
+  getExecutionFileChanges: (params: z.input<typeof GetExecutionFileChangesSchema>) => Promise<import('./review').ExecutionFileChange[]>;
+  syncManualChanges: (params: z.input<typeof SyncManualChangesSchema>) => Promise<import('./review').ProjectExecution | null>;
+  getCodeReview: (params: z.input<typeof GetCodeReviewSchema>) => Promise<import('./review').CodeReview | null>;
+  updateReviewDecision: (params: z.input<typeof UpdateReviewDecisionSchema>) => Promise<import('./review').CodeReview | null>;
+  markFileReviewStatus: (params: z.input<typeof MarkFileReviewStatusSchema>) => Promise<import('./review').CodeReview | null>;
+  addReviewComment: (params: z.input<typeof AddReviewCommentSchema>) => Promise<import('./review').ReviewComment>;
+  listReviewComments: (params: z.input<typeof ListReviewCommentsSchema>) => Promise<import('./review').ReviewComment[]>;
+  resolveReviewComment: (params: z.input<typeof ResolveReviewCommentSchema>) => Promise<{ success: boolean }>;
+  runAICodeReview: (params: z.input<typeof RunAICodeReviewSchema>) => Promise<import('./review').AIFinding[]>;
+  getProjectGitDetails: (params: z.input<typeof GetProjectGitDetailsSchema>) => Promise<import('./review').ProjectGitDetails>;
 }

@@ -14,8 +14,10 @@ import {
   FileQuestion,
   RefreshCw,
   Play,
-  Pause
+  Pause,
+  Terminal
 } from 'lucide-react';
+import { useWorkspaceStore } from '../../stores/workspace.store';
 import { Badge } from '../ui/Badge';
 import { IconButton } from '../ui/IconButton';
 
@@ -125,6 +127,25 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
 
       {/* 2. Right: Action Buttons & Stats */}
       <div className="pointer-events-auto flex items-center gap-2">
+        {/* Return to Terminal Button */}
+        <button
+          onClick={() => {
+            const store = useWorkspaceStore.getState();
+            const term = store.terminalSessions.find((t) => t.id === store.activeTerminalId) || store.terminalSessions[0];
+            if (term) {
+              store.openTerminalTab(term.id);
+            } else {
+              store.openTerminalTab();
+            }
+            store.setActiveSection('terminal');
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-card backdrop-blur-glass border border-white/[0.1] hover:border-white/[0.2] hover:bg-white/[0.08] text-xs font-mono text-[#ECEDEF] hover:text-white transition-all cursor-pointer shadow-xs"
+          title="Switch to Terminal"
+        >
+          <Terminal className="w-3.5 h-3.5 text-accent" />
+          <span className="hidden sm:inline">Terminal</span>
+        </button>
+
         {/* Graph Stats Pill */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl glass-card backdrop-blur-glass border border-border text-[11px] font-mono text-foreground-secondary">
           <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />

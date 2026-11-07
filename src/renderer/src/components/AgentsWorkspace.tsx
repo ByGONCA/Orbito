@@ -30,6 +30,7 @@ import type {
   ExecutionMode,
   SpecialistRole
 } from '../../../shared/agents';
+import { CustomSelect, type SelectOption } from './ui/Select';
 
 const ROLE_COLORS: Record<SpecialistRole, { bg: string; text: string; border: string }> = {
   coordinator: { bg: 'bg-surface-elevated', text: 'text-foreground', border: 'border-border' },
@@ -272,15 +273,16 @@ export const AgentsWorkspace: React.FC = () => {
             className="flex-1 glass-input rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-foreground-muted focus:outline-hidden font-sans"
           />
 
-          <select
+          <CustomSelect<ExecutionMode>
             value={mode}
-            onChange={(e) => setMode(e.target.value as ExecutionMode)}
-            className="bg-secondary/70 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground capitalize"
-          >
-            <option value="supervised">Supervised (Approve Merges)</option>
-            <option value="autonomous">Autonomous (Auto-merge)</option>
-            <option value="manual">Manual (Step-by-step)</option>
-          </select>
+            onChange={(val) => setMode(val)}
+            options={[
+              { value: 'supervised', label: 'Supervised (Approve Merges)', description: 'Human approval before file merges.' },
+              { value: 'autonomous', label: 'Autonomous (Auto-merge)', description: 'Automatic branch merging upon test success.' },
+              { value: 'manual', label: 'Manual (Step-by-step)', description: 'Step-by-step control for each agent execution.' }
+            ]}
+            menuClassName="w-72"
+          />
 
           <button
             type="submit"

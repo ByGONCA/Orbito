@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import type { ICLIAdapter, CommandSpec } from '../adapter.interface';
+import type { ICLIAdapter, CommandSpec, InteractiveLaunchSpec } from '../adapter.interface';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -12,6 +12,8 @@ import { findExecutableOnPath, probeVersion, isVersionAtLeast } from '../detecto
 
 export class OllamaAdapter implements ICLIAdapter {
   public readonly provider: CLIProvider = 'ollama';
+  public readonly name: string = 'Ollama';
+  public readonly installCommand: string = 'curl -fsSL https://ollama.com/install.sh | sh';
   public readonly capabilities: CLICapabilities = {
     supportsStreaming: true,
     supportsResume: false,
@@ -22,7 +24,7 @@ export class OllamaAdapter implements ICLIAdapter {
   };
 
   private readonly minVersion = '0.1.20';
-  private readonly installGuideUrl = 'https://ollama.com/download';
+  public readonly installGuideUrl = 'https://ollama.com/download';
   private activeModel = 'llama3:latest';
   private defaultHost = '127.0.0.1';
   private defaultPort = 11434;
@@ -357,6 +359,38 @@ export class OllamaAdapter implements ICLIAdapter {
         resolve([]);
       });
     });
+  }
+
+  public async getInteractiveLaunchSpec(options: {
+    workingDirectory: string;
+    customPath?: string;
+    model?: string;
+    extraArgs?: string[];
+  }): Promise<{ success: true; spec: InteractiveLaunchSpec } | { success: false; error: string; installGuideUrl?: string; installCommand?: string }> {
+    const installStatus = await this.detect(options.customPath);
+    if (!installStatus.isInstalled || !installStatus.resolvedPath) {
+      return {
+        success: false,
+        error: 'Ollama executable was not found. Please install Ollama or configure its path in Settings.',
+        installGuideUrl: this.installGuideUrl,
+        installCommand: this.installCommand
+      };
+    }
+
+    const targetModel = options.model || this.activeModel || 'llama3:latest';
+    const args: string[] = ['run', targetModel];
+    if (options.extraArgs) {
+      args.push(...options.extraArgs);
+    }
+
+    return {
+      success: true,
+      spec: {
+        executable: installStatus.resolvedPath,
+        args,
+        cwd: options.workingDirectory
+      }
+    };
   }
 }
 

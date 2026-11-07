@@ -24,9 +24,9 @@ The system operates across distinct process boundaries:
 - `src/preload/`: Secure `contextBridge` exposure (`window.api`).
 - `src/renderer/`: React 19 frontend components, UI stores, hooks, styles.
 - `src/shared/`: Shared TypeScript types, IPC channel contracts, schemas (`ipc.ts`, `agents.ts`, `skills.ts`, `workflows.ts`, `context.ts`).
-- `docs/`: Architectural specifications, PRD, security model, and implementation decisions.
+- `docs/`: Architectural specifications, PRD, security model, and implementation decisions (`docs/DEVELOPMENT_GUIDE.md` is the shared engineering knowledge base).
 - `graphify-out/`: Graphify generated knowledge graph (`graph.json`, `graph.html`, `GRAPH_REPORT.md`).
-- `.agents/`: Project rules (`.agents/rules/`) and workflows (`.agents/workflows/`).
+- `.agents/`: Persistent multi-agent definitions (`.agents/agents/roster.json`), rules (`.agents/rules/`), and workflows (`.agents/workflows/orchestrate.md`).
 
 ## 5. Core Modules & Responsibilities
 - **Workspace Store (`src/renderer/src/stores/workspace.store.ts`):** Central reactive state for projects, tabs, active session, terminal context, agent inspection, and layout preferences.

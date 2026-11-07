@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import type { ICLIAdapter, CommandSpec } from './adapter.interface';
+import type { ICLIAdapter, CommandSpec, InteractiveLaunchSpec } from './adapter.interface';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -226,6 +226,37 @@ export class BaseCLIAdapter implements ICLIAdapter {
     return {
       executable: this.executableNames[0],
       args
+    };
+  }
+
+  public async getInteractiveLaunchSpec(options: {
+    workingDirectory: string;
+    customPath?: string;
+    model?: string;
+    extraArgs?: string[];
+  }): Promise<{ success: true; spec: InteractiveLaunchSpec } | { success: false; error: string; installGuideUrl?: string; installCommand?: string }> {
+    const installStatus = await this.detect(options.customPath);
+    if (!installStatus.isInstalled || !installStatus.resolvedPath) {
+      return {
+        success: false,
+        error: `CLI executable for ${this.name} was not found. Please install ${this.name} or set its custom path in Settings.`,
+        installGuideUrl: this.installGuideUrl,
+        installCommand: this.installCommand
+      };
+    }
+
+    const args = [...this.defaultArgs];
+    if (options.extraArgs) {
+      args.push(...options.extraArgs);
+    }
+
+    return {
+      success: true,
+      spec: {
+        executable: installStatus.resolvedPath,
+        args,
+        cwd: options.workingDirectory
+      }
     };
   }
 }

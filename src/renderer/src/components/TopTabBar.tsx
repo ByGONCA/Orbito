@@ -108,29 +108,7 @@ export const TopTabBar: React.FC = () => {
     }
   };
 
-  // Compute breadcrumbs if active tab is a file
-  const breadcrumbs = React.useMemo(() => {
-    if (!activeTab || activeTab.type !== 'file' || !activeFilePath) return null;
-    const cleanPath = activeFilePath.replace(/\\/g, '/');
-    const parts = cleanPath.split('/').filter(Boolean);
-    return parts.slice(-4);
-  }, [activeTab, activeFilePath]);
 
-  const getTabIcon = (type: string) => {
-    switch (type) {
-      case 'file':
-        return FileCode;
-      case 'flow':
-        return Workflow;
-      case 'graph':
-        return Network;
-      case 'project-settings':
-        return Settings;
-      case 'terminal':
-      default:
-        return Terminal;
-    }
-  };
 
   return (
     <div
@@ -314,100 +292,11 @@ export const TopTabBar: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Section: Tabs Strip (Files, Graph, Browser) - Terminals have their own scoped pane headers */}
+        {/* Center Section: Draggable Title Bar Area */}
         <div
-          className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0 pl-1.5 pr-2 h-full"
+          className="flex-1 min-w-0 h-full"
           style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-        >
-          {openTabs
-            .filter((tab) => tab.type !== 'terminal')
-            .map((tab) => {
-              const isActive = activeTabId === tab.id;
-              const isFile = tab.type === 'file';
-              const Icon = getTabIcon(tab.type);
-
-              return (
-                <div
-                  key={tab.id}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('text/plain', tab.id);
-                    e.dataTransfer.setData('application/orc-tab-id', tab.id);
-                  }}
-                  onClick={() => {
-                    setActiveTabId(tab.id);
-                  }}
-                  style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-                  className={`group relative flex items-center gap-2 px-3 h-7 rounded-md text-xs cursor-pointer transition-all max-w-[210px] flex-shrink-0 ${
-                    isActive
-                      ? 'bg-[#1e2129] text-white font-medium shadow-xs'
-                      : 'bg-transparent hover:bg-white/[0.05] text-[#A4A8AF] hover:text-[#ECEDEF]'
-                  }`}
-                >
-                  {tab.type === 'browser' ? (
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <Globe className="w-3.5 h-3.5 text-[#A4A8AF] flex-shrink-0" />
-                    </div>
-                  ) : isFile ? (
-                    <FileIcon
-                      name={tab.title}
-                      isDirectory={false}
-                      className="w-3.5 h-3.5 flex-shrink-0"
-                      theme="material"
-                    />
-                  ) : (
-                    <Icon
-                      className={`w-3.5 h-3.5 flex-shrink-0 ${
-                        isActive ? 'text-[#ECEDEF]' : 'text-[#747982]'
-                      }`}
-                    />
-                  )}
-
-                  <span className="truncate text-[11px] font-mono">{tab.title}</span>
-
-                  {/* Modified badge */}
-                  {tab.isDirty && (
-                    <span className="text-[10px] text-amber-400 font-mono font-bold">M</span>
-                  )}
-
-                  {/* Tab Close Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeTab(tab.id);
-                    }}
-                    className="p-0.5 hover:bg-white/20 rounded text-[#747982] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 cursor-pointer"
-                    title="Close Tab"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </div>
-              );
-            })}
-
-          {/* Plus Button (+) - Opens Arc Launcher when files exist */}
-          {openTabs.filter((t) => t.type !== 'terminal').length > 0 && (
-            <button
-              onClick={() => setArcLauncherOpen(true)}
-              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              className="p-1 hover:bg-white/[0.08] rounded-md text-[#A4A8AF] hover:text-[#ECEDEF] flex-shrink-0 transition-colors cursor-pointer"
-              title="New File / Tab (Ctrl+T)"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* Clean project title in header when no file tabs are open */}
-          {openTabs.filter((t) => t.type !== 'terminal').length === 0 && project && (
-            <div
-              className="flex items-center gap-2 text-xs text-[#747982] px-2 font-mono select-none"
-              style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-            >
-              <FolderGit2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
-              <span className="text-[#A4A8AF] font-medium">{project.customName || project.name}</span>
-            </div>
-          )}
-        </div>
+        />
 
         {/* Right Section: Right Sidebar Toggle & Window Controls (— □ ✕) */}
         <div
@@ -466,35 +355,6 @@ export const TopTabBar: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* 2. File Breadcrumbs Row (if a file tab is active) */}
-      {breadcrumbs && breadcrumbs.length > 0 && (
-        <div
-          className="h-6 px-3 bg-white/[0.02] border-t border-white/[0.04] flex items-center gap-1.5 text-[11px] text-[#A4A8AF] font-mono overflow-x-auto"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-          {project && (
-            <span className="flex items-center gap-1 text-[#ECEDEF] font-medium">
-              <FolderGit2 className="w-3 h-3 text-[#747982]" />
-              <span>{project.name}</span>
-            </span>
-          )}
-          {breadcrumbs.map((part, index) => (
-            <React.Fragment key={`${part}-${index}`}>
-              <ChevronRight className="w-3 h-3 text-[#747982] flex-shrink-0" />
-              <span
-                className={
-                  index === breadcrumbs.length - 1
-                    ? 'text-[#ECEDEF] font-medium'
-                    : 'text-[#A4A8AF]'
-                }
-              >
-                {part}
-              </span>
-            </React.Fragment>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

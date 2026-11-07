@@ -29,7 +29,16 @@ import {
   Cpu,
   Radio,
   Share2,
-  AlertTriangle
+  AlertTriangle,
+  Bot,
+  Terminal as TerminalIcon,
+  Sliders,
+  Globe,
+  Smartphone,
+  MessageSquare,
+  FileText,
+  Bell,
+  BarChart2
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 import type { MemoryRecord, DiscordStatusResponse } from '../../../shared/types';
@@ -38,13 +47,46 @@ import { IconButton } from './ui/IconButton';
 import { Badge } from './ui/Badge';
 import { FileIcon } from '../utils/file-icons';
 import { useKeyboardShortcutsStore, formatKeyComboFromEvent } from '../stores/keyboard-shortcuts.store';
+import { AgentsSettingsTab } from './settings/AgentsSettingsTab';
 
-type SettingsSection = 'appearance' | 'workspace' | 'security' | 'memory' | 'integrations' | 'shortcuts' | 'about';
+export type SettingsSection =
+  | 'agents'
+  | 'ai-providers'
+  | 'orchestration'
+  | 'linear'
+  | 'computer-use'
+  | 'voice'
+  | 'orca-account'
+  | 'general'
+  | 'integrations'
+  | 'mobile'
+  | 'automations'
+  | 'artifacts'
+  | 'share-skills'
+  | 'session-search'
+  | 'workspace'
+  | 'task-sources'
+  | 'terminal'
+  | 'quick-commands'
+  | 'browser'
+  | 'mobile-emulator'
+  | 'floating-workspace'
+  | 'appearance'
+  | 'chat-ui'
+  | 'input-editing'
+  | 'notifications'
+  | 'shortcuts'
+  | 'stats-usage'
+  | 'security'
+  | 'memory'
+  | 'about';
 
 export const SettingsModal: React.FC = () => {
   const {
     isSettingsOpen,
     toggleSettings,
+    settingsActiveTab,
+    setSettingsActiveTab,
     theme,
     setTheme,
     fileIconTheme,
@@ -57,7 +99,15 @@ export const SettingsModal: React.FC = () => {
     addLog
   } = useWorkspaceStore();
 
-  const [activeTab, setActiveTab] = useState<SettingsSection>('appearance');
+  const [activeTab, setActiveTab] = useState<SettingsSection>(
+    (settingsActiveTab as SettingsSection) || 'agents'
+  );
+
+  useEffect(() => {
+    if (settingsActiveTab) {
+      setActiveTab(settingsActiveTab as SettingsSection);
+    }
+  }, [settingsActiveTab]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -329,116 +379,301 @@ export const SettingsModal: React.FC = () => {
       {/* 2. MAIN BODY (Sidebar Navigation + Content Canvas) */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Settings Navigation Sidebar */}
-        <aside className="w-64 flex-shrink-0 border-r border-white/[0.08] bg-[#141619]/40 p-3 space-y-1 overflow-y-auto">
-          <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#747982] font-mono">
-            Preferências
+        <aside className="w-64 flex-shrink-0 border-r border-white/[0.08] bg-[#141619]/40 p-3 space-y-4 overflow-y-auto no-scrollbar">
+          {/* AI CAPABILITIES */}
+          <div className="space-y-1">
+            <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#747982] font-mono">
+              AI Capabilities
+            </div>
+
+            <button
+              onClick={() => {
+                setActiveTab('agents');
+                setSettingsActiveTab('agents');
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'agents'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Bot className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>Agents</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('security');
+                setSettingsActiveTab('security');
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'security'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>AI Provider Accounts...</span>
+              </div>
+              <span className="text-[9px] text-[#717784] font-mono">OPTIONAL</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('memory');
+                setSettingsActiveTab('memory');
+              }}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'memory'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Orchestration</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('integrations');
+                setSettingsActiveTab('integrations');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Linear</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('agents');
+                setSettingsActiveTab('agents');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Cpu className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Computer Use</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('integrations');
+                setSettingsActiveTab('integrations');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Radio className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Voice</span>
+            </button>
           </div>
 
-          <button
-            onClick={() => setActiveTab('appearance')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
-              activeTab === 'appearance'
-                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
-                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
-            }`}
-          >
-            <Palette className="w-4 h-4 text-[#ECEDEF]" />
-            <span>Aparência & Interface</span>
-          </button>
+          {/* SET UP */}
+          <div className="space-y-1">
+            <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#747982] font-mono">
+              Set Up
+            </div>
 
-          <button
-            onClick={() => setActiveTab('workspace')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
-              activeTab === 'workspace'
-                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
-                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
-            }`}
-          >
-            <FolderGit2 className="w-4 h-4 text-[#A4A8AF]" />
-            <span>Espaço de Trabalho & Git</span>
-          </button>
+            <button
+              onClick={() => {
+                setActiveTab('about');
+                setSettingsActiveTab('about');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Info className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Orca Account</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
-              activeTab === 'security'
-                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
-                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4 text-[#A4A8AF]" />
-            <span>Segurança & Credenciais</span>
-          </button>
+            <button
+              onClick={() => {
+                setActiveTab('workspace');
+                setSettingsActiveTab('workspace');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>General</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('memory')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
-              activeTab === 'memory'
-                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
-                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
-            }`}
-          >
-            <Database className="w-4 h-4 text-[#A4A8AF]" />
-            <span>Memória & Agentes</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('integrations')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
-              activeTab === 'integrations'
-                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
-                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
-            }`}
-          >
-            <Radio className="w-4 h-4 text-[#A4A8AF]" />
-            <div className="flex-1 flex items-center justify-between">
-              <span>Integrações (Discord)</span>
+            <button
+              onClick={() => {
+                setActiveTab('integrations');
+                setSettingsActiveTab('integrations');
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'integrations'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Radio className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>Integrations</span>
+              </div>
               {discordStatus?.enabled && (
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    discordStatus.connected
-                      ? 'bg-[#22C55E]'
-                      : discordStatus.status === 'connecting'
-                        ? 'bg-[#EAB308]'
-                        : 'bg-[#EF4444]'
+                    discordStatus.connected ? 'bg-[#22C55E]' : 'bg-[#EF4444]'
                   }`}
-                  title={discordStatus.connected ? 'Discord Ligado' : 'Discord Desligado / Erro'}
                 />
               )}
-            </div>
-          </button>
+            </button>
 
-          <div className="pt-3 pb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#747982] font-mono">
-            Sistema
+            <button
+              onClick={() => {
+                setActiveTab('workspace');
+                setSettingsActiveTab('workspace');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Mobile</span>
+            </button>
           </div>
 
-          <button
-            onClick={() => setActiveTab('shortcuts')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
-              activeTab === 'shortcuts'
-                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
-                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
-            }`}
-          >
-            <Keyboard className="w-4 h-4 text-[#A4A8AF]" />
-            <span>Atalhos de Teclado</span>
-          </button>
+          {/* WORKFLOWS */}
+          <div className="space-y-1">
+            <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#747982] font-mono">
+              Workflows
+            </div>
 
-          <button
-            onClick={() => setActiveTab('about')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left cursor-pointer ${
-              activeTab === 'about'
-                ? 'bg-white/[0.09] text-[#ECEDEF] border border-white/[0.1] shadow-xs'
-                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
-            }`}
-          >
-            <Info className="w-4 h-4 text-[#A4A8AF]" />
-            <span>Sobre o Orbito</span>
-          </button>
+            <button
+              onClick={() => {
+                setActiveTab('agents');
+                setSettingsActiveTab('agents');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Automations</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('workspace');
+                setSettingsActiveTab('workspace');
+              }}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <FileCode className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>Artifacts</span>
+              </div>
+              <span className="text-[9px] text-[#717784] font-mono">BETA</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('workspace');
+                setSettingsActiveTab('workspace');
+              }}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Share2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>Share Skills</span>
+              </div>
+              <span className="text-[9px] text-[#717784] font-mono">BETA</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('workspace');
+                setSettingsActiveTab('workspace');
+              }}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'workspace'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <FolderGit2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Git & Source Control</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('shortcuts');
+                setSettingsActiveTab('shortcuts');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Keyboard className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Quick Commands</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('workspace');
+                setSettingsActiveTab('workspace');
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+            >
+              <Globe className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Browser</span>
+            </button>
+          </div>
+
+          {/* INTERFACE */}
+          <div className="space-y-1">
+            <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#747982] font-mono">
+              Interface
+            </div>
+
+            <button
+              onClick={() => {
+                setActiveTab('appearance');
+                setSettingsActiveTab('appearance');
+              }}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'appearance'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <Palette className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Appearance</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('shortcuts');
+                setSettingsActiveTab('shortcuts');
+              }}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'shortcuts'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <Keyboard className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Shortcuts</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('about');
+                setSettingsActiveTab('about');
+              }}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
+                activeTab === 'about'
+                  ? 'bg-white/[0.09] text-white border border-white/[0.1] shadow-xs'
+                  : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+              }`}
+            >
+              <Info className="w-3.5 h-3.5 text-[#A4A8AF]" />
+              <span>Stats & Usage / About</span>
+            </button>
+          </div>
         </aside>
 
         {/* Content Canvas */}
         <main className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto space-y-8">
+          {/* TAB 0: AGENTS & AI CLI INTEGRATION SYSTEM */}
+          {activeTab === 'agents' && <AgentsSettingsTab />}
           {/* TAB 1: APARÊNCIA & INTERFACE */}
           {activeTab === 'appearance' && (
             <div className="space-y-8 animate-in fade-in duration-150">

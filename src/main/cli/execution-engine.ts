@@ -21,6 +21,7 @@ import { skillRegistry } from '../skills/skill-registry';
 import { SkillResolver } from '../skills/skill-resolver';
 import { SkillLoader } from '../skills/skill-loader';
 import { createStreamParser } from './parsers';
+import { projectExecutionService } from '../services/project-execution.service';
 
 interface ActiveSession {
   id: string;
@@ -319,6 +320,15 @@ export class ExecutionEngine extends EventEmitter {
       provider: effectiveProvider,
       promptLength: prompt.length
     });
+
+    // Capture pre-execution workspace state snapshot for prompt-based change attribution
+    projectExecutionService.beforeExecution({
+      sessionId,
+      projectId,
+      projectPath: canonicalWorkDir,
+      prompt,
+      provider: effectiveProvider
+    }).catch((err) => console.warn('[ExecutionEngine] Snapshot before execution warning:', err));
 
     // 4. Ollama HTTP Daemon vs CLI Execution (CRIT-01)
     if (effectiveProvider === 'ollama') {
@@ -626,6 +636,7 @@ export class ExecutionEngine extends EventEmitter {
 
     const duration = Date.now() - session.startTime;
     databaseService.updateCLISession(sessionId, 'cancelled', 130, duration);
+    projectExecutionService.afterExecution({ sessionId, status: 'cancelled' }).catch(() => {});
     this.activeSessions.delete(sessionId);
 
     this.emitEvent({
@@ -687,6 +698,7 @@ export class ExecutionEngine extends EventEmitter {
     const finalStatus: CLISessionStatus = exitCode === 0 ? 'completed' : 'failed';
 
     databaseService.updateCLISession(sessionId, finalStatus, exitCode, duration);
+    projectExecutionService.afterExecution({ sessionId, status: finalStatus }).catch(() => {});
     this.activeSessions.delete(sessionId);
 
     analyticsService.recordEvent({
@@ -730,6 +742,7 @@ export class ExecutionEngine extends EventEmitter {
       clearTimeout(session.timeoutTimer);
     }
     databaseService.updateCLISession(sessionId, 'failed', 1, Date.now() - session.startTime);
+    projectExecutionService.afterExecution({ sessionId, status: 'failed' }).catch(() => {});
     this.activeSessions.delete(sessionId);
 
     this.emitEvent({

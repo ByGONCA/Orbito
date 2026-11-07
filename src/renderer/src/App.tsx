@@ -11,6 +11,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { ArcLauncherModal } from './components/ArcLauncherModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppLoadingScreen } from './components/AppLoadingScreen';
+import { DetachedTabWindow } from './components/DetachedTabWindow';
 import { useWorkspaceStore } from './stores/workspace.store';
 import { useKeyboardShortcutsStore } from './stores/keyboard-shortcuts.store';
 
@@ -19,6 +20,20 @@ if (typeof window !== 'undefined') {
 }
 
 export const App: React.FC = () => {
+  // Check if running as a detached single-tab window
+  const detachedTabParam = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('detachedTab')
+    : null;
+
+  if (detachedTabParam) {
+    try {
+      const tabData = JSON.parse(decodeURIComponent(detachedTabParam));
+      return <DetachedTabWindow tabData={tabData} />;
+    } catch (e) {
+      console.error('Failed to parse detached tab param:', e);
+    }
+  }
+
   const {
     setProject,
     setFiles,
@@ -52,6 +67,12 @@ export const App: React.FC = () => {
       addLog(log.message, log.level);
     });
 
+    if (!useWorkspaceStore.getState().cliStatuses && window.api?.detectCLIs) {
+      window.api.detectCLIs({ customPaths: useWorkspaceStore.getState().customPaths }).then((res) => {
+        if (res) useWorkspaceStore.getState().setCLIStatuses(res);
+      }).catch(() => {});
+    }
+
     const handleWindowError = (event: ErrorEvent) => {
       addLog(`[Renderer Error] ${event.message}`, 'error');
     };
@@ -77,6 +98,11 @@ export const App: React.FC = () => {
       if (shortcuts.matchesEvent('toggleRightPanel', event)) {
         event.preventDefault();
         useWorkspaceStore.getState().toggleRightPanel();
+        return;
+      }
+      if (shortcuts.matchesEvent('toggleBottomPanel', event)) {
+        event.preventDefault();
+        useWorkspaceStore.getState().toggleBottomPanel();
         return;
       }
       if (shortcuts.matchesEvent('openBrowser', event)) {
@@ -136,14 +162,14 @@ export const App: React.FC = () => {
     onProgress: (percent: number, msg: string, detail: string, stepId: string) => void
   ) => {
     // 1. Verify Electron API & Environment
-    onProgress(15, 'A verificar subsistema Electron...', 'A validar canais de comunicação seguros', 'ipc');
+    onProgress(15, 'Verifying Electron runtime...', 'Validating secure communication channels', 'ipc');
     if (typeof window.api === 'undefined') {
-      throw new Error('A interface Electron IPC (window.api) não está disponível no processo renderer.');
+      throw new Error('Electron IPC interface (window.api) is not available in renderer process.');
     }
     await new Promise((r) => setTimeout(r, 120));
 
     // 2. Settings & Database
-    onProgress(40, 'A carregar definições do utilizador...', 'A ler preferências e temas da base de dados persistente', 'db');
+    onProgress(40, 'Loading user settings...', 'Reading preferences and theme configuration', 'db');
     try {
       const settings = await window.api.getSettings?.();
       if (settings) {
@@ -175,7 +201,7 @@ export const App: React.FC = () => {
           bottomPanelHeight: layout.bottomPanelHeight ?? 220,
           activeSection: (layout.activeSection as any) || 'editor',
           activeSidebarSection: (layout.activeSidebarSection as any) || 'projects',
-          rightPanelTab: (layout.rightPanelTab as any) || 'files',
+          rightPanelTab: (layout.rightPanelTab === 'models' ? 'files' : (layout.rightPanelTab as any)) || 'files',
           bottomPanelTab: (layout.bottomPanelTab as any) || 'terminal',
           terminalLayout: (layout.terminalLayout as any) || '1'
         });
@@ -186,14 +212,14 @@ export const App: React.FC = () => {
     await new Promise((r) => setTimeout(r, 150));
 
     // 3. Skills & CLI Extensions
-    onProgress(65, 'A carregar competências e extensões...', 'A inspecionar ferramentas instaladas e agentes ativos', 'skills');
+    onProgress(65, 'Loading skills and extensions...', 'Inspecting available CLI agents and tools', 'skills');
     if (window.api.listSkills) {
       await window.api.listSkills().catch(() => []);
     }
     await new Promise((r) => setTimeout(r, 150));
 
     // 4. Workspace & Recent Projects
-    onProgress(85, 'A restaurar contexto do espaço de trabalho...', 'A verificar projetos recentes e estado do repositório', 'workspace');
+    onProgress(85, 'Restoring workspace context...', 'Checking repository state and active tabs', 'workspace');
     try {
       const recent = await window.api.getRecentProjects?.();
       if (recent && recent.length > 0) {

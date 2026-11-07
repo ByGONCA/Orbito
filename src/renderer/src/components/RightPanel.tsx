@@ -41,6 +41,7 @@ import {
   RenameModal,
   DeleteConfirmModal
 } from './FileExplorerModals';
+import { ProjectExplorer } from './explorer/ProjectExplorer';
 
 interface FlatNode {
   node: FileNode;
@@ -271,18 +272,6 @@ export const RightPanel: React.FC = () => {
       setIsRefreshingProviders(false);
     }
   }, [customPaths, setCLIStatuses, setCLIAuthStatuses, addLog]);
-
-  useEffect(() => {
-    if (rightPanelTab === 'models') {
-      if (!cliStatuses || !cliAuthStatuses) {
-        refreshProvidersAndModels();
-      } else {
-        window.api.listLocalModels?.().then((models) => {
-          if (Array.isArray(models)) setOllamaModels(models);
-        }).catch(() => {});
-      }
-    }
-  }, [rightPanelTab, cliStatuses, cliAuthStatuses, refreshProvidersAndModels]);
 
   // Map of normalized relative paths to Git status
   const gitStatusMap = useMemo(() => {
@@ -543,13 +532,11 @@ export const RightPanel: React.FC = () => {
 
   // Tab definitions
   const tabs: Array<{ id: RightPanelTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }> = [
-    { id: 'files', label: 'Files', icon: FolderTree },
+    { id: 'files', label: 'Explorer', icon: FolderTree, badge: gitStatus?.changedFiles.length || undefined },
     { id: 'outline', label: 'Outline', icon: ListTree, badge: activeFileSymbols.length || undefined },
     { id: 'agents', label: 'Agents', icon: Bot, badge: pendingApprovals.length || undefined },
     { id: 'context', label: 'Context', icon: BrainCircuit },
-    { id: 'skills', label: 'Skills', icon: Sparkles },
-    { id: 'models', label: 'Models', icon: Cpu },
-    { id: 'changes', label: 'Changes', icon: GitBranch, badge: gitStatus?.changedFiles.length || undefined }
+    { id: 'skills', label: 'Skills', icon: Sparkles }
   ];
 
   return (
@@ -558,7 +545,10 @@ export const RightPanel: React.FC = () => {
       <div className="h-9 border-b border-white/[0.06] bg-transparent px-2 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1 overflow-visible py-1">
           {tabs.map((tab) => {
-            const isActive = rightPanelTab === tab.id;
+            const isActive =
+              tab.id === 'files'
+                ? rightPanelTab === 'files' || rightPanelTab === 'changes' || rightPanelTab === 'review'
+                : rightPanelTab === tab.id;
             const Icon = tab.icon;
             return (
               <div key={tab.id} className="relative group">
@@ -601,224 +591,10 @@ export const RightPanel: React.FC = () => {
       {/* 2. Dynamic Content Area */}
       <div className="flex-1 overflow-hidden flex flex-col bg-transparent">
         {/* ========================================================== */}
-        {/* TAB 1: FILES & DIRECTORY TREE */}
+        {/* TAB 1: PROJECT EXPLORER (FILES, CHANGES & REVIEW) */}
         {/* ========================================================== */}
-        {rightPanelTab === 'files' && (
-          <div className="h-full flex flex-col">
-            {/* Filter & Action Bar */}
-            <div className="p-2 border-b border-border bg-transparent flex items-center gap-1 flex-shrink-0">
-              <div className="flex-1">
-                <SearchField
-                  value={fileFilter}
-                  onChange={(e) => setFileFilter(e.target.value)}
-                  onClear={() => setFileFilter('')}
-                  placeholder="Filter files..."
-                  className="w-full"
-                />
-              </div>
-              <IconButton
-                icon={FilePlus}
-                onClick={() => setCreateModal({ isOpen: true, type: 'file', parentDir: project?.path || '' })}
-                tooltip="New File"
-                size="sm"
-                className="text-foreground-muted hover:text-foreground"
-              />
-              <IconButton
-                icon={FolderPlus}
-                onClick={() => setCreateModal({ isOpen: true, type: 'folder', parentDir: project?.path || '' })}
-                tooltip="New Folder"
-                size="sm"
-                className="text-foreground-muted hover:text-foreground"
-              />
-              <IconButton
-                icon={FolderMinus}
-                onClick={handleCollapseAllFolders}
-                tooltip="Collapse All Folders"
-                size="sm"
-                className="text-foreground-muted hover:text-foreground"
-              />
-              <IconButton
-                icon={RefreshCw}
-                onClick={handleRefreshFiles}
-                tooltip="Refresh files index"
-                size="sm"
-                className="text-foreground-muted hover:text-foreground"
-              />
-            </div>
-
-            {/* Open Files Strip */}
-            {openTabs.filter((t) => t.type === 'file').length > 0 && (
-              <div className="border-b border-border p-2 bg-background/20 flex-shrink-0">
-                <div className="text-[10px] uppercase font-semibold text-foreground-muted mb-1.5 flex items-center justify-between">
-                  <span>Open Editors</span>
-                  <Badge variant="neutral" size="sm">
-                    {openTabs.filter((t) => t.type === 'file').length}
-                  </Badge>
-                </div>
-                <div className="space-y-0.5 max-h-24 overflow-y-auto pr-1">
-                  {openTabs
-                    .filter((t) => t.type === 'file')
-                    .map((t) => (
-                      <div
-                        key={t.id}
-                        onClick={() => t.filePath && setActiveFile(t.filePath)}
-                        className={`flex items-center justify-between px-2 py-1 rounded-md text-[10px] cursor-pointer transition-colors ${
-                          activeFilePath === t.filePath
-                            ? 'bg-surface-elevated text-foreground font-medium border border-border/80'
-                            : 'text-foreground-secondary hover:text-foreground hover:bg-surface-elevated/40'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 truncate">
-                          <FileCode className="w-3 h-3 text-accent flex-shrink-0" />
-                          <span className="truncate">{t.title}</span>
-                          {t.isDirty && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            closeTab(t.id);
-                          }}
-                          className="p-0.5 text-foreground-muted hover:text-foreground rounded transition-colors"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Virtualized File Tree */}
-            <div
-              ref={fileTreeRef}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setContextMenu({ x: e.clientX, y: e.clientY, node: null });
-              }}
-              onDragOver={handleDragOverRoot}
-              onDrop={handleDropOnRoot}
-              className="flex-1 overflow-auto p-1 font-mono text-[11px]"
-            >
-              {flatNodes.length === 0 ? (
-                <div className="p-6 text-center text-foreground-muted italic">
-                  {project ? 'No files match filter' : 'No workspace folder opened'}
-                </div>
-              ) : (
-                <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const { node, depth } = flatNodes[virtualRow.index];
-                    const isExpanded = expandedDirs.has(node.id);
-                    const isSelected = activeFilePath === node.path;
-                    const isDropTarget = dragOverPath === node.path;
-
-                    const relPath = getNodeRelPath(node.path);
-                    const relPathLower = relPath.toLowerCase();
-                    const fileGitStatus = !node.isDirectory && showGitFileColors ? gitStatusMap.get(relPathLower) : undefined;
-                    const dirGitInfo = node.isDirectory && showGitFileColors ? dirStatusMap.get(relPathLower) : undefined;
-
-                    let statusTextColor = '';
-                    if (fileGitStatus === 'M') statusTextColor = 'text-[#E5A93C]';
-                    else if (fileGitStatus === 'U' || fileGitStatus === 'A') statusTextColor = 'text-[#73C991]';
-                    else if (fileGitStatus === 'D') statusTextColor = 'text-[#E06C75] line-through';
-                    else if (fileGitStatus === 'R') statusTextColor = 'text-[#56B6C2]';
-                    else if (dirGitInfo && dirGitInfo.count > 0) {
-                      statusTextColor = dirGitInfo.hasModified ? 'text-[#E5A93C]' : 'text-[#73C991]';
-                    }
-
-                    return (
-                      <div
-                        key={virtualRow.key}
-                        onClick={() => handleFileClick(node)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setContextMenu({ x: e.clientX, y: e.clientY, node });
-                        }}
-                        draggable={true}
-                        onDragStart={(e) => handleDragStart(e, node)}
-                        onDragEnd={() => {
-                          setDraggedNode(null);
-                          setDragOverPath(null);
-                        }}
-                        onDragOver={(e) => handleDragOverNode(e, node)}
-                        onDragLeave={(e) => handleDragLeaveNode(e, node)}
-                        onDrop={(e) => handleDropOnNode(e, node)}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: `${virtualRow.size}px`,
-                          transform: `translateY(${virtualRow.start}px)`
-                        }}
-                        className={`flex items-center gap-1.5 px-2 rounded-md cursor-pointer transition-colors text-[11px] ${
-                          isDropTarget
-                            ? 'ring-1 ring-accent bg-accent/20 text-white'
-                            : isSelected
-                            ? 'bg-surface-elevated text-foreground font-medium border-l-2 border-accent'
-                            : 'hover:bg-surface-elevated/50 text-foreground-secondary hover:text-foreground'
-                        }`}
-                      >
-                        <div style={{ width: `${depth * 10}px` }} className="flex-shrink-0" />
-                        {node.isDirectory ? (
-                          <span className="text-foreground-muted w-3 h-3 flex items-center justify-center flex-shrink-0">
-                            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                          </span>
-                        ) : (
-                          <div className="w-3 flex-shrink-0" />
-                        )}
-                        <FileIcon
-                          name={node.name}
-                          isDirectory={node.isDirectory}
-                          isExpanded={isExpanded}
-                          theme={fileIconTheme}
-                        />
-                        <span className={`truncate ${statusTextColor}`}>{node.name}</span>
-
-                        {/* Git Status Badge for Files */}
-                        {fileGitStatus && (
-                          <span
-                            className={`ml-auto mr-0.5 text-[10px] font-mono font-semibold flex-shrink-0 ${
-                              fileGitStatus === 'M'
-                                ? 'text-[#E5A93C]'
-                                : fileGitStatus === 'D'
-                                ? 'text-[#E06C75]'
-                                : fileGitStatus === 'R'
-                                ? 'text-[#56B6C2]'
-                                : 'text-[#73C991]'
-                            }`}
-                            title={`Git: ${
-                              fileGitStatus === 'M'
-                                ? 'Modified'
-                                : fileGitStatus === 'U'
-                                ? 'Untracked'
-                                : fileGitStatus === 'A'
-                                ? 'Added'
-                                : fileGitStatus === 'D'
-                                ? 'Deleted'
-                                : 'Renamed'
-                            }`}
-                          >
-                            {fileGitStatus}
-                          </span>
-                        )}
-
-                        {/* Git Status Count for Directories */}
-                        {dirGitInfo && dirGitInfo.count > 0 && (
-                          <span
-                            className="ml-auto mr-1 text-[10px] font-mono font-medium text-[#E5A93C]/75 flex-shrink-0"
-                            title={`${dirGitInfo.count} changed files`}
-                          >
-                            {dirGitInfo.count}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+        {(rightPanelTab === 'files' || rightPanelTab === 'changes' || rightPanelTab === 'review') && (
+          <ProjectExplorer />
         )}
 
         {/* ========================================================== */}
@@ -1373,201 +1149,6 @@ export const RightPanel: React.FC = () => {
                     );
                   })
               )}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================== */}
-        {/* TAB 6: MODELS & PROVIDERS */}
-        {/* ========================================================== */}
-        {rightPanelTab === 'models' && (
-          <div className="h-full flex flex-col p-2.5 space-y-3 overflow-y-auto">
-            {/* Active Provider Selector */}
-            <div className="p-2.5 bg-white/[0.02] rounded-[4px] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-accent" />
-                  <span>Session AI Provider</span>
-                </span>
-                <IconButton
-                  icon={RefreshCw}
-                  onClick={refreshProvidersAndModels}
-                  tooltip="Refresh providers & models"
-                  size="sm"
-                  className={isRefreshingProviders ? 'animate-spin text-accent' : 'text-foreground-muted hover:text-foreground'}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
-                {(['claude', 'gemini', 'codex', 'ollama'] as CLIProvider[]).map((p) => {
-                  const isCurrent = currentProvider === p;
-                  const isInstalled = cliStatuses?.[p]?.isInstalled;
-                  const isAuth = cliAuthStatuses?.[p]?.isAuthenticated;
-
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => handleSelectProvider(p)}
-                      className={`p-2 rounded-[4px] text-left transition-all cursor-pointer relative ${
-                        isCurrent
-                          ? 'bg-white/[0.08] text-white font-medium'
-                          : 'bg-white/[0.02] text-neutral-400 hover:text-white hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase font-mono">{p}</span>
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isAuth
-                              ? 'bg-emerald-400'
-                              : isInstalled
-                              ? 'bg-amber-400'
-                              : 'bg-neutral-600'
-                          }`}
-                          title={
-                            isAuth
-                              ? 'Authenticated & Ready'
-                              : isInstalled
-                              ? 'Installed, auth required'
-                              : 'Not installed'
-                          }
-                        />
-                      </div>
-                      <div className="text-[9px] text-foreground-muted flex items-center justify-between mt-0.5">
-                        <span>{p === 'ollama' ? 'Local Air-Gap' : 'Cloud / CLI'}</span>
-                        <span className="text-[8px] font-mono opacity-80">
-                          {isRefreshingProviders
-                            ? '...'
-                            : isAuth
-                            ? 'Ready'
-                            : isInstalled
-                            ? 'Auth Req'
-                            : 'Missing'}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Selected Model for Execution */}
-            <div className="p-3 bg-surface-elevated/70 border border-border rounded-xl space-y-2 shadow-subtle">
-              <span className="text-[10px] uppercase font-semibold text-foreground-muted tracking-wider">
-                Session Model Configuration
-              </span>
-
-              <div className="space-y-1">
-                <label className="text-[10px] text-foreground-muted">Active Model:</label>
-                <select
-                  value={activeModelId}
-                  onChange={(e) => handleSelectModel(e.target.value)}
-                  className="w-full bg-surface border border-border rounded-lg px-2.5 py-1.5 text-[11px] text-foreground focus:outline-none focus:border-accent"
-                >
-                  {currentProvider === 'ollama' ? (
-                    ollamaModels.length > 0 ? (
-                      ollamaModels.map((m) => (
-                        <option key={m} value={m}>
-                          {m} (Local Air-Gap)
-                        </option>
-                      ))
-                    ) : (
-                      <option value="llama3:latest">llama3:latest (Local Default)</option>
-                    )
-                  ) : (
-                    CLOUD_PROVIDER_MODELS[currentProvider as 'claude' | 'gemini' | 'codex']?.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.badge})
-                      </option>
-                    )) || <option value={activeModelId}>{activeModelId}</option>
-                  )}
-                </select>
-                {currentProvider === 'ollama' && ollamaModels.length === 0 && (
-                  <p className="text-[9px] text-amber-400/90 pt-0.5 leading-tight">
-                    Notice: No local Ollama models detected. Pull one via terminal: <code className="text-[9px] font-mono bg-white/[0.05] px-1 rounded">ollama pull llama3</code>
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-2 text-[10px] text-foreground-muted space-y-1.5 border-t border-border/40">
-                <div className="flex justify-between py-0.5">
-                  <span>Context Window:</span>
-                  <span className="text-foreground font-mono">{currentMetadata.contextWindow}</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span>Execution Type:</span>
-                  <span className="text-foreground font-mono text-[9px]">{currentMetadata.mode}</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span>Connection Status:</span>
-                  {getConnectionStatusBadge()}
-                </div>
-                {authStatus?.details && (
-                  <div className="text-[9px] text-neutral-400 pt-1 border-t border-white/[0.03] leading-relaxed">
-                    {authStatus.details}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================== */}
-        {/* TAB 7: GIT CHANGES & DIFF */}
-        {/* ========================================================== */}
-        {rightPanelTab === 'changes' && (
-          <div className="h-full flex flex-col p-2.5 space-y-2">
-            <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.04]">
-              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
-                <GitBranch className="w-3.5 h-3.5 text-accent" />
-                <span>Working Tree Changes</span>
-              </span>
-              <IconButton
-                icon={RefreshCw}
-                onClick={() => project && loadGitStatus(project.path)}
-                tooltip="Refresh Git status"
-                size="sm"
-                className="text-foreground-muted hover:text-foreground"
-              />
-            </div>
-
-            {/* Changed Files List */}
-            <div className="space-y-0.5 flex-shrink-0 max-h-48 overflow-y-auto pr-1">
-              {!gitStatus || gitStatus.changedFiles.length === 0 ? (
-                <div className="p-4 text-center text-foreground-muted italic text-[11px]">
-                  Working tree is clean. No unstaged or pending changes.
-                </div>
-              ) : (
-                gitStatus.changedFiles.map((f) => (
-                  <div
-                    key={f.path}
-                    onClick={() => setSelectedDiffFile(f.path)}
-                    className={`px-2.5 py-1.5 rounded-[4px] cursor-pointer text-[11px] flex items-center justify-between transition-colors ${
-                      selectedDiffFile === f.path
-                        ? 'bg-white/[0.08] text-white font-medium'
-                        : 'hover:bg-white/[0.03] text-foreground-secondary hover:text-foreground'
-                    }`}
-                  >
-                    <span className="truncate">{f.path}</span>
-                    <span className="font-mono text-[10px] text-amber-400 font-semibold flex-shrink-0 ml-2">M</span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Unified Diff Preview */}
-            <div className="flex-1 flex flex-col min-h-0 bg-white/[0.015] rounded-[4px] overflow-hidden">
-              <div className="px-2.5 py-1.5 border-b border-white/[0.04] text-[10px] text-foreground-muted font-semibold flex items-center justify-between">
-                <span>Unified Diff Preview</span>
-                {selectedDiffFile && <span className="font-mono text-accent">{selectedDiffFile}</span>}
-              </div>
-              <div className="flex-1 overflow-auto p-2.5 font-mono text-[10px] leading-relaxed select-text whitespace-pre text-neutral-300">
-                {gitStatus?.diff ? (
-                  gitStatus.diff
-                ) : (
-                  <span className="italic text-foreground-muted">No active diff output available.</span>
-                )}
-              </div>
             </div>
           </div>
         )}

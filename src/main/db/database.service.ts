@@ -9,7 +9,11 @@ import type {
   PersistedWorkspaceTab,
   PersistedTerminalSession,
   MemoryRecord,
-  MemoryTier
+  MemoryTier,
+  ProjectExecution,
+  ExecutionFileChange,
+  CodeReview,
+  ReviewComment
 } from '../../shared/types';
 import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider } from '../../shared/cli';
 import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shared/context';
@@ -359,6 +363,79 @@ export class DatabaseService {
         value_json TEXT NOT NULL,
         updated_at INTEGER NOT NULL
       );
+
+      -- Project Explorer: Prompt-Based Changes & Attributions
+      CREATE TABLE IF NOT EXISTS project_executions (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        prompt_id TEXT,
+        prompt_text TEXT NOT NULL,
+        provider TEXT,
+        model TEXT,
+        status TEXT NOT NULL DEFAULT 'running',
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        branch TEXT,
+        base_commit TEXT,
+        resulting_commit TEXT,
+        files_changed_count INTEGER NOT NULL DEFAULT 0,
+        additions INTEGER NOT NULL DEFAULT 0,
+        deletions INTEGER NOT NULL DEFAULT 0,
+        is_manual INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_proj_exec_proj ON project_executions(project_id);
+      CREATE INDEX IF NOT EXISTS idx_proj_exec_started ON project_executions(started_at DESC);
+
+      CREATE TABLE IF NOT EXISTS execution_file_changes (
+        id TEXT PRIMARY KEY,
+        execution_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        change_type TEXT NOT NULL,
+        previous_content TEXT,
+        current_content TEXT,
+        diff TEXT NOT NULL,
+        additions INTEGER NOT NULL DEFAULT 0,
+        deletions INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY(execution_id) REFERENCES project_executions(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_exec_fc_exec ON execution_file_changes(execution_id);
+      CREATE INDEX IF NOT EXISTS idx_exec_fc_proj ON execution_file_changes(project_id);
+
+      -- Project Explorer: Code Reviews & Comments
+      CREATE TABLE IF NOT EXISTS code_reviews (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        execution_id TEXT,
+        status TEXT NOT NULL DEFAULT 'not_reviewed',
+        summary TEXT,
+        ai_analysis_json TEXT,
+        reviewer TEXT,
+        file_statuses_json TEXT DEFAULT '{}',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        reviewed_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_code_rev_proj ON code_reviews(project_id);
+      CREATE INDEX IF NOT EXISTS idx_code_rev_exec ON code_reviews(execution_id);
+
+      CREATE TABLE IF NOT EXISTS review_comments (
+        id TEXT PRIMARY KEY,
+        review_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        line_number INTEGER,
+        diff_hunk TEXT,
+        content TEXT NOT NULL,
+        author TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open',
+        parent_comment_id TEXT,
+        created_at INTEGER NOT NULL,
+        resolved_at INTEGER,
+        FOREIGN KEY(review_id) REFERENCES code_reviews(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_rev_comm_rev ON review_comments(review_id);
+      CREATE INDEX IF NOT EXISTS idx_rev_comm_proj ON review_comments(project_id);
     `);
 
     try {
@@ -736,6 +813,9 @@ export class DatabaseService {
   }
 
   public recordProjectOpen(project: ProjectDescriptor): void {
+    if (project.id && project.id.startsWith('wt-')) {
+      return;
+    }
     const db = this.getAppDb();
     db.prepare(`
       INSERT INTO projects (id, name, path, last_opened_at, is_git_repo, active_branch, permission_level, is_favorite, settings_json)
@@ -800,7 +880,12 @@ export class DatabaseService {
 
   public getRecentProjects(): ProjectDescriptor[] {
     const db = this.getAppDb();
-    const rows = db.prepare('SELECT * FROM projects ORDER BY last_opened_at DESC LIMIT 20').all() as any[];
+    try {
+      db.prepare("DELETE FROM projects WHERE id LIKE 'wt-%'").run();
+    } catch {
+      // Ignore if table locked
+    }
+    const rows = db.prepare("SELECT * FROM projects WHERE id NOT LIKE 'wt-%' ORDER BY last_opened_at DESC LIMIT 20").all() as any[];
     return rows.map((r) => this.mapProjectRow(r));
   }
 
@@ -2672,6 +2757,349 @@ export class DatabaseService {
         value_json = excluded.value_json,
         updated_at = excluded.updated_at
     `).run(JSON.stringify(config), Date.now());
+  }
+
+  // ==========================================
+  // Project Explorer: Executions & Changes
+  // ==========================================
+
+  public upsertProjectExecution(execution: ProjectExecution): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO project_executions (
+        id, project_id, prompt_id, prompt_text, provider, model, status,
+        started_at, completed_at, branch, base_commit, resulting_commit,
+        files_changed_count, additions, deletions, is_manual
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        completed_at = excluded.completed_at,
+        branch = excluded.branch,
+        resulting_commit = excluded.resulting_commit,
+        files_changed_count = excluded.files_changed_count,
+        additions = excluded.additions,
+        deletions = excluded.deletions,
+        is_manual = excluded.is_manual
+    `).run(
+      execution.id,
+      execution.projectId,
+      execution.promptId || null,
+      execution.promptText,
+      execution.provider || null,
+      execution.model || null,
+      execution.status,
+      execution.startedAt,
+      execution.completedAt || null,
+      execution.branch || null,
+      execution.baseCommit || null,
+      execution.resultingCommit || null,
+      execution.filesChangedCount || 0,
+      execution.additions || 0,
+      execution.deletions || 0,
+      execution.isManual ? 1 : 0
+    );
+  }
+
+  public updateProjectExecution(id: string, updates: Partial<ProjectExecution>): void {
+    const db = this.getAppDb();
+    const sets: string[] = [];
+    const values: any[] = [];
+
+    if (updates.status !== undefined) {
+      sets.push('status = ?');
+      values.push(updates.status);
+    }
+    if (updates.completedAt !== undefined) {
+      sets.push('completed_at = ?');
+      values.push(updates.completedAt);
+    }
+    if (updates.filesChangedCount !== undefined) {
+      sets.push('files_changed_count = ?');
+      values.push(updates.filesChangedCount);
+    }
+    if (updates.additions !== undefined) {
+      sets.push('additions = ?');
+      values.push(updates.additions);
+    }
+    if (updates.deletions !== undefined) {
+      sets.push('deletions = ?');
+      values.push(updates.deletions);
+    }
+    if (updates.branch !== undefined) {
+      sets.push('branch = ?');
+      values.push(updates.branch);
+    }
+    if (updates.resultingCommit !== undefined) {
+      sets.push('resulting_commit = ?');
+      values.push(updates.resultingCommit);
+    }
+    if (updates.isManual !== undefined) {
+      sets.push('is_manual = ?');
+      values.push(updates.isManual ? 1 : 0);
+    }
+
+    if (sets.length === 0) return;
+    values.push(id);
+    db.prepare(`UPDATE project_executions SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+  }
+
+  public getProjectExecution(id: string): ProjectExecution | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM project_executions WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      promptId: row.prompt_id || undefined,
+      promptText: row.prompt_text,
+      provider: row.provider || undefined,
+      model: row.model || undefined,
+      status: row.status,
+      startedAt: row.started_at,
+      completedAt: row.completed_at || undefined,
+      branch: row.branch || undefined,
+      baseCommit: row.base_commit || undefined,
+      resultingCommit: row.resulting_commit || undefined,
+      filesChangedCount: row.files_changed_count || 0,
+      additions: row.additions || 0,
+      deletions: row.deletions || 0,
+      isManual: Boolean(row.is_manual)
+    };
+  }
+
+  public listProjectExecutions(projectId: string): ProjectExecution[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT * FROM project_executions
+      WHERE project_id = ?
+      ORDER BY started_at DESC
+      LIMIT 100
+    `).all(projectId) as any[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      projectId: row.project_id,
+      promptId: row.prompt_id || undefined,
+      promptText: row.prompt_text,
+      provider: row.provider || undefined,
+      model: row.model || undefined,
+      status: row.status,
+      startedAt: row.started_at,
+      completedAt: row.completed_at || undefined,
+      branch: row.branch || undefined,
+      baseCommit: row.base_commit || undefined,
+      resultingCommit: row.resulting_commit || undefined,
+      filesChangedCount: row.files_changed_count || 0,
+      additions: row.additions || 0,
+      deletions: row.deletions || 0,
+      isManual: Boolean(row.is_manual)
+    }));
+  }
+
+  public deleteProjectExecution(id: string): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare(`DELETE FROM project_executions WHERE id = ?`).run(id);
+    return res.changes > 0;
+  }
+
+  public insertExecutionFileChanges(changes: ExecutionFileChange[]): void {
+    if (changes.length === 0) return;
+    const db = this.getAppDb();
+    const stmt = db.prepare(`
+      INSERT INTO execution_file_changes (
+        id, execution_id, project_id, file_path, change_type,
+        previous_content, current_content, diff, additions, deletions
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        change_type = excluded.change_type,
+        previous_content = excluded.previous_content,
+        current_content = excluded.current_content,
+        diff = excluded.diff,
+        additions = excluded.additions,
+        deletions = excluded.deletions
+    `);
+
+    const insertMany = db.transaction((items: ExecutionFileChange[]) => {
+      for (const item of items) {
+        stmt.run(
+          item.id,
+          item.executionId,
+          item.projectId,
+          item.filePath,
+          item.changeType,
+          item.previousContent || null,
+          item.currentContent || null,
+          item.diff,
+          item.additions || 0,
+          item.deletions || 0
+        );
+      }
+    });
+
+    insertMany(changes);
+  }
+
+  public getExecutionFileChanges(executionId: string): ExecutionFileChange[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT * FROM execution_file_changes
+      WHERE execution_id = ?
+      ORDER BY file_path ASC
+    `).all(executionId) as any[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      executionId: row.execution_id,
+      projectId: row.project_id,
+      filePath: row.file_path,
+      changeType: row.change_type,
+      previousContent: row.previous_content || undefined,
+      currentContent: row.current_content || undefined,
+      diff: row.diff,
+      additions: row.additions || 0,
+      deletions: row.deletions || 0
+    }));
+  }
+
+  // ==========================================
+  // Project Explorer: Code Reviews & Comments
+  // ==========================================
+
+  public upsertCodeReview(review: CodeReview): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO code_reviews (
+        id, project_id, execution_id, status, summary,
+        ai_analysis_json, reviewer, file_statuses_json, created_at, updated_at, reviewed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        summary = excluded.summary,
+        ai_analysis_json = excluded.ai_analysis_json,
+        reviewer = excluded.reviewer,
+        file_statuses_json = excluded.file_statuses_json,
+        updated_at = excluded.updated_at,
+        reviewed_at = excluded.reviewed_at
+    `).run(
+      review.id,
+      review.projectId,
+      review.executionId || null,
+      review.status,
+      review.summary || null,
+      review.aiAnalysis ? JSON.stringify(review.aiAnalysis) : null,
+      review.reviewer || null,
+      review.fileStatuses ? JSON.stringify(review.fileStatuses) : '{}',
+      review.createdAt,
+      review.updatedAt,
+      review.reviewedAt || null
+    );
+  }
+
+  public getCodeReview(id: string): CodeReview | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM code_reviews WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      executionId: row.execution_id || undefined,
+      status: row.status,
+      summary: row.summary || undefined,
+      aiAnalysis: row.ai_analysis_json ? JSON.parse(row.ai_analysis_json) : undefined,
+      reviewer: row.reviewer || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      reviewedAt: row.reviewed_at || undefined,
+      fileStatuses: row.file_statuses_json ? JSON.parse(row.file_statuses_json) : undefined
+    };
+  }
+
+  public getCodeReviewByProject(projectId: string): CodeReview | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`
+      SELECT * FROM code_reviews
+      WHERE project_id = ?
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `).get(projectId) as any;
+
+    if (!row) return null;
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      executionId: row.execution_id || undefined,
+      status: row.status,
+      summary: row.summary || undefined,
+      aiAnalysis: row.ai_analysis_json ? JSON.parse(row.ai_analysis_json) : undefined,
+      reviewer: row.reviewer || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      reviewedAt: row.reviewed_at || undefined,
+      fileStatuses: row.file_statuses_json ? JSON.parse(row.file_statuses_json) : undefined
+    };
+  }
+
+  public createReviewComment(comment: ReviewComment): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO review_comments (
+        id, review_id, project_id, file_path, line_number,
+        diff_hunk, content, author, status, parent_comment_id, created_at, resolved_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      comment.id,
+      comment.reviewId,
+      comment.projectId,
+      comment.filePath,
+      comment.lineNumber || null,
+      comment.diffHunk || null,
+      comment.content,
+      comment.author,
+      comment.status || 'open',
+      comment.parentCommentId || null,
+      comment.createdAt,
+      comment.resolvedAt || null
+    );
+  }
+
+  public listReviewComments(reviewId: string): ReviewComment[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT * FROM review_comments
+      WHERE review_id = ?
+      ORDER BY created_at ASC
+    `).all(reviewId) as any[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      reviewId: row.review_id,
+      projectId: row.project_id,
+      filePath: row.file_path,
+      lineNumber: row.line_number || undefined,
+      diffHunk: row.diff_hunk || undefined,
+      content: row.content,
+      author: row.author,
+      status: row.status,
+      parentCommentId: row.parent_comment_id || undefined,
+      createdAt: row.created_at,
+      resolvedAt: row.resolved_at || undefined
+    }));
+  }
+
+  public resolveReviewComment(commentId: string, resolved: boolean): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare(`
+      UPDATE review_comments
+      SET status = ?, resolved_at = ?
+      WHERE id = ?
+    `).run(resolved ? 'resolved' : 'open', resolved ? Date.now() : null, commentId);
+    return res.changes > 0;
+  }
+
+  public deleteReviewComment(commentId: string): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare(`DELETE FROM review_comments WHERE id = ?`).run(commentId);
+    return res.changes > 0;
   }
 
   // ==========================================

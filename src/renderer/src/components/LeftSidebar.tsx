@@ -18,6 +18,7 @@ import {
   ListChecks,
   CircleDot,
   FolderGit2,
+  FolderTree,
   TreeDeciduous,
   GitCommit,
   X,
@@ -66,6 +67,11 @@ export const LeftSidebar: React.FC = () => {
     loadGitStatus,
     toggleSettings,
     setCommandPaletteOpen,
+    isRightPanelOpen,
+    rightPanelTab,
+    toggleRightPanel,
+    setRightPanelTab,
+    setExplorerActiveTab,
     addLog
   } = useWorkspaceStore();
 
@@ -142,21 +148,33 @@ export const LeftSidebar: React.FC = () => {
     }
   };
 
+  const normalizePath = (p?: string | null) => {
+    if (!p) return '';
+    return p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase();
+  };
+
   const handleSelectProject = async (proj: any) => {
-    if (project?.id === proj.id) {
+    const store = useWorkspaceStore.getState();
+    const isCurrentProject = project?.id === proj.id;
+    const isNotInTerminal = store.activeSection !== 'terminal' || store.activeTabId?.startsWith('tab:');
+
+    if (isCurrentProject && !isNotInTerminal) {
       toggleProjectExpanded(proj.id);
       return;
     }
+
     try {
-      setProject(proj);
-      const files = await window.api.listFiles({ projectPath: proj.path });
-      setFiles(files);
-      loadGitStatus(proj.path);
-      addLog(`Switched project context to: ${proj.name}`, 'info');
+      if (!isCurrentProject) {
+        setProject(proj);
+        const files = await window.api.listFiles({ projectPath: proj.path });
+        setFiles(files);
+        loadGitStatus(proj.path);
+        addLog(`Switched project context to: ${proj.name}`, 'info');
+      }
 
       // Ensure PowerShell terminal is focused for this project
-      const store = useWorkspaceStore.getState();
-      let term = store.terminalSessions.find((t) => t.workingDirectory === proj.path);
+      const normProjPath = normalizePath(proj.path);
+      let term = store.terminalSessions.find((t) => normalizePath(t.workingDirectory) === normProjPath);
       if (!term) {
         const newId = store.createTerminalSession('powershell');
         store.updateTerminalSession(newId, {
@@ -181,29 +199,46 @@ export const LeftSidebar: React.FC = () => {
   const handleSelectWorktree = async (parentProj: any, wt: any) => {
     if (!wt.path) return;
     try {
+      const cleanRootName = parentProj.name.replace(/\s*\([^)]*\)$/, '');
+      const realRootProj = recentProjects.find(
+        (p) => !p.id.startsWith('wt-') && (normalizePath(p.path) === normalizePath(parentProj.path) || p.name === cleanRootName)
+      ) || parentProj;
+
+      const cleanRootId = realRootProj.id.startsWith('wt-')
+        ? (project?.id && !project.id.startsWith('wt-') ? project.id : realRootProj.id.replace(/^wt-[^-]+-/, ''))
+        : realRootProj.id;
+
       const wtDescriptor = {
-        id: `wt-${Buffer.from(wt.path).toString('base64url').substring(0, 16)}`,
-        name: `${parentProj.name} (${wt.branch})`,
+        ...realRootProj,
+        id: cleanRootId,
+        name: cleanRootName,
         path: wt.path,
         lastOpenedAt: Date.now(),
         isGitRepo: true,
         activeBranch: wt.branch,
-        permissionLevel: parentProj.permissionLevel || 'standard'
+        permissionLevel: realRootProj.permissionLevel || 'standard'
       };
       setProject(wtDescriptor);
-      const files = await window.api.listFiles({ projectPath: wt.path });
-      setFiles(files);
-      loadGitStatus(wt.path);
+      try {
+        const files = await window.api.listFiles({ projectPath: wt.path });
+        setFiles(files);
+        loadGitStatus(wt.path);
+      } catch (e) {
+        // Non-blocking file list error
+      }
       addLog(`Switched active worktree to: ${wt.branch}`, 'info');
 
       // Immediate terminal switch (Orca style - default PowerShell)
       const store = useWorkspaceStore.getState();
-      let term = store.terminalSessions.find((t) => t.workingDirectory === wt.path);
+      const normWtPath = normalizePath(wt.path);
+      let term = store.terminalSessions.find(
+        (t) => normalizePath(t.workingDirectory) === normWtPath
+      );
       if (!term) {
         const newId = store.createTerminalSession('powershell');
         store.updateTerminalSession(newId, {
           title: `PowerShell (${wt.branch})`,
-          projectName: parentProj.name,
+          projectName: cleanRootName,
           workingDirectory: wt.path,
           branch: wt.branch,
           provider: 'powershell',
@@ -237,9 +272,34 @@ export const LeftSidebar: React.FC = () => {
 
   const allProjects = useMemo(() => {
     const map = new Map<string, any>();
-    if (project) map.set(project.id, project);
+
+    // Current active project
+    if (project) {
+      const cleanName = project.name.replace(/\s*\([^)]*\)$/, '');
+      const cleanId = project.id.startsWith('wt-')
+        ? (recentProjects.find((p) => !p.id.startsWith('wt-'))?.id || project.id)
+        : project.id;
+
+      const cleanProj = {
+        ...project,
+        id: cleanId,
+        name: cleanName
+      };
+      map.set(cleanId, cleanProj);
+    }
+
     for (const p of recentProjects) {
-      if (!map.has(p.id)) map.set(p.id, p);
+      if (p.id.startsWith('wt-')) continue;
+      const cleanName = p.name.replace(/\s*\([^)]*\)$/, '');
+      if (!map.has(p.id)) {
+        // Also check if normalized path is already in the map
+        const alreadyExists = Array.from(map.values()).some(
+          (existing) => normalizePath(existing.path) === normalizePath(p.path) || existing.name === cleanName
+        );
+        if (!alreadyExists) {
+          map.set(p.id, { ...p, name: cleanName });
+        }
+      }
     }
     return Array.from(map.values());
   }, [project, recentProjects]);
@@ -279,6 +339,37 @@ export const LeftSidebar: React.FC = () => {
 
       {/* 3. Core Workspace Navigation */}
       <div className="px-2 py-1 space-y-1 flex-shrink-0">
+        <button
+          onClick={() => {
+            if (!isRightPanelOpen) {
+              toggleRightPanel();
+            }
+            setRightPanelTab('files');
+            setExplorerActiveTab('files');
+          }}
+          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
+            isRightPanelOpen && (rightPanelTab === 'files' || rightPanelTab === 'changes' || rightPanelTab === 'review')
+              ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-xs'
+              : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.04]'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 truncate">
+            <FolderTree
+              className={`w-4 h-4 flex-shrink-0 ${
+                isRightPanelOpen && (rightPanelTab === 'files' || rightPanelTab === 'changes' || rightPanelTab === 'review')
+                  ? 'text-white'
+                  : 'text-[#747982]'
+              }`}
+            />
+            <span className="truncate">Explorer</span>
+          </div>
+          {gitStatus?.changedFiles && gitStatus.changedFiles.length > 0 && (
+            <span className="text-[10px] font-mono text-amber-400">
+              {gitStatus.changedFiles.length}
+            </span>
+          )}
+        </button>
+
         <button
           onClick={() => setActiveSection('tasks')}
           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
@@ -360,7 +451,7 @@ export const LeftSidebar: React.FC = () => {
             </div>
           ) : (
             filteredProjects.map((proj) => {
-              const isActive = project?.id === proj.id;
+              const isActive = project?.id === proj.id || (project ? normalizePath(project.path) === normalizePath(proj.path) : false);
               const isExpanded = expandedProjectIds.has(proj.id);
               const branch = proj.activeBranch || (isActive && gitStatus?.branch) || 'main';
               const isClean = isActive ? gitStatus?.isClean ?? true : true;
@@ -551,7 +642,7 @@ export const LeftSidebar: React.FC = () => {
                           {worktrees.map((wt: any, idx: number) => {
                             const wtCustom = worktreeCustomizations[`${proj.path}::${wt.branch}`];
                             const isPrimary = wt.isMain || wt.branch === 'main' || wt.branch === 'master';
-                            const isWtActive = isActive && (gitStatus?.branch === wt.branch || project?.path === wt.path);
+                            const isWtActive = isActive && (gitStatus?.branch === wt.branch || normalizePath(project?.path) === normalizePath(wt.path));
                             const wtDisplayName = wtCustom?.customName || wt.branch;
 
                             return (

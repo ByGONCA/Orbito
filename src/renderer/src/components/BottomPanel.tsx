@@ -9,7 +9,9 @@ import {
   X,
   Cpu,
   Copy,
-  Check
+  Check,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 import { Badge } from './ui/Badge';
@@ -34,6 +36,8 @@ export const BottomPanel: React.FC = () => {
   } = useWorkspaceStore();
 
   const [isResizing, setIsResizing] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const prevHeightRef = useRef<number>(bottomPanelHeight);
   const [logLevelFilter, setLogLevelFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
   const [isCopied, setIsCopied] = useState(false);
   const terminalBottomRef = useRef<HTMLDivElement>(null);
@@ -49,6 +53,18 @@ export const BottomPanel: React.FC = () => {
 
   if (!isBottomPanelOpen) return null;
 
+  const toggleMaximize = () => {
+    if (isMaximized) {
+      setBottomPanelHeight(prevHeightRef.current || 240);
+      setIsMaximized(false);
+    } else {
+      prevHeightRef.current = bottomPanelHeight;
+      const targetHeight = Math.min(600, Math.max(450, window.innerHeight - 100));
+      setBottomPanelHeight(targetHeight);
+      setIsMaximized(true);
+    }
+  };
+
   // Resize drag handle
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -56,6 +72,7 @@ export const BottomPanel: React.FC = () => {
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const newHeight = window.innerHeight - moveEvent.clientY;
+      setIsMaximized(false);
       setBottomPanelHeight(newHeight);
     };
 
@@ -87,11 +104,20 @@ export const BottomPanel: React.FC = () => {
       style={{ height: `${bottomPanelHeight}px` }}
       className="border-t border-white/[0.07] bg-[#121418]/95 backdrop-blur-xl flex flex-col font-mono text-xs select-none relative z-20 flex-shrink-0"
     >
+      {/* Invisible global overlay during resize to capture mouse movements smoothly */}
+      {isResizing && (
+        <div className="fixed inset-0 z-50 cursor-row-resize select-none pointer-events-auto" />
+      )}
+
       {/* 1. Resize Drag Handle */}
       <div
         onMouseDown={handleMouseDown}
-        className="w-full h-1 cursor-row-resize hover:bg-accent/60 bg-border/60 transition-colors z-30"
-      />
+        onDoubleClick={toggleMaximize}
+        title="Arrastar para aumentar/diminuir janela do terminal &bull; Duplo clique para maximizar"
+        className="w-full h-2 -mt-1 cursor-row-resize hover:bg-white/10 active:bg-accent/40 transition-colors z-30 flex items-center justify-center group select-none flex-shrink-0"
+      >
+        <div className="w-12 h-0.5 rounded-full bg-white/20 group-hover:bg-accent group-hover:w-20 transition-all" />
+      </div>
 
       {/* 2. Top Header with Panel Tabs */}
       <div className="h-8 border-b border-white/[0.06] bg-transparent px-2.5 flex items-center justify-between text-[11px] flex-shrink-0">
@@ -215,6 +241,14 @@ export const BottomPanel: React.FC = () => {
               />
             </>
           )}
+
+          <IconButton
+            icon={isMaximized ? Minimize2 : Maximize2}
+            onClick={toggleMaximize}
+            tooltip={isMaximized ? 'Restaurar Altura da Janela' : 'Maximizar Janela do Terminal'}
+            size="sm"
+            className="text-foreground-muted hover:text-foreground"
+          />
 
           <IconButton
             icon={X}

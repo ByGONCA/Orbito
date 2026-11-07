@@ -35,6 +35,14 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     description: 'Mostra ou oculta o explorador de ficheiros, agentes e contexto.'
   },
   {
+    id: 'toggleBottomPanel',
+    label: 'Alternar Painel Inferior do Terminal',
+    category: 'Janelas & Painéis',
+    defaultCombo: 'Ctrl+`',
+    currentCombo: 'Ctrl+`',
+    description: 'Abre ou fecha o painel inferior de saída de terminal e diagnósticos.'
+  },
+  {
     id: 'newTerminal',
     label: 'Novo Terminal',
     category: 'Terminais',

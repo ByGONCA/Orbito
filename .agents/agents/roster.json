@@ -1,0 +1,156 @@
+{
+  "system": "Orbito Multi-Agent Development System",
+  "version": "1.0.0",
+  "orchestrator": {
+    "name": "lead-architect",
+    "displayName": "Lead Architect & Development Orchestrator",
+    "role": "Central Coordinator & System Architect",
+    "tier": "orchestrator",
+    "description": "Analyzes requirements, inspects architecture, decomposes tasks, coordinates parallel/sequential execution, prevents conflicts, and integrates completed work.",
+    "capabilities": {
+      "EnableMCPTools": true,
+      "EnableSubagentTools": true,
+      "EnableWriteTools": true
+    },
+    "modelDefault": "inherit",
+    "workspaceMode": "inherit",
+    "docFile": ".agents/agents/lead-architect.md"
+  },
+  "specialists": [
+    {
+      "name": "frontend-specialist",
+      "displayName": "Frontend Specialist",
+      "role": "UI/UX & Renderer Engineer",
+      "tier": "primary",
+      "description": "Implements React 19 UI, Tailwind CSS, Zustand stores, Electron renderer components, ensuring anti-boxiness, borderless design, accessibility, and high rendering performance.",
+      "capabilities": {
+        "EnableMCPTools": true,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/frontend-specialist.md"
+    },
+    {
+      "name": "backend-specialist",
+      "displayName": "Backend & Infrastructure Specialist",
+      "role": "Main Process & System Services Engineer",
+      "tier": "primary",
+      "description": "Implements Node.js Electron main process services, IPC channels, SQLite persistence (better-sqlite3, Drizzle ORM), PTY processes, and filesystem operations.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/backend-specialist.md"
+    },
+    {
+      "name": "git-specialist",
+      "displayName": "Git & Version Control Specialist",
+      "role": "Version Control & Branching Engineer",
+      "tier": "primary",
+      "description": "Manages Git integration, repository operations, worktrees, branches, diff analysis, and commit coordination without destructive actions.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/git-specialist.md"
+    },
+    {
+      "name": "security-specialist",
+      "displayName": "Security Specialist",
+      "role": "Security & Vulnerability Auditor",
+      "tier": "primary",
+      "description": "Audits code and architecture for security vulnerabilities, Electron process isolation, IPC channel integrity, and path traversal prevention.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": false
+      },
+      "modelDefault": "pro",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/security-specialist.md"
+    },
+    {
+      "name": "qa-specialist",
+      "displayName": "QA & Testing Specialist",
+      "role": "Test Automation & Verification Engineer",
+      "tier": "primary",
+      "description": "Validates code, executes unit and integration tests (Vitest), verifies TypeScript types, checks build stability, and reproduces bugs with reproducible evidence.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/qa-specialist.md"
+    },
+    {
+      "name": "performance-specialist",
+      "displayName": "Performance Specialist",
+      "role": "Profiling & Optimization Engineer",
+      "tier": "primary",
+      "description": "Profiles and optimizes CPU, memory, React rendering performance, SQLite query efficiency, and IPC message throughput with measurable evidence.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/performance-specialist.md"
+    },
+    {
+      "name": "code-quality-specialist",
+      "displayName": "Code Quality Specialist",
+      "role": "Clean Code & Refactoring Engineer",
+      "tier": "primary",
+      "description": "Audits and refactors codebase for SOLID principles, TypeScript clean architecture, DRY principles, Ponytail simplicity ladder, and anti-pattern elimination.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/code-quality-specialist.md"
+    },
+    {
+      "name": "documentation-specialist",
+      "displayName": "Documentation Specialist",
+      "role": "Technical Writer & Specs Maintainer",
+      "tier": "optional",
+      "description": "Maintains and updates architectural specifications, API guides, user guides, changelogs, and codebase documentation accurately reflecting verified code.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/documentation-specialist.md"
+    },
+    {
+      "name": "research-specialist",
+      "displayName": "Research & Technology Specialist",
+      "role": "Technical Evaluator & Feasibility Researcher",
+      "tier": "optional",
+      "description": "Investigates technical libraries, APIs, architectural patterns, and feasibility questions with fact-checked evidence before code adoption.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": false
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/research-specialist.md"
+    }
+  ]
+}

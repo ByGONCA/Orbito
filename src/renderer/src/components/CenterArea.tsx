@@ -19,53 +19,48 @@ export const CenterArea: React.FC = () => {
   const { activeTabId, openTabs, activeSection } = useWorkspaceStore();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
-  // 1. If an open workspace tab is active, render the corresponding content
-  if (activeTab) {
-    switch (activeTab.type) {
-      case 'file':
-        return <CodeEditor />;
-      case 'terminal':
-      case 'project':
-        return <TerminalWorkspace />;
-      case 'browser':
-        return <EmbeddedBrowser url={activeTab.url} tabId={activeTab.id} />;
-      case 'flow':
-        return <FlowBuilderWorkspace />;
-      case 'graph':
-        return <IntelligenceGraphWorkspace />;
-      case 'project-settings':
-        return <ProjectSettingsPage projectId={activeTab.projectId} />;
-    }
+  // 1. If a dedicated sidebar section is explicitly selected, prioritize it
+  if (activeSection === 'tasks') {
+    return <TasksWorkspace />;
+  }
+  if (activeSection === 'flows') {
+    return <FlowBuilderWorkspace />;
+  }
+  if (activeSection === 'graph') {
+    return <IntelligenceGraphWorkspace />;
+  }
+  if (activeSection === 'agents') {
+    return <AgentsWorkspace />;
+  }
+  if (activeSection === 'context') {
+    return <ContextInspector />;
+  }
+  if (activeSection === 'skills') {
+    return <SkillsManager />;
+  }
+  if (activeSection === 'analytics') {
+    return <AnalyticsDashboard />;
+  }
+  if (activeSection === 'extensions') {
+    return <ExtensionsManager />;
+  }
+  if (activeSection === 'providers') {
+    return <ProvidersPanel />;
   }
 
-  // 2. Otherwise render the active section selected from navigation
-  switch (activeSection) {
-    case 'graph':
-      return <IntelligenceGraphWorkspace />;
-    case 'tasks':
-      return <TasksWorkspace />;
-    case 'flows':
-      return <FlowBuilderWorkspace />;
-    case 'terminal':
-    case 'projects':
-      return <TerminalWorkspace />;
-    case 'editor':
-      return <CodeEditor />;
-    case 'agents':
-      return <AgentsWorkspace />;
-    case 'context':
-      return <ContextInspector />;
-    case 'skills':
-      return <SkillsManager />;
-    case 'analytics':
-      return <AnalyticsDashboard />;
-    case 'extensions':
-      return <ExtensionsManager />;
-    case 'providers':
-      return <ProvidersPanel />;
-    default:
-      return <TerminalWorkspace />;
+  // 2. Specific standalone tab types
+  if (activeTab?.type === 'flow') {
+    return <FlowBuilderWorkspace />;
   }
+  if (activeTab?.type === 'graph') {
+    return <IntelligenceGraphWorkspace />;
+  }
+  if (activeTab?.type === 'project-settings') {
+    return <ProjectSettingsPage projectId={activeTab.projectId} />;
+  }
+
+  // 3. Main Workspace: Unified tab bar with terminals, code editor, browser, and split view
+  return <TerminalWorkspace />;
 };
 
 export default CenterArea;

@@ -639,10 +639,7 @@ export const OfficialLogoRenderer: React.FC<{
   if (norm.includes('cmd') || norm.includes('command')) {
     return <CmdLogo className={className} size={size} />;
   }
-  if (norm.includes('bash') && !norm.includes('git')) {
-    return <BashLogo className={className} size={size} />;
-  }
-  if (norm.includes('git')) {
+  if (norm.includes('git') || norm.includes('bash')) {
     return <GitBashLogo className={className} size={size} />;
   }
 

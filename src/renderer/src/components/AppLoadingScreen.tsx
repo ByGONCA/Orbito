@@ -23,7 +23,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
   onBypassWorkspace,
   restoreWorkspace
 }) => {
-  const [statusMessage, setStatusMessage] = useState('A iniciar o Orbito...');
+  const [statusMessage, setStatusMessage] = useState('Starting Orbito...');
   const [isStalled, setIsStalled] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -63,9 +63,9 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
     const handleGlobalError = (event: ErrorEvent) => {
       if (!completedRef.current) {
         setErrorDetails({
-          message: event.message || 'Erro inesperado durante o arranque.',
+          message: event.message || 'Unexpected error during startup.',
           stack: event.error?.stack,
-          step: 'Inicialização'
+          step: 'Initialization'
         });
       }
     };
@@ -75,7 +75,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
         setErrorDetails({
           message: event.reason?.message || String(event.reason),
           stack: event.reason?.stack,
-          step: 'Inicialização'
+          step: 'Initialization'
         });
       }
     };
@@ -99,7 +99,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
         setStatusMessage(msg);
       });
 
-      setStatusMessage('Ambiente pronto.');
+      setStatusMessage('Environment ready.');
       completedRef.current = true;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -110,9 +110,9 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
     } catch (err: any) {
       console.error('[AppLoadingScreen] Startup error:', err);
       setErrorDetails({
-        message: err?.message || 'Erro inesperado durante o arranque da aplicação.',
+        message: err?.message || 'Unexpected error starting the application.',
         stack: err?.stack,
-        step: 'Inicialização'
+        step: 'Initialization'
       });
     }
   };
@@ -156,21 +156,21 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
           <button
             onClick={handleMinimize}
             className="w-8 h-7 flex items-center justify-center rounded-sm text-[#747982] hover:text-[#ECEDEF] hover:bg-white/[0.08] transition-colors cursor-pointer"
-            title="Minimizar"
+            title="Minimize"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleMaximize}
             className="w-8 h-7 flex items-center justify-center rounded-sm text-[#747982] hover:text-[#ECEDEF] hover:bg-white/[0.08] transition-colors cursor-pointer"
-            title={isMaximized ? 'Restaurar' : 'Maximizar'}
+            title={isMaximized ? 'Restore' : 'Maximize'}
           >
             <Square className="w-3 h-3" />
           </button>
           <button
             onClick={handleClose}
             className="w-8 h-7 flex items-center justify-center rounded-sm text-[#747982] hover:text-white hover:bg-[#E81123] transition-colors cursor-pointer"
-            title="Fechar"
+            title="Close"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -187,9 +187,9 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
           }}
         />
 
-        <div className="relative z-10 flex flex-col items-center text-center space-y-5 max-w-sm">
+        <div className="relative z-10 flex flex-col items-center text-center space-y-4 max-w-sm">
           {/* Logo with subtle ambient blur */}
-          <div className="relative flex items-center justify-center">
+          <div className="relative flex items-center justify-center mb-1">
             <div className="absolute w-20 h-20 rounded-full bg-white/[0.03] blur-xl animate-pulse pointer-events-none" />
             <img
               src="/Orbit.png"
@@ -198,25 +198,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
             />
           </div>
 
-          {/* Dynamic Loading Message: text smoothly transitions with each step */}
-          <div className="h-7 flex items-center justify-center">
-            {!errorDetails ? (
-              <div
-                key={statusMessage}
-                className="animate-in fade-in slide-in-from-bottom-1 duration-200 text-xs text-[#A4A8AF] font-medium tracking-wide flex items-center gap-2"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse flex-shrink-0" />
-                <span>{statusMessage}</span>
-              </div>
-            ) : (
-              <div className="text-xs text-rose-400 font-medium flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
-                <span>Falha no arranque</span>
-              </div>
-            )}
-          </div>
-
-          {/* Continuous Fluid Loading Bar */}
+          {/* Continuous Fluid Loading Bar (Displayed on Top) */}
           {!errorDetails && (
             <div className="w-56 h-[3px] bg-white/[0.08] rounded-full overflow-hidden relative">
               <div
@@ -231,11 +213,29 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
             </div>
           )}
 
+          {/* Dynamic Loading Message: Positioned BELOW the Bar */}
+          <div className="h-7 flex items-center justify-center">
+            {!errorDetails ? (
+              <div
+                key={statusMessage}
+                className="animate-in fade-in slide-in-from-top-1 duration-200 text-xs text-[#A4A8AF] font-medium tracking-wide flex items-center gap-2"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse flex-shrink-0" />
+                <span>{statusMessage}</span>
+              </div>
+            ) : (
+              <div className="text-xs text-rose-400 font-medium flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                <span>Startup failed</span>
+              </div>
+            )}
+          </div>
+
           {/* Stalled notice (if loading takes > 7s) */}
           {isStalled && !errorDetails && (
             <div className="pt-3 space-y-2 text-center animate-in fade-in duration-150">
               <p className="text-[11px] text-[#747982]">
-                O arranque está a demorar mais do que o esperado.
+                Startup is taking longer than expected.
               </p>
               <div className="flex items-center justify-center gap-4 text-xs">
                 <button
@@ -243,14 +243,14 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
                   className="text-xs text-[#ECEDEF] hover:underline flex items-center gap-1.5 cursor-pointer"
                 >
                   <FolderX className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                  <span>Abrir Espaço Vazio</span>
+                  <span>Open Empty Workspace</span>
                 </button>
                 <button
                   onClick={() => window.location.reload()}
                   className="text-xs text-[#747982] hover:text-[#ECEDEF] flex items-center gap-1.5 cursor-pointer"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>Recarregar</span>
+                  <span>Reload</span>
                 </button>
               </div>
             </div>
@@ -268,21 +268,21 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
                   className="text-xs text-[#ECEDEF] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>Tentar Novamente</span>
+                  <span>Try Again</span>
                 </button>
                 <button
                   onClick={onBypassWorkspace}
                   className="text-xs text-[#747982] hover:text-[#ECEDEF] flex items-center gap-1 cursor-pointer"
                 >
                   <FolderX className="w-3 h-3 text-[#747982]" />
-                  <span>Modo Seguro</span>
+                  <span>Safe Mode</span>
                 </button>
                 <button
                   onClick={handleCopyError}
                   className="text-xs text-[#747982] hover:text-[#ECEDEF] flex items-center gap-1 cursor-pointer"
                 >
                   {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copied ? 'Copiado' : 'Copiar'}</span>
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
             </div>

@@ -3,6 +3,8 @@
  * Used strictly across Renderer, Preload, and Main processes.
  */
 
+export * from './review';
+
 export type PermissionLevel = 'restricted' | 'standard' | 'full';
 
 export type UIMode = 'simple' | 'advanced';

@@ -26,6 +26,7 @@ import { useWorkspaceStore } from '../stores/workspace.store';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
 import { ProjectIconRenderer } from './ProjectCustomizeModal';
+import { CustomSelect } from './ui/Select';
 
 export interface ProjectSettingsModalProps {
   isOpen: boolean;
@@ -311,17 +312,17 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-[#ECEDEF]">Default AI Provider</label>
-                <select
+                <CustomSelect
                   value={defaultProvider}
-                  onChange={(e) => setDefaultProvider(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-lg bg-[#111116] border border-white/[0.08] focus:border-white/25 focus:outline-none text-xs text-white cursor-pointer"
-                >
-                  {PROVIDERS.map((prv) => (
-                    <option key={prv.id} value={prv.id} className="bg-[#111116] text-white">
-                      {prv.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setDefaultProvider(val)}
+                  options={PROVIDERS.map((prv) => ({
+                    value: prv.id,
+                    label: prv.name
+                  }))}
+                  className="w-full"
+                  buttonClassName="w-full justify-between"
+                  menuClassName="w-full"
+                />
               </div>
 
               <div className="space-y-1.5">

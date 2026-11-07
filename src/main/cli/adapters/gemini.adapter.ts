@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import type { ICLIAdapter, CommandSpec } from '../adapter.interface';
+import type { ICLIAdapter, CommandSpec, InteractiveLaunchSpec } from '../adapter.interface';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -12,6 +12,8 @@ import { findExecutableOnPath, probeVersion, isVersionAtLeast } from '../detecto
 
 export class GeminiAdapter implements ICLIAdapter {
   public readonly provider: CLIProvider = 'gemini';
+  public readonly name: string = 'Gemini CLI';
+  public readonly installCommand: string = 'npm install -g @google/gemini-cli';
   public readonly capabilities: CLICapabilities = {
     supportsStreaming: true,
     supportsResume: true, // Official support via --resume
@@ -22,7 +24,7 @@ export class GeminiAdapter implements ICLIAdapter {
   };
 
   private readonly minVersion = '0.1.0';
-  private readonly installGuideUrl = 'https://ai.google.dev/gemini-api/docs';
+  public readonly installGuideUrl = 'https://ai.google.dev/gemini-api/docs';
 
   public async detect(customPath?: string): Promise<CLIInstallationStatus> {
     let resolvedPath: string | null = null;
@@ -179,6 +181,40 @@ export class GeminiAdapter implements ICLIAdapter {
       env: {
         ...process.env,
         PWD: workingDirectory
+      }
+    };
+  }
+
+  public async getInteractiveLaunchSpec(options: {
+    workingDirectory: string;
+    customPath?: string;
+    model?: string;
+    extraArgs?: string[];
+  }): Promise<{ success: true; spec: InteractiveLaunchSpec } | { success: false; error: string; installGuideUrl?: string; installCommand?: string }> {
+    const installStatus = await this.detect(options.customPath);
+    if (!installStatus.isInstalled || !installStatus.resolvedPath) {
+      return {
+        success: false,
+        error: 'Gemini CLI executable ("gemini") was not found. Please install Gemini CLI or configure its path in Settings.',
+        installGuideUrl: this.installGuideUrl,
+        installCommand: this.installCommand
+      };
+    }
+
+    const args: string[] = [];
+    if (options.model) {
+      args.push('-m', options.model);
+    }
+    if (options.extraArgs) {
+      args.push(...options.extraArgs);
+    }
+
+    return {
+      success: true,
+      spec: {
+        executable: installStatus.resolvedPath,
+        args,
+        cwd: options.workingDirectory
       }
     };
   }

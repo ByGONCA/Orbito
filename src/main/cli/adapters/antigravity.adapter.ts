@@ -26,6 +26,31 @@ export class AntigravityAdapter extends BaseCLIAdapter {
       formatPromptArgs: (prompt) => [prompt]
     });
   }
+
+  public override async getInteractiveLaunchSpec(options: {
+    workingDirectory: string;
+    customPath?: string;
+    model?: string;
+    extraArgs?: string[];
+  }) {
+    const res = await super.getInteractiveLaunchSpec(options);
+    if (!res.success) return res;
+
+    const args = [...res.spec.args];
+    if (options.model) {
+      args.push('--model', options.model);
+    }
+    if (options.extraArgs) {
+      args.push(...options.extraArgs);
+    }
+    return {
+      success: true as const,
+      spec: {
+        ...res.spec,
+        args
+      }
+    };
+  }
 }
 
 export const antigravityAdapter = new AntigravityAdapter();

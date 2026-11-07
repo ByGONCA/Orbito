@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import type { ICLIAdapter, CommandSpec } from '../adapter.interface';
+import type { ICLIAdapter, CommandSpec, InteractiveLaunchSpec } from '../adapter.interface';
 import type {
   CLIProvider,
   CLIInstallationStatus,
@@ -12,6 +12,8 @@ import { findExecutableOnPath, probeVersion, isVersionAtLeast } from '../detecto
 
 export class CodexAdapter implements ICLIAdapter {
   public readonly provider: CLIProvider = 'codex';
+  public readonly name: string = 'OpenAI Codex';
+  public readonly installCommand: string = 'npm install -g @openai/codex';
   public readonly capabilities: CLICapabilities = {
     supportsStreaming: true,
     supportsResume: true, // Official support via "codex exec resume <ID>"
@@ -21,7 +23,7 @@ export class CodexAdapter implements ICLIAdapter {
   };
 
   private readonly minVersion = '0.1.0';
-  private readonly installGuideUrl = 'https://learn.chatgpt.com/docs/cli/reference';
+  public readonly installGuideUrl = 'https://learn.chatgpt.com/docs/cli/reference';
 
   public async detect(customPath?: string): Promise<CLIInstallationStatus> {
     let resolvedPath: string | null = null;
@@ -165,6 +167,40 @@ export class CodexAdapter implements ICLIAdapter {
       env: {
         ...process.env,
         PWD: workingDirectory
+      }
+    };
+  }
+
+  public async getInteractiveLaunchSpec(options: {
+    workingDirectory: string;
+    customPath?: string;
+    model?: string;
+    extraArgs?: string[];
+  }): Promise<{ success: true; spec: InteractiveLaunchSpec } | { success: false; error: string; installGuideUrl?: string; installCommand?: string }> {
+    const installStatus = await this.detect(options.customPath);
+    if (!installStatus.isInstalled || !installStatus.resolvedPath) {
+      return {
+        success: false,
+        error: 'OpenAI Codex CLI executable ("codex") was not found. Please install Codex CLI or configure its path in Settings.',
+        installGuideUrl: this.installGuideUrl,
+        installCommand: this.installCommand
+      };
+    }
+
+    const args: string[] = [];
+    if (options.model) {
+      args.push('-m', options.model);
+    }
+    if (options.extraArgs) {
+      args.push(...options.extraArgs);
+    }
+
+    return {
+      success: true,
+      spec: {
+        executable: installStatus.resolvedPath,
+        args,
+        cwd: options.workingDirectory
       }
     };
   }

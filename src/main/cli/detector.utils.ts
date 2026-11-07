@@ -78,17 +78,22 @@ export async function findExecutableOnPath(executableName: string): Promise<stri
 
 export async function probeVersion(executablePath: string, versionFlag = '--version'): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile(executablePath, [versionFlag], { timeout: 4000 }, (error, stdout, stderr) => {
-      if (error) {
-        resolve(null);
-        return;
-      }
+    try {
+      const isCmdOrBat = process.platform === 'win32' && /\.(cmd|bat)$/i.test(executablePath);
+      execFile(executablePath, [versionFlag], { timeout: 4000, shell: isCmdOrBat }, (error, stdout, stderr) => {
+        if (error) {
+          resolve(null);
+          return;
+        }
 
-      const output = (stdout || stderr).trim();
-      // Match common semver formats like 0.2.14, 1.0.0, v2.3.0
-      const match = output.match(/v?(\d+\.\d+\.\d+[\w.-]*)/);
-      resolve(match ? match[1] : output.split(/\r?\n/)[0] || null);
-    });
+        const output = (stdout || stderr).trim();
+        // Match common semver formats like 0.2.14, 1.0.0, v2.3.0
+        const match = output.match(/v?(\d+\.\d+\.\d+[\w.-]*)/);
+        resolve(match ? match[1] : output.split(/\r?\n/)[0] || null);
+      });
+    } catch {
+      resolve(null);
+    }
   });
 }
 

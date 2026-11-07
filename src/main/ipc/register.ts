@@ -49,8 +49,22 @@ import {
   AssemblePromptSchema,
   ComposeSkillsSchema,
   UpdateDiscordSettingsSchema,
-  GetProjectGitRemoteSchema
+  GetProjectGitRemoteSchema,
+  ListProjectExecutionsSchema,
+  GetExecutionFileChangesSchema,
+  SyncManualChangesSchema,
+  GetCodeReviewSchema,
+  UpdateReviewDecisionSchema,
+  MarkFileReviewStatusSchema,
+  AddReviewCommentSchema,
+  ListReviewCommentsSchema,
+  ResolveReviewCommentSchema,
+  RunAICodeReviewSchema,
+  GetProjectGitDetailsSchema
 } from '../../shared/ipc';
+import { projectExecutionService } from '../services/project-execution.service';
+import { codeReviewService } from '../services/code-review.service';
+import { WorktreeManager } from '../agents/worktree-manager';
 import { discordRpcService } from '../services/discord/discord-rpc.service';
 import { detectProjectGitRemote } from '../services/git-remote-resolver';
 import { IntelligenceRouter } from '../services/intelligence-router.service';
@@ -64,8 +78,13 @@ import {
   CancelCLISessionSchema,
   ListCLISessionsSchema,
   GetSessionMessagesSchema,
+  TerminalCreateSchema,
+  TerminalWriteSchema,
+  TerminalResizeSchema,
+  TerminalKillSchema,
   type CLIStreamEvent
 } from '../../shared/cli';
+import { ptyService } from '../terminal/pty-service';
 import {
   StartIndexingSchema,
   CancelIndexingSchema,
@@ -149,6 +168,25 @@ async function checkPortOpen(port: number): Promise<boolean> {
 }
 
 export function registerIpcHandlers(): void {
+  // Global PTY interactive terminal data & exit broadcasts
+  ptyService.on('data', (evt) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('terminal:data', evt);
+      }
+    }
+  });
+
+  ptyService.on('exit', (evt) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('terminal:exit', evt);
+      }
+    }
+  });
+
   // Global stream event broadcast to all browser windows
   executionEngine.on('stream', (event: CLIStreamEvent) => {
     const windows = BrowserWindow.getAllWindows();
@@ -607,6 +645,37 @@ export function registerIpcHandlers(): void {
     return databaseService.getCLISessionMessages(validated.sessionId);
   });
 
+  // Interactive Terminal Engine (PTY)
+  ipcMain.handle('terminal:create', async (_, args) => {
+    const validated = TerminalCreateSchema.parse(args);
+    return await ptyService.createSession(validated);
+  });
+
+  // Fast-path one-way IPC for instant keystrokes without promise/schema overhead
+  ipcMain.on('terminal:write-fast', (_, args) => {
+    if (args && typeof args.terminalId === 'string' && typeof args.data === 'string') {
+      ptyService.write(args.terminalId, args.data);
+    }
+  });
+
+  ipcMain.handle('terminal:write', (_, args) => {
+    const validated = TerminalWriteSchema.parse(args);
+    ptyService.write(validated.terminalId, validated.data);
+    return { success: true };
+  });
+
+  ipcMain.handle('terminal:resize', (_, args) => {
+    const validated = TerminalResizeSchema.parse(args);
+    ptyService.resize(validated.terminalId, validated.cols, validated.rows);
+    return { success: true };
+  });
+
+  ipcMain.handle('terminal:kill', (_, args) => {
+    const validated = TerminalKillSchema.parse(args);
+    const success = ptyService.kill(validated.terminalId);
+    return { success };
+  });
+
   // 7. Context Engine (Phase 3)
   ipcMain.handle('context:startIndexing', async (_, args) => {
     const validated = StartIndexingSchema.parse(args);
@@ -950,5 +1019,161 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('window:isMaximized', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     return win?.isMaximized() ?? false;
+  });
+
+  ipcMain.handle('window:openDetachedTab', async (_, params: { tab: any; x?: number; y?: number }) => {
+    const isDev = !app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
+    const icoPath = path.join(__dirname, '../../resources/icon.ico');
+    const pngPath = path.join(__dirname, '../../resources/Orbit.png');
+    const iconPath = process.platform === 'win32' && fs.existsSync(icoPath) ? icoPath : pngPath;
+
+    const detachedWin = new BrowserWindow({
+      width: 960,
+      height: 650,
+      x: params.x ? Math.max(0, Math.round(params.x - 200)) : undefined,
+      y: params.y ? Math.max(0, Math.round(params.y - 40)) : undefined,
+      minWidth: 480,
+      minHeight: 320,
+      frame: false,
+      titleBarStyle: 'hidden',
+      autoHideMenuBar: true,
+      title: `${params.tab?.title || 'Tab'} — Orbito`,
+      icon: fs.existsSync(iconPath) ? iconPath : undefined,
+      backgroundColor: '#101113',
+      webPreferences: {
+        preload: path.join(__dirname, '../preload/index.js'),
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+        devTools: isDev
+      }
+    });
+
+    const serializedTab = encodeURIComponent(JSON.stringify(params.tab));
+    if (process.env.ELECTRON_RENDERER_URL) {
+      detachedWin.loadURL(`${process.env.ELECTRON_RENDERER_URL}?detachedTab=${serializedTab}`);
+    } else {
+      detachedWin.loadFile(path.join(__dirname, '../renderer/index.html'), {
+        query: { detachedTab: serializedTab }
+      });
+    }
+
+    detachedWin.once('ready-to-show', () => {
+      detachedWin.show();
+      detachedWin.focus();
+    });
+
+    return { success: true };
+  });
+
+  // ==========================================
+  // Project Explorer: Changes & Code Review Handlers
+  // ==========================================
+
+  ipcMain.handle('project:listExecutions', async (_, args) => {
+    const validated = ListProjectExecutionsSchema.parse(args);
+    return databaseService.listProjectExecutions(validated.projectId);
+  });
+
+  ipcMain.handle('project:getExecutionFileChanges', async (_, args) => {
+    const validated = GetExecutionFileChangesSchema.parse(args);
+    return databaseService.getExecutionFileChanges(validated.executionId);
+  });
+
+  ipcMain.handle('project:syncManualChanges', async (_, args) => {
+    const validated = SyncManualChangesSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    return await projectExecutionService.syncManualWorkspaceChanges(validated.projectId, canonical);
+  });
+
+  ipcMain.handle('review:getCodeReview', async (_, args) => {
+    const validated = GetCodeReviewSchema.parse(args);
+    return await codeReviewService.getOrCreateReview(validated.projectId, validated.executionId);
+  });
+
+  ipcMain.handle('review:updateDecision', async (_, args) => {
+    const validated = UpdateReviewDecisionSchema.parse(args);
+    return await codeReviewService.updateReviewDecision({
+      reviewId: validated.reviewId,
+      status: validated.status as any,
+      reviewer: validated.reviewer,
+      summary: validated.summary
+    });
+  });
+
+  ipcMain.handle('review:markFileStatus', async (_, args) => {
+    const validated = MarkFileReviewStatusSchema.parse(args);
+    return await codeReviewService.markFileStatus({
+      reviewId: validated.reviewId,
+      filePath: validated.filePath,
+      status: validated.status as any
+    });
+  });
+
+  ipcMain.handle('review:addComment', async (_, args) => {
+    const validated = AddReviewCommentSchema.parse(args);
+    return await codeReviewService.addComment({
+      reviewId: validated.reviewId,
+      projectId: validated.projectId,
+      filePath: validated.filePath,
+      lineNumber: validated.lineNumber,
+      diffHunk: validated.diffHunk,
+      content: validated.content,
+      author: validated.author,
+      parentCommentId: validated.parentCommentId
+    });
+  });
+
+  ipcMain.handle('review:listComments', async (_, args) => {
+    const validated = ListReviewCommentsSchema.parse(args);
+    return codeReviewService.listComments(validated.reviewId);
+  });
+
+  ipcMain.handle('review:resolveComment', async (_, args) => {
+    const validated = ResolveReviewCommentSchema.parse(args);
+    const success = codeReviewService.resolveComment(validated.commentId, validated.resolved);
+    return { success };
+  });
+
+  ipcMain.handle('review:runAICodeReview', async (_, args) => {
+    const validated = RunAICodeReviewSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    return await codeReviewService.runAIReview({
+      reviewId: validated.reviewId,
+      projectPath: canonical,
+      diff: validated.diff,
+      changedFiles: validated.changedFiles
+    });
+  });
+
+  ipcMain.handle('project:getGitDetails', async (_, args) => {
+    const validated = GetProjectGitDetailsSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    const isGit = await WorktreeManager.isGitRepo(canonical);
+    if (!isGit) {
+      return {
+        isGitRepo: false,
+        branch: '',
+        hasUncommittedChanges: false,
+        stagedFiles: [],
+        uncommittedFiles: []
+      };
+    }
+
+    const status = await workspaceService.getGitStatus(canonical);
+    const remote = await detectProjectGitRemote(canonical);
+    return {
+      isGitRepo: true,
+      branch: status.branch,
+      commitHash: status.worktrees[0]?.head || undefined,
+      remoteUrl: remote?.rawUrl,
+      gitProvider: remote?.provider,
+      githubOwner: remote?.owner,
+      githubRepo: remote?.repo,
+      githubBrowserUrl: remote?.browserUrl,
+      hasUncommittedChanges: !status.isClean,
+      stagedFiles: [],
+      uncommittedFiles: status.changedFiles.map((f) => f.path)
+    };
   });
 }

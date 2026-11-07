@@ -72,6 +72,29 @@ const api: IElectronAPI = {
     };
   },
 
+  // Interactive Terminal Engine (PTY & xterm.js)
+  terminalCreate: (params) => ipcRenderer.invoke('terminal:create', params),
+  terminalWrite: (params) => {
+    ipcRenderer.send('terminal:write-fast', params);
+    return Promise.resolve();
+  },
+  terminalResize: (params) => ipcRenderer.invoke('terminal:resize', params),
+  terminalKill: (params) => ipcRenderer.invoke('terminal:kill', params),
+  onTerminalData: (callback) => {
+    const handler = (_: any, evt: any) => callback(evt);
+    ipcRenderer.on('terminal:data', handler);
+    return () => {
+      ipcRenderer.removeListener('terminal:data', handler);
+    };
+  },
+  onTerminalExit: (callback) => {
+    const handler = (_: any, evt: any) => callback(evt);
+    ipcRenderer.on('terminal:exit', handler);
+    return () => {
+      ipcRenderer.removeListener('terminal:exit', handler);
+    };
+  },
+
   // Context Engine (Phase 3)
   startIndexing: (params) => ipcRenderer.invoke('context:startIndexing', params),
   cancelIndexing: (params) => ipcRenderer.invoke('context:cancelIndexing', params),
@@ -186,13 +209,28 @@ const api: IElectronAPI = {
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  openDetachedTabWindow: (params: { tab: any; x?: number; y?: number }) =>
+    ipcRenderer.invoke('window:openDetachedTab', params),
   onWindowStateChange: (callback) => {
     const handler = (_: any, state: any) => callback(state);
     ipcRenderer.on('window:state-changed', handler);
     return () => {
       ipcRenderer.removeListener('window:state-changed', handler);
     };
-  }
+  },
+
+  // Project Explorer: Changes & Code Review
+  listProjectExecutions: (params) => ipcRenderer.invoke('project:listExecutions', params),
+  getExecutionFileChanges: (params) => ipcRenderer.invoke('project:getExecutionFileChanges', params),
+  syncManualChanges: (params) => ipcRenderer.invoke('project:syncManualChanges', params),
+  getCodeReview: (params) => ipcRenderer.invoke('review:getCodeReview', params),
+  updateReviewDecision: (params) => ipcRenderer.invoke('review:updateDecision', params),
+  markFileReviewStatus: (params) => ipcRenderer.invoke('review:markFileStatus', params),
+  addReviewComment: (params) => ipcRenderer.invoke('review:addComment', params),
+  listReviewComments: (params) => ipcRenderer.invoke('review:listComments', params),
+  resolveReviewComment: (params) => ipcRenderer.invoke('review:resolveComment', params),
+  runAICodeReview: (params) => ipcRenderer.invoke('review:runAICodeReview', params),
+  getProjectGitDetails: (params) => ipcRenderer.invoke('project:getGitDetails', params)
 };
 
 contextBridge.exposeInMainWorld('api', api);

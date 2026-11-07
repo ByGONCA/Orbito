@@ -48,6 +48,7 @@ export class CLIManager {
     this.registerAdapter(codexAdapter);
     this.registerAdapter(geminiAdapter);
     this.registerAdapter(ollamaAdapter);
+    this.registerAdapter(antigravityAdapter);
 
     // 2. Full 30 Integration Targets
     this.registerAdapter(aiderAdapter);

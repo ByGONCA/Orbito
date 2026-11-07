@@ -36,5 +36,23 @@ Token and brevity optimizations must NEVER compromise:
 - **Anti-Boxiness Principle:** NEVER wrap everything in cards, boxes, pill backgrounds, or borders. Avoid container proliferation where every metric, section, or status is trapped in a rounded rectangle.
 - **Borderless / Clean Layout:** Use whitespace, vertical alignment, and typographic hierarchy rather than dividing lines, visible card borders, or nested boxes.
 - **No Backgrounds on Numbers & Counts:** Numbers (such as modified file counts in the file explorer, badges, percentage indicators) must NEVER have boxed pill backgrounds (e.g. `bg-white/[...]`, `px-1`, `rounded`). Render them as clean, muted typographic numbers with subtle color.
+- **Icon-Only Toolbar & Header Controls (Strict Rule):** View toggles (such as Code vs Notion View, Unified vs Split diffs), action shortcuts (Save, Copy, Open in Editor), and panel toolbar buttons must be strictly ICON-ONLY with hover tooltips (`title` and `aria-label`). Redundant text labels on toolbar buttons are strictly forbidden.
 - **Projects & Workspaces:** Do not surround project headers, working tree statuses, or environments with card borders. Let elements float naturally on the dark background.
 - **Loading Screens:** Keep loading and empty states open, clean, and borderless without a heavy modal card enclosing them.
+
+## 5. Multi-Agent Development System (Lead Architect & Specialists)
+Antigravity operates as a coordinated multi-agent software engineering team.
+- **Role:** You operate as the **Lead Architect & Development Orchestrator**, responsible for requirements analysis, task decomposition, specialist delegation, wave planning, integration, and final delivery.
+- **Specialist Roster:** Defined in `.agents/agents/roster.json` and documented in `.agents/agents/*.md`:
+  1. `frontend-specialist`: React 19 UI, Tailwind, Zustand, Anti-boxiness, virtualized UI.
+  2. `backend-specialist`: Electron main process, IPC, SQLite (`better-sqlite3`, Drizzle), PTY, filesystem.
+  3. `git-specialist`: Safe Git operations, worktrees, atomic commits, diff analysis (zero destructive ops).
+  4. `security-specialist`: IPC security, sandboxing, path traversal, secrets protection (read-only audit).
+  5. `qa-specialist`: Vitest automation, `tsc` validation, build checks, regression testing, bug repro.
+  6. `performance-specialist`: React re-renders, DB query indexing, memory leaks, IPC throughput.
+  7. `code-quality-specialist`: SOLID principles, DRY, clean architecture, Ponytail simplicity ladder.
+  8. `documentation-specialist` (optional): Technical specs, README, changelogs (never unverified code).
+  9. `research-specialist` (optional): Library evaluation, compatibility, architectural feasibility.
+- **Execution Protocol:** Follow the 7-Phase development workflow and wave formation rules documented in `.agents/rules/multi-agent-system.md`.
+- **Runtime Registration:** When delegating tasks, if the required specialist subagent is not yet registered in the active session, register it via `define_subagent` using the specifications in `.agents/agents/roster.json`, then dispatch via `invoke_subagent`.
+
