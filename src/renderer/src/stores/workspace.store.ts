@@ -64,10 +64,11 @@ export interface TerminalSessionItem {
 
 export interface WorkspaceTab {
   id: string; // 'tab:file:...' or 'tab:term:...' or 'tab:flow:...' or 'tab:graph'
-  type: 'file' | 'terminal' | 'flow' | 'project' | 'graph' | 'browser';
+  type: 'file' | 'terminal' | 'flow' | 'project' | 'graph' | 'browser' | 'project-settings';
   title: string;
   filePath?: string;
   terminalId?: string;
+  projectId?: string;
   content?: string;
   url?: string;
   isDirty?: boolean;
@@ -237,6 +238,7 @@ export interface WorkspaceState {
   setActiveFile: (filePath: string, content?: string) => Promise<void>;
   openTerminalTab: (terminalId?: string) => void;
   openProjectTab: (projectId: string, projectName: string) => void;
+  openProjectSettingsTab: (projectId: string) => void;
   openFlowTab: (workflow: WorkflowRecord) => void;
   openGraphTab: () => void;
   openBrowserTab: (url?: string) => void;
@@ -1101,6 +1103,32 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeSection: 'terminal',
         rightPanelTab: 'files',
         explorerTab: 'files'
+      };
+    });
+  },
+
+  openProjectSettingsTab: (projectId) => {
+    const tabId = `settings:${projectId}`;
+    const proj = get().recentProjects.find((p) => p.id === projectId) || get().project;
+    const name = proj?.customName || proj?.name || 'Project';
+
+    set((state) => {
+      const existing = state.openTabs.find((t) => t.id === tabId);
+      let updatedTabs = [...state.openTabs];
+      if (!existing) {
+        updatedTabs.push({
+          id: tabId,
+          type: 'project-settings',
+          title: `Settings: ${name}`,
+          projectId
+        });
+      }
+      return {
+        openTabs: updatedTabs,
+        activeTabId: tabId,
+        activeFilePath: null,
+        activeFileContent: null,
+        activeSection: 'projects'
       };
     });
   },

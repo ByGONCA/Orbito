@@ -143,15 +143,15 @@ describe('Discord Rich Presence Suite', () => {
 
     it('persists global discordRpcEnabled and discordClientId settings', () => {
       const initial = databaseService.getSettings();
-      expect(initial.discordRpcEnabled).toBe(false);
+      expect(initial.discordRpcEnabled).toBe(true);
 
       databaseService.updateSettings({
-        discordRpcEnabled: true,
+        discordRpcEnabled: false,
         discordClientId: '123456789012345678'
       });
 
       const updated = databaseService.getSettings();
-      expect(updated.discordRpcEnabled).toBe(true);
+      expect(updated.discordRpcEnabled).toBe(false);
       expect(updated.discordClientId).toBe('123456789012345678');
     });
 

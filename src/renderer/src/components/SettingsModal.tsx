@@ -37,6 +37,7 @@ import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
 import { Badge } from './ui/Badge';
 import { FileIcon } from '../utils/file-icons';
+import { useKeyboardShortcutsStore, formatKeyComboFromEvent } from '../stores/keyboard-shortcuts.store';
 
 type SettingsSection = 'appearance' | 'workspace' | 'security' | 'memory' | 'integrations' | 'shortcuts' | 'about';
 
@@ -76,6 +77,38 @@ export const SettingsModal: React.FC = () => {
   const [customClientIdInput, setCustomClientIdInput] = useState('');
   const [isSavingClientId, setIsSavingClientId] = useState(false);
   const [clientIdSavedNotice, setClientIdSavedNotice] = useState(false);
+
+  const {
+    shortcuts,
+    recordingId,
+    setRecordingId,
+    updateShortcut,
+    resetShortcut,
+    resetAllToDefault
+  } = useKeyboardShortcutsStore();
+
+  // Keybind recording listener (Discord style)
+  useEffect(() => {
+    if (!recordingId) return;
+
+    const handleRecordKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === 'Escape') {
+        setRecordingId(null);
+        return;
+      }
+
+      const combo = formatKeyComboFromEvent(e);
+      if (combo) {
+        updateShortcut(recordingId, combo);
+      }
+    };
+
+    window.addEventListener('keydown', handleRecordKey, { capture: true });
+    return () => window.removeEventListener('keydown', handleRecordKey, { capture: true });
+  }, [recordingId, updateShortcut, setRecordingId]);
 
   // Load Discord status
   useEffect(() => {
@@ -866,35 +899,88 @@ export const SettingsModal: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 5: ATALHOS DE TECLADO */}
+          {/* TAB 5: ATALHOS DE TECLADO (ESTILO DISCORD) */}
           {activeTab === 'shortcuts' && (
             <div className="space-y-6 animate-in fade-in duration-150">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-                  Atalhos de Teclado
-                </h2>
-                <p className="text-xs text-[#A4A8AF]">
-                  Referência rápida dos atalhos globais e de navegação no AI Workspace.
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
+                    Atalhos de Teclado
+                  </h2>
+                  <p className="text-xs text-[#A4A8AF]">
+                    Personaliza as combinações de teclas para navegação rápida e controlo do Orbito.
+                  </p>
+                </div>
+                <button
+                  onClick={resetAllToDefault}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#A4A8AF] hover:text-white bg-white/[0.04] hover:bg-white/[0.08] transition-colors cursor-pointer"
+                >
+                  Repor Predefinições
+                </button>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden divide-y divide-white/[0.06] text-xs">
-                {[
-                  { key: 'Ctrl + P', desc: 'Abrir Paleta de Comandos (Command Palette)' },
-                  { key: 'Ctrl + O', desc: 'Abrir Pasta de Projeto' },
-                  { key: 'Ctrl + B', desc: 'Alternar Barra Lateral Esquerda' },
-                  { key: 'Ctrl + J', desc: 'Alternar Painel Inferior de Terminal & Logs' },
-                  { key: 'Ctrl + R / F5', desc: 'Recarregar Janela do Renderer' },
-                  { key: 'Ctrl + Shift + I / F12', desc: 'Alternar Ferramentas de Programador (DevTools)' },
-                  { key: 'Esc', desc: 'Fechar Modais / Definições / Ecrãs de Diálogo' }
-                ].map((sc) => (
-                  <div key={sc.key} className="flex items-center justify-between p-3.5">
-                    <span className="text-[#ECEDEF]">{sc.desc}</span>
-                    <span className="font-mono text-xs text-[#A4A8AF] bg-[#101113] border border-white/[0.1] px-2.5 py-1 rounded-lg">
-                      {sc.key}
-                    </span>
-                  </div>
-                ))}
+              {recordingId && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center justify-between animate-pulse">
+                  <span>A gravar atalho... Pressiona a combinação de teclas pretendida (ex: Ctrl + Shift + T).</span>
+                  <button
+                    onClick={() => setRecordingId(null)}
+                    className="px-2 py-0.5 rounded text-[11px] bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                  >
+                    Cancelar (Esc)
+                  </button>
+                </div>
+              )}
+
+              <div className="bg-white/[0.02] border border-white/[0.07] rounded-xl overflow-hidden divide-y divide-white/[0.06] text-xs">
+                {shortcuts.map((sc) => {
+                  const isRecording = recordingId === sc.id;
+                  const isCustom = sc.currentCombo !== sc.defaultCombo;
+
+                  return (
+                    <div
+                      key={sc.id}
+                      className={`flex items-center justify-between p-3.5 transition-colors ${
+                        isRecording ? 'bg-amber-500/10' : 'hover:bg-white/[0.02]'
+                      }`}
+                    >
+                      <div className="space-y-0.5 max-w-[65%]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#ECEDEF] font-medium">{sc.label}</span>
+                          <span className="text-[10px] text-[#717784] font-mono uppercase px-1.5 py-0.5 rounded bg-white/[0.04]">
+                            {sc.category}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#717784]">{sc.description}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {isRecording ? (
+                          <div className="font-mono text-xs px-3 py-1.5 rounded-lg bg-amber-500 text-black font-semibold animate-pulse shadow-sm">
+                            Pressiona teclas...
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setRecordingId(sc.id)}
+                            className="font-mono text-xs text-[#ECEDEF] hover:text-white bg-[#101113] hover:bg-white/[0.08] border border-white/[0.12] hover:border-white/[0.25] px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs"
+                            title="Clica para gravar um novo atalho"
+                          >
+                            {sc.currentCombo || 'Nenhum'}
+                          </button>
+                        )}
+
+                        {isCustom && !isRecording && (
+                          <button
+                            onClick={() => resetShortcut(sc.id)}
+                            className="text-[10px] text-[#717784] hover:text-[#ECEDEF] px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] transition-colors cursor-pointer"
+                            title="Repor valor de fábrica"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

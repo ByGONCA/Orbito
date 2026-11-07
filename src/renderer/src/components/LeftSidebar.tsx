@@ -59,6 +59,7 @@ export const LeftSidebar: React.FC = () => {
     activeSection,
     setActiveSection,
     openProjectTab,
+    openProjectSettingsTab,
     openGraphTab,
     pendingApprovals,
     gitStatus,
@@ -279,34 +280,6 @@ export const LeftSidebar: React.FC = () => {
       {/* 3. Core Workspace Navigation */}
       <div className="px-2 py-1 space-y-1 flex-shrink-0">
         <button
-          onClick={() => {
-            const store = useWorkspaceStore.getState();
-            store.setActiveSection('terminal');
-            if (store.terminalSessions.length > 0) {
-              const active =
-                store.terminalSessions.find((t) => t.id === store.activeTerminalId) ||
-                store.terminalSessions[0];
-              store.setActiveTerminalId(active.id);
-              store.openTerminalTab(active.id);
-            }
-          }}
-          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
-            activeSection === 'terminal'
-              ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-xs'
-              : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <div className="flex items-center gap-2.5 truncate">
-            <Terminal
-              className={`w-4 h-4 flex-shrink-0 ${
-                activeSection === 'terminal' ? 'text-white' : 'text-[#747982]'
-              }`}
-            />
-            <span className="truncate">Terminals</span>
-          </div>
-        </button>
-
-        <button
           onClick={() => setActiveSection('tasks')}
           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
             activeSection === 'tasks'
@@ -492,100 +465,21 @@ export const LeftSidebar: React.FC = () => {
                           <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
 
-                        {/* Project Actions Dropdown Menu */}
+                        {/* Project Actions Dropdown Menu - Clean Single Item Opening Page */}
                         {projectMenuOpenId === proj.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="absolute right-0 top-full mt-1 w-48 bg-[#141619] border border-white/[0.1] rounded-xl shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
+                            className="absolute right-0 top-full mt-1 w-44 bg-[#141619] border border-white/[0.1] rounded-xl shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
                           >
                             <button
                               onClick={() => {
                                 setProjectMenuOpenId(null);
-                                setSettingProject(proj);
+                                openProjectSettingsTab(proj.id);
                               }}
                               className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
                             >
                               <Settings className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                              <span>Project Settings...</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setProjectMenuOpenId(null);
-                                toggleProjectFavorite(proj.id);
-                              }}
-                              className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
-                            >
-                              <Star
-                                className={`w-3.5 h-3.5 ${
-                                  proj.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-[#A4A8AF]'
-                                }`}
-                              />
-                              <span>{proj.isFavorite ? 'Remove Favorite' : 'Mark Favorite'}</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setProjectMenuOpenId(null);
-                                setCustomizingProject(proj);
-                              }}
-                              className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                              <span>Customize...</span>
-                            </button>
-
-                            <button
-                              onClick={async () => {
-                                setProjectMenuOpenId(null);
-                                await navigator.clipboard.writeText(proj.path);
-                                setCopiedPathProjId(proj.id);
-                                setTimeout(() => setCopiedPathProjId(null), 2000);
-                              }}
-                              className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#ECEDEF] transition-colors cursor-pointer"
-                            >
-                              <span className="flex items-center gap-2">
-                                <Copy className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                                <span>Copy Path</span>
-                              </span>
-                              {copiedPathProjId === proj.id && (
-                                <span className="text-[10px] text-emerald-400 font-mono">Copied</span>
-                              )}
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setProjectMenuOpenId(null);
-                                window.api?.openInExplorer?.(proj.path);
-                              }}
-                              className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                              <span>Open in Explorer</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setProjectMenuOpenId(null);
-                                loadGitStatus(proj.path);
-                              }}
-                              className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                              <span>Reload Git</span>
-                            </button>
-
-                            <div className="h-px bg-white/[0.06] my-1" />
-
-                            <button
-                              onClick={() => {
-                                setProjectMenuOpenId(null);
-                                closeProject(proj.id);
-                              }}
-                              className="w-full text-left px-2.5 py-1.5 hover:bg-rose-500/10 text-rose-400 flex items-center gap-2 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                              <span>Remove from Workspace</span>
+                              <span>Project Settings</span>
                             </button>
                           </div>
                         )}

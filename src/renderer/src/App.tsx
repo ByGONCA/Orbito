@@ -12,6 +12,7 @@ import { ArcLauncherModal } from './components/ArcLauncherModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppLoadingScreen } from './components/AppLoadingScreen';
 import { useWorkspaceStore } from './stores/workspace.store';
+import { useKeyboardShortcutsStore } from './stores/keyboard-shortcuts.store';
 
 if (typeof window !== 'undefined') {
   (window as any).__WORKSPACE_STORE__ = useWorkspaceStore;
@@ -61,14 +62,53 @@ export const App: React.FC = () => {
     };
 
     const handleWindowKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'b') {
+      const shortcuts = useKeyboardShortcutsStore.getState();
+
+      if (shortcuts.matchesEvent('commandPalette', event)) {
+        event.preventDefault();
+        useWorkspaceStore.getState().setCommandPaletteOpen(true);
+        return;
+      }
+      if (shortcuts.matchesEvent('toggleLeftSidebar', event)) {
+        event.preventDefault();
+        useWorkspaceStore.getState().toggleLeftSidebar();
+        return;
+      }
+      if (shortcuts.matchesEvent('toggleRightPanel', event)) {
+        event.preventDefault();
+        useWorkspaceStore.getState().toggleRightPanel();
+        return;
+      }
+      if (shortcuts.matchesEvent('openBrowser', event)) {
         event.preventDefault();
         useWorkspaceStore.getState().openBrowserTab('https://www.google.com');
         return;
       }
-      if (event.ctrlKey && event.key.toLowerCase() === 't') {
+      if (shortcuts.matchesEvent('openArcLauncher', event)) {
         event.preventDefault();
         useWorkspaceStore.getState().setArcLauncherOpen(true);
+        return;
+      }
+      if (shortcuts.matchesEvent('openSettings', event)) {
+        event.preventDefault();
+        useWorkspaceStore.getState().toggleSettings(true);
+        return;
+      }
+      if (shortcuts.matchesEvent('newTerminal', event)) {
+        event.preventDefault();
+        const store = useWorkspaceStore.getState();
+        store.createTerminalSession('powershell');
+        return;
+      }
+      if (shortcuts.matchesEvent('splitTerminal', event)) {
+        event.preventDefault();
+        const store = useWorkspaceStore.getState();
+        if (store.terminalSessions.length > 1) {
+          const other = store.terminalSessions.find((s) => s.id !== store.activeTerminalId);
+          if (other) {
+            store.setSplitTerminalId(store.splitTerminalId ? null : other.id);
+          }
+        }
         return;
       }
     };

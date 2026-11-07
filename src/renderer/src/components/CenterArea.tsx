@@ -13,6 +13,7 @@ import { CodeEditor } from './CodeEditor';
 import { TerminalWorkspace } from './TerminalWorkspace';
 import { IntelligenceGraphWorkspace } from './IntelligenceGraph/IntelligenceGraphWorkspace';
 import { EmbeddedBrowser } from './EmbeddedBrowser';
+import { ProjectSettingsPage } from './ProjectSettingsPage';
 
 export const CenterArea: React.FC = () => {
   const { activeTabId, openTabs, activeSection } = useWorkspaceStore();
@@ -32,6 +33,8 @@ export const CenterArea: React.FC = () => {
         return <FlowBuilderWorkspace />;
       case 'graph':
         return <IntelligenceGraphWorkspace />;
+      case 'project-settings':
+        return <ProjectSettingsPage projectId={activeTab.projectId} />;
     }
   }
 

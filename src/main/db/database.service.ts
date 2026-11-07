@@ -82,7 +82,7 @@ export class DatabaseService {
         auto_index INTEGER NOT NULL DEFAULT 1,
         file_icon_theme TEXT NOT NULL DEFAULT 'material',
         show_git_file_colors INTEGER NOT NULL DEFAULT 1,
-        discord_rpc_enabled INTEGER NOT NULL DEFAULT 0,
+        discord_rpc_enabled INTEGER NOT NULL DEFAULT 1,
         discord_client_id TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
@@ -540,7 +540,7 @@ export class DatabaseService {
         uiMode: 'simple',
         theme: 'system',
         autoIndex: true,
-        discordRpcEnabled: false
+        discordRpcEnabled: true
       };
       db.prepare(`
         INSERT INTO workspaces (id, name, ui_mode, theme, auto_index, created_at, updated_at)
@@ -566,7 +566,7 @@ export class DatabaseService {
       autoIndex: Boolean(row.auto_index),
       fileIconTheme: row.file_icon_theme || 'material',
       showGitFileColors: row.show_git_file_colors !== undefined ? Boolean(row.show_git_file_colors) : true,
-      discordRpcEnabled: Boolean(row.discord_rpc_enabled),
+      discordRpcEnabled: row.discord_rpc_enabled !== null && row.discord_rpc_enabled !== undefined ? Boolean(row.discord_rpc_enabled) : true,
       discordClientId: row.discord_client_id || undefined
     };
   }

@@ -72,6 +72,10 @@ export interface DiscordActivitySnapshot {
   state: string;
   buttons?: Array<{ label: string; url: string }>;
   startTimestamp?: number;
+  largeImageKey?: string;
+  largeImageText?: string;
+  smallImageKey?: string;
+  smallImageText?: string;
 }
 
 export interface DiscordStatusResponse {

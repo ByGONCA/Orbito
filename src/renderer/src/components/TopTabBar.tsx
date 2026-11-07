@@ -124,6 +124,8 @@ export const TopTabBar: React.FC = () => {
         return Workflow;
       case 'graph':
         return Network;
+      case 'project-settings':
+        return Settings;
       case 'terminal':
       default:
         return Terminal;

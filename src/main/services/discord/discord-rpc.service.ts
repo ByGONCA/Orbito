@@ -15,6 +15,10 @@ export interface DiscordActivitySnapshot {
   state: string;
   buttons?: Array<{ label: string; url: string }>;
   startTimestamp?: number;
+  largeImageKey?: string;
+  largeImageText?: string;
+  smallImageKey?: string;
+  smallImageText?: string;
 }
 
 export interface DiscordStatusResponse {
@@ -154,7 +158,7 @@ export class DiscordRpcService {
    * Returns current status snapshot for UI and IPC queries.
    */
   public getStatus(): DiscordStatusResponse {
-    const isProjectOptedIn = Boolean(this.activeProject?.settings?.discordRpcEnabled);
+    const isProjectOptedIn = Boolean(this.activeProject && this.activeProject.settings?.discordRpcEnabled !== false);
 
     return {
       enabled: this.isGloballyEnabled,
@@ -177,7 +181,7 @@ export class DiscordRpcService {
     }
 
     const orbitoButton = { label: 'Get Orbito', url: OFFICIAL_ORBITO_URL };
-    const isProjectOptedIn = Boolean(this.activeProject && this.activeProject.settings?.discordRpcEnabled);
+    const isProjectOptedIn = Boolean(this.activeProject && this.activeProject.settings?.discordRpcEnabled !== false);
 
     // Case 1: Active agents running
     if (this.activeAgentsCount > 0) {
@@ -194,14 +198,18 @@ export class DiscordRpcService {
       buttons.push(orbitoButton);
 
       return {
-        details: 'Agents working in Orbito',
+        details: this.activeProject ? `Agents in ${this.activeProject.customName || this.activeProject.name}` : 'Agents working in Orbito',
         state: `${count} ${count === 1 ? 'agent' : 'agents'} active`,
         buttons: buttons.slice(0, 2),
-        startTimestamp: this.sessionStartedAt
+        startTimestamp: this.sessionStartedAt,
+        largeImageKey: 'orbito',
+        largeImageText: 'Orbito - AI Workspace',
+        smallImageKey: 'bot',
+        smallImageText: 'AI Agent Running'
       };
     }
 
-    // Case 2: Project is active AND explicitly opted in
+    // Case 2: Project is active (opted in by default unless explicitly disabled)
     if (isProjectOptedIn && this.activeProject) {
       const projectName = this.activeProject.customName || this.activeProject.name;
       const buttons: Array<{ label: string; url: string }> = [];
@@ -217,7 +225,9 @@ export class DiscordRpcService {
           details: `Working in ${projectName}`,
           state: `Project: ${projectName}`,
           buttons: buttons.slice(0, 2),
-          startTimestamp: this.sessionStartedAt
+          startTimestamp: this.sessionStartedAt,
+          largeImageKey: 'orbito',
+          largeImageText: 'Orbito - AI Workspace'
         };
       } else {
         buttons.push(orbitoButton);
@@ -226,7 +236,9 @@ export class DiscordRpcService {
           details: `Working in ${projectName}`,
           state: 'Local project',
           buttons: buttons.slice(0, 2),
-          startTimestamp: this.sessionStartedAt
+          startTimestamp: this.sessionStartedAt,
+          largeImageKey: 'orbito',
+          largeImageText: 'Orbito - AI Workspace'
         };
       }
     }
@@ -236,7 +248,9 @@ export class DiscordRpcService {
       details: 'Using Orbito',
       state: 'Workspace ready',
       buttons: [orbitoButton],
-      startTimestamp: this.sessionStartedAt
+      startTimestamp: this.sessionStartedAt,
+      largeImageKey: 'orbito',
+      largeImageText: 'Orbito - AI Workspace'
     };
   }
 
@@ -357,8 +371,15 @@ export class DiscordRpcService {
       const activityData: any = {
         details: payload.details,
         state: payload.state,
-        startTimestamp: payload.startTimestamp
+        startTimestamp: payload.startTimestamp,
+        largeImageKey: payload.largeImageKey || 'orbito',
+        largeImageText: payload.largeImageText || 'Orbito - AI Workspace'
       };
+
+      if (payload.smallImageKey) {
+        activityData.smallImageKey = payload.smallImageKey;
+        activityData.smallImageText = payload.smallImageText;
+      }
 
       if (payload.buttons && payload.buttons.length > 0) {
         activityData.buttons = payload.buttons.slice(0, 2);

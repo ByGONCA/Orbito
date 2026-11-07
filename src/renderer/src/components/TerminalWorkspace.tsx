@@ -1,30 +1,264 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Columns, X } from 'lucide-react';
+import {
+  Terminal as TerminalIcon,
+  Plus,
+  X,
+  ChevronDown,
+  MoreHorizontal,
+  Columns,
+  Rows,
+  Trash2,
+  Check,
+  SplitSquareHorizontal,
+  SplitSquareVertical
+} from 'lucide-react';
 import { useWorkspaceStore, TerminalSessionItem } from '../stores/workspace.store';
+import type { CLIProvider } from '../../../shared/cli';
 
-// Single Terminal Surface (Exact Photo 3 replica: pure prompt & stream, no extra headers)
+// Terminal Pane Header (matching screenshot: tab items with >_ name [x], +, >_ Command dropdown, ...)
+interface TerminalPaneHeaderProps {
+  sessions: TerminalSessionItem[];
+  activeSessionId: string;
+  onSelectSession: (id: string) => void;
+  onNewSession: (provider?: CLIProvider) => void;
+  onCloseSession: (id: string) => void;
+  onSplitHorizontal: () => void;
+  onSplitVertical: () => void;
+  onCloseSplit?: () => void;
+  isSplit: boolean;
+  onClearOutput: () => void;
+}
+
+const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
+  sessions,
+  activeSessionId,
+  onSelectSession,
+  onNewSession,
+  onCloseSession,
+  onSplitHorizontal,
+  onSplitVertical,
+  onCloseSplit,
+  isSplit,
+  onClearOutput
+}) => {
+  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setIsCommandMenuOpen(false);
+      setIsMoreMenuOpen(false);
+    };
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
+
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="h-8 bg-[#121418] border-b border-white/[0.08] flex items-center justify-between px-2 select-none z-10 flex-shrink-0"
+    >
+      {/* Left Tabs Strip */}
+      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 min-w-0 pr-2">
+        {sessions.map((sess) => {
+          const isActive = sess.id === activeSessionId;
+          const displayTitle = sess.title || (sess.provider === 'cmd' ? 'C:\\WINDOWS\\system32\\cmd.exe' : 'PowerShell 1');
+
+          return (
+            <div
+              key={sess.id}
+              onClick={() => onSelectSession(sess.id)}
+              className={`group flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer flex-shrink-0 max-w-[220px] ${
+                isActive
+                  ? 'bg-white/[0.08] text-white font-medium border-b border-white/[0.3]'
+                  : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.03]'
+              }`}
+              title={sess.workingDirectory || displayTitle}
+            >
+              <span className="text-[11px] text-[#717784] font-bold select-none">&gt;_</span>
+              <span className="truncate">{displayTitle}</span>
+
+              {sessions.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCloseSession(sess.id);
+                  }}
+                  className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 text-[#717784] hover:text-white transition-opacity cursor-pointer ml-0.5"
+                  title="Close tab"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Plus button to add tab in this pane */}
+        <button
+          type="button"
+          onClick={() => onNewSession('powershell')}
+          className="p-1 rounded text-[#717784] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
+          title="New Terminal Tab"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Right Controls: >_ Command dropdown + ... Menu */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Command / Shell Selector */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsCommandMenuOpen(!isCommandMenuOpen);
+              setIsMoreMenuOpen(false);
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-mono text-[#A4A8AF] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+            title="Select shell or run command"
+          >
+            <span className="text-[10px] text-[#717784] font-bold">&gt;_</span>
+            <span>Command</span>
+            <ChevronDown className="w-3 h-3 text-[#717784]" />
+          </button>
+
+          {isCommandMenuOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-0 top-full mt-1 w-48 bg-[#14161b] border border-white/[0.1] rounded-lg shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
+            >
+              <div className="px-2.5 py-1 text-[10px] text-[#717784] uppercase font-mono tracking-wider font-semibold">
+                Shells
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCommandMenuOpen(false);
+                  onNewSession('powershell');
+                }}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#ECEDEF] transition-colors cursor-pointer"
+              >
+                <span>PowerShell</span>
+                {activeSession?.provider === 'powershell' && <Check className="w-3 h-3 text-emerald-400" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCommandMenuOpen(false);
+                  onNewSession('cmd');
+                }}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#ECEDEF] transition-colors cursor-pointer"
+              >
+                <span>Command Prompt (cmd)</span>
+                {activeSession?.provider === 'cmd' && <Check className="w-3 h-3 text-emerald-400" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCommandMenuOpen(false);
+                  onNewSession('bash');
+                }}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#ECEDEF] transition-colors cursor-pointer"
+              >
+                <span>Git Bash / WSL</span>
+                {activeSession?.provider === 'bash' && <Check className="w-3 h-3 text-emerald-400" />}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ... More Options Menu */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMoreMenuOpen(!isMoreMenuOpen);
+              setIsCommandMenuOpen(false);
+            }}
+            className="p-1 rounded text-[#717784] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+            title="Terminal options"
+          >
+            <MoreHorizontal className="w-3.5 h-3.5" />
+          </button>
+
+          {isMoreMenuOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-0 top-full mt-1 w-44 bg-[#14161b] border border-white/[0.1] rounded-lg shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  onSplitHorizontal();
+                }}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
+              >
+                <Rows className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>Split Down (Horizontal)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  onSplitVertical();
+                }}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
+              >
+                <Columns className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>Split Right (Vertical)</span>
+              </button>
+
+              {isSplit && onCloseSplit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    onCloseSplit();
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-rose-400 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Close Split</span>
+                </button>
+              )}
+
+              <div className="h-px bg-white/[0.06] my-1" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  onClearOutput();
+                }}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
+                <span>Clear Output (Ctrl+L)</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Single Terminal Console Surface
 interface TerminalSurfaceProps {
   session: TerminalSessionItem;
   isActive: boolean;
   onFocus: () => void;
-  onCloseSplit?: () => void;
-  isSplit?: boolean;
 }
 
-const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
-  session,
-  isActive,
-  onFocus,
-  onCloseSplit,
-  isSplit
-}) => {
-  const {
-    project,
-    customPaths,
-    updateTerminalSession,
-    clearTerminalOutput,
-    addLog
-  } = useWorkspaceStore();
+const TerminalSurface: React.FC<TerminalSurfaceProps> = ({ session, onFocus }) => {
+  const { project, customPaths, updateTerminalSession, clearTerminalOutput, addLog } = useWorkspaceStore();
 
   const [currentInput, setCurrentInput] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -34,12 +268,10 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto scroll to bottom whenever output or input updates
   useEffect(() => {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session.streamOutput, session.status]);
 
-  // Focus input when clicking anywhere in this terminal surface
   const handlePaneClick = () => {
     onFocus();
     const selection = window.getSelection();
@@ -48,9 +280,8 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
     }
   };
 
-  // Compute prompt prefix (PowerShell: PS C:\...\Orc> )
   const getPromptPrefix = () => {
-    const dir = session.workingDirectory || project?.path || 'C:\\Users\\gonca\\Documents\\coding\\Projects\\Orc';
+    const dir = session.workingDirectory || project?.path || 'C:\\';
     if (session.provider === 'cmd') {
       return `${dir}>`;
     }
@@ -65,7 +296,6 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
     const cmd = currentInput.trim();
     if (!cmd || session.status === 'running') return;
 
-    // Handle clear / cls
     if (cmd.toLowerCase() === 'clear' || cmd.toLowerCase() === 'cls') {
       clearTerminalOutput(session.id);
       setCurrentInput('');
@@ -77,7 +307,6 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
     const prefix = getPromptPrefix();
     const commandLine = `${prefix} ${currentInput}\n`;
 
-    // Save to history & clear input
     setCommandHistory((prev) => [...prev, cmd]);
     setHistoryIndex(-1);
     setCurrentInput('');
@@ -101,9 +330,7 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
     } catch (err: any) {
       updateTerminalSession(session.id, {
         status: 'failed',
-        streamOutput:
-          (session.streamOutput || '') +
-          `\n[Error] ${err.message}\n`
+        streamOutput: (session.streamOutput || '') + `\n[Error] ${err.message}\n`
       });
       addLog(`Execution error: ${err.message}`, 'error');
     }
@@ -148,8 +375,7 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (commandHistory.length === 0) return;
-      const nextIdx =
-        historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+      const nextIdx = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
       setHistoryIndex(nextIdx);
       setCurrentInput(commandHistory[nextIdx]);
       return;
@@ -174,27 +400,9 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
     <div
       ref={containerRef}
       onClick={handlePaneClick}
-      className={`relative h-full flex flex-col bg-[#0d0e12] font-mono select-none overflow-hidden cursor-text ${
-        isSplit ? 'border-r border-white/[0.08] last:border-r-0' : ''
-      }`}
+      className="relative flex-1 flex flex-col bg-[#0d0e12] font-mono select-none overflow-hidden cursor-text min-h-0"
     >
-      {/* If split, show a subtle close button in top right */}
-      {isSplit && onCloseSplit && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onCloseSplit();
-          }}
-          className="absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded text-[10px] text-[#717784] hover:text-white bg-white/[0.04] hover:bg-white/[0.1] transition-colors"
-          title="Close split pane"
-        >
-          ✕
-        </button>
-      )}
-
-      {/* Main Console Canvas (Matching Photo 3) */}
       <div className="flex-1 overflow-auto p-4 text-[#F3F4F6] leading-relaxed select-text font-mono text-[13px] tracking-wide">
-        {/* Prior Output Stream */}
         {session.streamOutput ? (
           <div className="whitespace-pre-wrap font-mono text-[#D1D5DB] mb-1">
             {session.streamOutput
@@ -205,7 +413,6 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
           </div>
         ) : null}
 
-        {/* Current Command Line with Bold Prompt and Block Caret */}
         <div className="flex items-baseline flex-wrap pt-0.5">
           <span className="font-bold text-white whitespace-nowrap select-none mr-2 font-mono">
             {getPromptPrefix()}
@@ -227,7 +434,6 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
           </div>
         </div>
 
-        {/* Subtle Running Indicator */}
         {session.status === 'running' && (
           <div className="pt-2 text-[11px] text-[#717784] font-mono flex items-center gap-2 select-none">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -241,7 +447,7 @@ const TerminalSurface: React.FC<TerminalSurfaceProps> = ({
   );
 };
 
-// Main TerminalWorkspace Component (Direct replica of Photo 3)
+// Main TerminalWorkspace Component with scoped worktree sessions and exact split layout
 export const TerminalWorkspace: React.FC = () => {
   const {
     project,
@@ -249,14 +455,21 @@ export const TerminalWorkspace: React.FC = () => {
     activeTerminalId,
     setActiveTerminalId,
     createTerminalSession,
-    splitTerminalId,
-    setSplitTerminalId,
+    updateTerminalSession,
+    removeTerminalSession,
+    clearTerminalOutput,
     handleCLIStreamEvent
   } = useWorkspaceStore();
 
-  const [isDragOverRight, setIsDragOverRight] = useState(false);
+  const [splitDirection, setSplitDirection] = useState<'horizontal' | 'vertical' | null>(null);
+  const [secondaryTerminalId, setSecondaryTerminalId] = useState<string | null>(null);
 
-  // Listen to IPC stream events globally
+  // Filter sessions scoped to active project / worktree
+  const worktreeSessions = terminalSessions.filter(
+    (s) => !project?.path || s.workingDirectory === project.path
+  );
+
+  // Global stream event listener
   useEffect(() => {
     const unsub = window.api.onCLIStreamEvent((event) => {
       handleCLIStreamEvent(event);
@@ -264,13 +477,13 @@ export const TerminalWorkspace: React.FC = () => {
     return () => unsub();
   }, [handleCLIStreamEvent]);
 
-  // Ensure default PowerShell terminal exists for active project/worktree
+  // Ensure default PowerShell terminal exists for active worktree/project
   useEffect(() => {
-    if (terminalSessions.length === 0) {
+    if (worktreeSessions.length === 0) {
       const newId = createTerminalSession('powershell');
       if (project) {
-        useWorkspaceStore.getState().updateTerminalSession(newId, {
-          title: `C:\\Windows\\system32\\cmd.exe`,
+        updateTerminalSession(newId, {
+          title: `PowerShell 1`,
           projectName: project.name,
           workingDirectory: project.path,
           branch: project.activeBranch || '',
@@ -278,138 +491,159 @@ export const TerminalWorkspace: React.FC = () => {
           streamOutput: ''
         });
       }
-    } else {
-      const state = useWorkspaceStore.getState();
-      const hasTermTab = state.openTabs.some((t) => t.type === 'terminal');
-      if (!hasTermTab && state.terminalSessions.length > 0) {
-        const primary = state.terminalSessions[0];
-        const tabId = `term:${primary.id}`;
-        useWorkspaceStore.setState({
-          openTabs: [
-            ...state.openTabs,
-            {
-              id: tabId,
-              type: 'terminal',
-              title: primary.title || 'Terminal',
-              terminalId: primary.id
-            }
-          ],
-          activeTabId: tabId
-        });
-      }
     }
-  }, [terminalSessions.length, project, createTerminalSession]);
+  }, [worktreeSessions.length, project, createTerminalSession, updateTerminalSession]);
 
-  // Active session
   const primarySession =
-    terminalSessions.find((s) => s.id === activeTerminalId) ||
-    terminalSessions[0];
+    worktreeSessions.find((s) => s.id === activeTerminalId) ||
+    worktreeSessions[0];
 
-  // Secondary split session
-  const secondarySession = splitTerminalId
-    ? terminalSessions.find((s) => s.id === splitTerminalId)
+  const secondarySession = secondaryTerminalId
+    ? worktreeSessions.find((s) => s.id === secondaryTerminalId)
+    : worktreeSessions.length > 1
+    ? worktreeSessions.find((s) => s.id !== primarySession?.id) || null
     : null;
 
-  // Drag and Drop to split terminals side by side
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    // If dragging over the right 45% of the screen, show split drop indicator
-    if (x > rect.width * 0.55) {
-      setIsDragOverRight(true);
-    } else {
-      setIsDragOverRight(false);
+  const handleCreateNewTab = (provider: CLIProvider = 'powershell') => {
+    const count = worktreeSessions.length + 1;
+    const title = provider === 'cmd' ? `C:\\WINDOWS\\system32\\cmd.exe` : `PowerShell ${count}`;
+    const newId = createTerminalSession(provider);
+    if (project) {
+      updateTerminalSession(newId, {
+        title,
+        projectName: project.name,
+        workingDirectory: project.path,
+        branch: project.activeBranch || '',
+        provider,
+        streamOutput: ''
+      });
+    }
+    setActiveTerminalId(newId);
+  };
+
+  const handleSplitHorizontal = () => {
+    setSplitDirection('horizontal');
+    if (!secondarySession) {
+      const newId = createTerminalSession('powershell');
+      if (project) {
+        updateTerminalSession(newId, {
+          title: `Terminal 1`,
+          projectName: project.name,
+          workingDirectory: project.path,
+          branch: project.activeBranch || '',
+          provider: 'powershell',
+          streamOutput: ''
+        });
+      }
+      setSecondaryTerminalId(newId);
     }
   };
 
-  const handleDragLeave = () => {
-    setIsDragOverRight(false);
+  const handleSplitVertical = () => {
+    setSplitDirection('vertical');
+    if (!secondarySession) {
+      const newId = createTerminalSession('powershell');
+      if (project) {
+        updateTerminalSession(newId, {
+          title: `Terminal 1`,
+          projectName: project.name,
+          workingDirectory: project.path,
+          branch: project.activeBranch || '',
+          provider: 'powershell',
+          streamOutput: ''
+        });
+      }
+      setSecondaryTerminalId(newId);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOverRight(false);
-
-    const termId = e.dataTransfer.getData('application/orc-term-id');
-    if (termId && termId !== primarySession?.id) {
-      setSplitTerminalId(termId);
-    }
+  const handleCloseSplit = () => {
+    setSplitDirection(null);
+    setSecondaryTerminalId(null);
   };
 
   if (!primarySession) {
     return <div className="h-full bg-[#0d0e12]" />;
   }
 
-  return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className="h-full w-full bg-[#0d0e12] select-none overflow-hidden relative"
-    >
-      {/* Side-by-side terminal layout (if split) or single terminal (100%) */}
-      {secondarySession ? (
-        <div className="h-full w-full grid grid-cols-2 divide-x divide-white/[0.08]">
-          <TerminalSurface
-            session={primarySession}
-            isActive={activeTerminalId === primarySession.id}
-            onFocus={() => setActiveTerminalId(primarySession.id)}
-            isSplit={true}
-          />
-          <TerminalSurface
-            session={secondarySession}
-            isActive={activeTerminalId === secondarySession.id}
-            onFocus={() => setActiveTerminalId(secondarySession.id)}
-            onCloseSplit={() => setSplitTerminalId(null)}
-            isSplit={true}
-          />
-        </div>
-      ) : (
-        <TerminalSurface
-          session={primarySession}
-          isActive={true}
-          onFocus={() => setActiveTerminalId(primarySession.id)}
-          isSplit={false}
-        />
-      )}
+  const isSplitActive = Boolean(splitDirection && secondarySession);
 
-      {/* Visual Drop Zone Indicator for Drag-to-Split */}
-      {isDragOverRight && (
-        <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-accent/15 border-2 border-dashed border-accent/60 pointer-events-none flex items-center justify-center z-30 backdrop-blur-xs animate-in fade-in duration-100">
-          <div className="px-3 py-1.5 rounded-lg bg-[#14161b] text-white font-sans text-xs shadow-xl border border-white/[0.1]">
-            Drop to split side by side
+  return (
+    <div className="h-full w-full bg-[#0d0e12] select-none overflow-hidden relative flex flex-col">
+      {isSplitActive ? (
+        <div
+          className={`flex-1 flex overflow-hidden ${
+            splitDirection === 'horizontal' ? 'flex-col divide-y divide-white/[0.08]' : 'flex-row divide-x divide-white/[0.08]'
+          }`}
+        >
+          {/* Top / Left Pane */}
+          <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
+            <TerminalPaneHeader
+              sessions={worktreeSessions}
+              activeSessionId={primarySession.id}
+              onSelectSession={(id) => setActiveTerminalId(id)}
+              onNewSession={handleCreateNewTab}
+              onCloseSession={(id) => removeTerminalSession(id)}
+              onSplitHorizontal={handleSplitHorizontal}
+              onSplitVertical={handleSplitVertical}
+              onCloseSplit={handleCloseSplit}
+              isSplit={true}
+              onClearOutput={() => clearTerminalOutput(primarySession.id)}
+            />
+            <TerminalSurface
+              session={primarySession}
+              isActive={activeTerminalId === primarySession.id}
+              onFocus={() => setActiveTerminalId(primarySession.id)}
+            />
+          </div>
+
+          {/* Bottom / Right Pane (Exact layout as shown in screenshot) */}
+          <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
+            <TerminalPaneHeader
+              sessions={worktreeSessions}
+              activeSessionId={secondarySession?.id || primarySession.id}
+              onSelectSession={(id) => setSecondaryTerminalId(id)}
+              onNewSession={handleCreateNewTab}
+              onCloseSession={(id) => removeTerminalSession(id)}
+              onSplitHorizontal={handleSplitHorizontal}
+              onSplitVertical={handleSplitVertical}
+              onCloseSplit={handleCloseSplit}
+              isSplit={true}
+              onClearOutput={() => secondarySession && clearTerminalOutput(secondarySession.id)}
+            />
+            {secondarySession && (
+              <TerminalSurface
+                session={secondarySession}
+                isActive={activeTerminalId === secondarySession.id}
+                onFocus={() => setActiveTerminalId(secondarySession.id)}
+              />
+            )}
           </div>
         </div>
-      )}
-
-      {/* Floating Split Controls in Top Right */}
-      {terminalSessions.length > 1 && (
-        <div className="absolute top-2.5 right-3 z-20 flex items-center gap-1.5 bg-[#14161b]/80 backdrop-blur-md px-2 py-1 rounded-md border border-white/[0.08] text-[11px] text-[#A4A8AF]">
-          {secondarySession ? (
-            <button
-              onClick={() => setSplitTerminalId(null)}
-              className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
-              title="Close side-by-side split"
-            >
-              <X className="w-3 h-3 text-rose-400" />
-              <span>Unsplit</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                const other = terminalSessions.find((s) => s.id !== primarySession.id);
-                if (other) setSplitTerminalId(other.id);
-              }}
-              className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
-              title="Split side by side with next terminal (or drag tab to right)"
-            >
-              <Columns className="w-3 h-3 text-[#ECEDEF]" />
-              <span>Split 2</span>
-            </button>
-          )}
+      ) : (
+        /* Single Full Terminal Pane */
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <TerminalPaneHeader
+            sessions={worktreeSessions}
+            activeSessionId={primarySession.id}
+            onSelectSession={(id) => setActiveTerminalId(id)}
+            onNewSession={handleCreateNewTab}
+            onCloseSession={(id) => removeTerminalSession(id)}
+            onSplitHorizontal={handleSplitHorizontal}
+            onSplitVertical={handleSplitVertical}
+            onCloseSplit={undefined}
+            isSplit={false}
+            onClearOutput={() => clearTerminalOutput(primarySession.id)}
+          />
+          <TerminalSurface
+            session={primarySession}
+            isActive={true}
+            onFocus={() => setActiveTerminalId(primarySession.id)}
+          />
         </div>
       )}
     </div>
   );
 };
+
+export default TerminalWorkspace;
