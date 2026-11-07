@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schema_version": "1.0.0",
+  "project": "orc-ai-workspace",
+  "project_name": "Orbito",
+  "last_updated": "2026-11-07T19:58:00Z",
+  "baseline_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+  "primary_repository": {
+    "path": "C:/Users/gonca/OneDrive/Documents/Projects/Orbito/Orbito",
+    "branch": "master",
+    "role": "coordination-hub-and-integration-target"
+  },
+  "governance": {
+    "authority": "lead-architect",
+    "protocol": "Single Writer Protocol",
+    "rules": [
+      "The Lead Architect is the sole authority for modifying REGISTRY.json.",
+      "Specialists must NEVER modify or overwrite REGISTRY.json directly.",
+      "Specialists communicate state changes via their individual STATUS.json files and formal HANDOFF.md submissions.",
+      "The Lead Architect validates specialist handoffs and updates REGISTRY.json accordingly."
+    ]
+  },
+  "worktrees": [
+    {
+      "agent_id": "backend",
+      "worktree_name": "orbito-backend",
+      "path": "C:/Users/gonca/orca/workspaces/Orbito/orbito-backend",
+      "branch": "agent/backend-core",
+      "role": "backend-specialist",
+      "status": "IDLE",
+      "current_task": null,
+      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "status_file": ".agents/coordination/agents/backend/STATUS.json",
+      "handoff_file": ".agents/coordination/agents/backend/HANDOFF.md"
+    },
+    {
+      "agent_id": "frontend",
+      "worktree_name": "orbito-frontend",
+      "path": "C:/Users/gonca/orca/workspaces/Orbito/orbito-frontend",
+      "branch": "agent/frontend-ui",
+      "role": "frontend-specialist",
+      "status": "IDLE",
+      "current_task": null,
+      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "status_file": ".agents/coordination/agents/frontend/STATUS.json",
+      "handoff_file": ".agents/coordination/agents/frontend/HANDOFF.md"
+    },
+    {
+      "agent_id": "git-review",
+      "worktree_name": "orbito-git-review",
+      "path": "C:/Users/gonca/orca/workspaces/Orbito/orbito-git-review",
+      "branch": "agent/git-review",
+      "role": "git-specialist",
+      "status": "IDLE",
+      "current_task": null,
+      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "status_file": ".agents/coordination/agents/git-review/STATUS.json",
+      "handoff_file": ".agents/coordination/agents/git-review/HANDOFF.md"
+    },
+    {
+      "agent_id": "workflows",
+      "worktree_name": "orbito-workflows",
+      "path": "C:/Users/gonca/orca/workspaces/Orbito/orbito-workflows",
+      "branch": "agent/ai-workflows",
+      "role": "workflows-specialist",
+      "status": "IDLE",
+      "current_task": null,
+      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "status_file": ".agents/coordination/agents/workflows/STATUS.json",
+      "handoff_file": ".agents/coordination/agents/workflows/HANDOFF.md"
+    }
+  ],
+  "active_tasks": [],
+  "blocked_issues": [],
+  "integration_queue": []
+}

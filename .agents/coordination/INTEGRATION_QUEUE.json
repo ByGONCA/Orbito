@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schema_version": "1.0.0",
+  "description": "Orbito Central Multi-Agent Integration Queue",
+  "last_updated": "2026-11-07T19:58:00Z",
+  "quality_gates": {
+    "GATE_1_TYPECHECK": {
+      "name": "TypeScript Type Integrity",
+      "command": "npm run typecheck",
+      "criteria": "Zero type errors across both tsconfig.node.json and tsconfig.web.json."
+    },
+    "GATE_2_TEST_SUITE": {
+      "name": "Automated Test Suite",
+      "command": "npm test",
+      "criteria": "100% of automated tests pass without regressions."
+    },
+    "GATE_3_GIT_INTEGRITY": {
+      "name": "Git & Conflict Verification",
+      "command": "git rebase master",
+      "criteria": "Branch cleanly rebased onto current master with zero conflict markers and strictly isolated commit history respecting OWNERSHIP.json."
+    },
+    "GATE_4_ARCHITECT_REVIEW": {
+      "name": "Lead Architect Review & Security Audit",
+      "command": "node scripts/validate-coordination.js",
+      "criteria": "Lead Architect signoff confirming adherence to Ponytail simplicity ladder, anti-boxiness UX rules, security boundaries, and clean integration."
+    }
+  },
+  "queue": []
+}

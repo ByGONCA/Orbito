@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "agent_id": "git-review",
+  "worktree": "orbito-git-review",
+  "branch": "agent/git-review",
+  "status": "IDLE",
+  "current_task": null,
+  "progress": 0,
+  "blockers": [],
+  "last_activity": "2026-11-07T19:58:00Z",
+  "last_handoff": null,
+  "modified_files": []
+}

@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schema_version": "1.1.0",
+  "description": "Orbito Central File and Domain Ownership Manifest — Hardened Boundary Architecture",
+  "last_updated": "2026-11-07T20:33:00Z",
+  "governance_policy": {
+    "single_writer_authority": "lead-architect",
+    "protected_file_rule": "Modifications to protected shared files require an Architectural Decision Record (ADR) approved by the Lead Architect prior to staging. Unilateral edits by specialists in feature branches will be rejected at Integration Gate 3."
+  },
+  "domains": {
+    "backend": {
+      "agent_id": "backend",
+      "role": "backend-specialist",
+      "worktree": "orbito-backend",
+      "branch": "agent/backend-core",
+      "description": "Electron main process, PTY/terminal service, SQLite service, CLI adapters, preload bridge",
+      "owned_patterns": [
+        "src/main/**",
+        "src/preload/**",
+        "tests/pty-terminal.test.ts",
+        "tests/main/**"
+      ],
+      "exceptions": [
+        "src/main/services/git/**",
+        "src/main/services/code-review/**",
+        "src/main/db/schema.ts",
+        "src/shared/**"
+      ]
+    },
+    "frontend": {
+      "agent_id": "frontend",
+      "role": "frontend-specialist",
+      "worktree": "orbito-frontend",
+      "branch": "agent/frontend-ui",
+      "description": "React 19 UI, Tailwind styling, Zustand stores, view components, tabs, terminal UI",
+      "owned_patterns": [
+        "src/renderer/**"
+      ],
+      "exceptions": [
+        "src/renderer/src/components/Review*",
+        "src/shared/**"
+      ]
+    },
+    "git-review": {
+      "agent_id": "git-review",
+      "role": "git-specialist",
+      "worktree": "orbito-git-review",
+      "branch": "agent/git-review",
+      "description": "Git operations, worktree management, code review engine, diff viewer, review UI",
+      "owned_patterns": [
+        "src/main/services/git/**",
+        "src/main/services/code-review/**",
+        "src/renderer/src/components/Review*",
+        "tests/git/**"
+      ],
+      "exceptions": [
+        "src/shared/**"
+      ]
+    },
+    "workflows": {
+      "agent_id": "workflows",
+      "role": "workflows-specialist",
+      "worktree": "orbito-workflows",
+      "branch": "agent/ai-workflows",
+      "description": "Agent workflows, agent skills, automation scripts, orchestrator adapters",
+      "owned_patterns": [
+        ".agents/workflows/**",
+        ".agents/skills/**",
+        "scripts/ai/**"
+      ],
+      "exceptions": [
+        "src/**"
+      ]
+    }
+  },
+  "protected_files": {
+    "package.json": {
+      "path": "package.json",
+      "responsible_owner": "lead-architect",
+      "proposers": ["backend", "frontend", "git-review", "workflows"],
+      "approval_requirements": "Lead Architect RFC signoff. Must verify dependency necessity, license, and zero conflict with Electron 34 / native modules.",
+      "notification_targets": ["all"],
+      "conflict_prevention": "Only modified on master by Lead Architect during integration; specialists never run npm install with new packages directly on feature branches."
+    },
+    "package-lock.json": {
+      "path": "package-lock.json",
+      "responsible_owner": "lead-architect",
+      "proposers": ["lead-architect"],
+      "approval_requirements": "Deterministic npm ci verification. Modified strictly in conjunction with approved package.json updates.",
+      "notification_targets": ["all"],
+      "conflict_prevention": "Lockfile regenerated solely by Lead Architect on master; specialists run npm ci without altering lockfile."
+    },
+    "src/shared/ipc.ts": {
+      "path": "src/shared/ipc.ts",
+      "responsible_owner": "lead-architect",
+      "proposers": ["backend", "frontend", "git-review"],
+      "approval_requirements": "Lead Architect contract review. IPC channels must follow namespace conventions and declare strict input/output Zod or TypeScript schemas.",
+      "notification_targets": ["backend", "frontend", "git-review"],
+      "conflict_prevention": "Single source of truth for IPC channels; changes staged only after cross-agent contract agreement in ADR."
+    },
+    "src/shared/types.ts": {
+      "path": "src/shared/types.ts",
+      "responsible_owner": "lead-architect",
+      "proposers": ["backend", "frontend", "git-review"],
+      "approval_requirements": "Lead Architect review. Types must remain backward-compatible and platform-agnostic (no Node-only or DOM-only types).",
+      "notification_targets": ["backend", "frontend", "git-review"],
+      "conflict_prevention": "Contract changes require upstream coordination; additive-only changes permitted without breaking existing callers."
+    },
+    "src/shared/cli.ts": {
+      "path": "src/shared/cli.ts",
+      "responsible_owner": "backend",
+      "proposers": ["backend", "workflows"],
+      "approval_requirements": "Lead Architect and Backend Specialist review. CLI schemas must support 30+ agent adapters.",
+      "notification_targets": ["backend", "workflows"],
+      "conflict_prevention": "Backend specialist owns implementation; workflows specialist proposes via ADR before interface changes."
+    },
+    "src/preload/index.ts": {
+      "path": "src/preload/index.ts",
+      "responsible_owner": "backend",
+      "proposers": ["backend", "frontend"],
+      "approval_requirements": "Lead Architect security audit and Backend Specialist approval. No raw node primitives or shell execution may be exposed to window.",
+      "notification_targets": ["frontend"],
+      "conflict_prevention": "Backend Specialist is sole author; Frontend Specialist requests bridge additions via IPC contract RFC, never directly editing preload."
+    },
+    "src/main/ipc/register.ts": {
+      "path": "src/main/ipc/register.ts",
+      "responsible_owner": "backend",
+      "proposers": ["backend", "git-review"],
+      "approval_requirements": "Backend Specialist approval and Lead Architect signoff. Handlers must sanitize input and catch rejections.",
+      "notification_targets": ["backend", "git-review"],
+      "conflict_prevention": "Git specialist registers handlers via modular registration functions (e.g. registerGitHandlers); main register.ts edited only by Backend Specialist."
+    },
+    "src/main/db/database.service.ts": {
+      "path": "src/main/db/database.service.ts",
+      "responsible_owner": "backend",
+      "proposers": ["backend"],
+      "approval_requirements": "Backend Specialist and Lead Architect signoff. Must preserve SQLite WAL concurrency and prepared statement caching.",
+      "notification_targets": ["backend", "git-review"],
+      "conflict_prevention": "DatabaseService methods are strictly owned by Backend Specialist. Other agents consume via IPC or domain service wrappers."
+    },
+    "src/main/db/schema.ts": {
+      "path": "src/main/db/schema.ts",
+      "responsible_owner": "lead-architect",
+      "proposers": ["backend", "git-review"],
+      "approval_requirements": "Formal ADR and migration script validation. All table alterations must be non-destructive and backward-compatible.",
+      "notification_targets": ["backend", "git-review"],
+      "conflict_prevention": "Solely modified via Lead Architect ADR; Drizzle migration files generated and verified before merging."
+    },
+    "src/renderer/src/stores/workspace.store.ts": {
+      "path": "src/renderer/src/stores/workspace.store.ts",
+      "responsible_owner": "frontend",
+      "proposers": ["frontend"],
+      "approval_requirements": "Frontend Specialist approval. Must adhere to Zustand shallow selector patterns and anti-boxiness UI rules.",
+      "notification_targets": ["frontend"],
+      "conflict_prevention": "Frontend Specialist is sole owner. Other UI components interact via store hooks, never modifying store definitions directly."
+    },
+    "AGENTS.md": {
+      "path": "AGENTS.md",
+      "responsible_owner": "lead-architect",
+      "proposers": ["all"],
+      "approval_requirements": "Human owner and Lead Architect consensus. Governs multi-agent operating rules, ponytail simplicity, and anti-boxiness rules.",
+      "notification_targets": ["all"],
+      "conflict_prevention": "Central repository rulebook; read-only for all specialist agents."
+    },
+    ".agents/coordination/REGISTRY.json": {
+      "path": ".agents/coordination/REGISTRY.json",
+      "responsible_owner": "lead-architect",
+      "proposers": ["none (read-only for specialists)"],
+      "approval_requirements": "Single Writer Protocol: only Lead Architect writes to this file.",
+      "notification_targets": ["all"],
+      "conflict_prevention": "Specialists write only to STATUS.json and HANDOFF.md. Lead Architect aggregates into REGISTRY.json."
+    },
+    ".agents/coordination/OWNERSHIP.json": {
+      "path": ".agents/coordination/OWNERSHIP.json",
+      "responsible_owner": "lead-architect",
+      "proposers": ["all"],
+      "approval_requirements": "Lead Architect signoff.",
+      "notification_targets": ["all"],
+      "conflict_prevention": "Central ownership policy document; modified only by Lead Architect."
+    },
+    ".agents/coordination/INTEGRATION_QUEUE.json": {
+      "path": ".agents/coordination/INTEGRATION_QUEUE.json",
+      "responsible_owner": "lead-architect",
+      "proposers": ["lead-architect"],
+      "approval_requirements": "Lead Architect signoff following Quality Gates verification.",
+      "notification_targets": ["all"],
+      "conflict_prevention": "Queue ordering and gate evaluations executed exclusively by Lead Architect."
+    }
+  },
+  "protected_shared": {
+    "policy": "REQUIRES_LEAD_ARCHITECT_RFC_AND_APPROVAL",
+    "description": "Composite pattern list for backward-compatibility with validation tooling.",
+    "patterns": [
+      "package.json",
+      "package-lock.json",
+      "electron.vite.config.ts",
+      "tsconfig.json",
+      "tsconfig.node.json",
+      "tsconfig.web.json",
+      "drizzle.config.ts",
+      "src/shared/ipc.ts",
+      "src/shared/types.ts",
+      "src/shared/cli.ts",
+      "src/preload/index.ts",
+      "src/main/ipc/register.ts",
+      "src/main/db/database.service.ts",
+      "src/main/db/schema.ts",
+      "src/renderer/src/stores/workspace.store.ts",
+      "AGENTS.md",
+      ".agents/coordination/REGISTRY.json",
+      ".agents/coordination/OWNERSHIP.json",
+      ".agents/coordination/INTEGRATION_QUEUE.json"
+    ]
+  }
+}

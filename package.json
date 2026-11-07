@@ -14,7 +14,8 @@
     "build": "electron-vite build",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
     "test": "node scripts/run-electron-tests.js run",
-    "test:host": "vitest run"
+    "test:host": "vitest run",
+    "validate:coordination": "node scripts/validate-coordination.js"
   },
   "dependencies": {
     "@glass-sdk/liquid-glass": "^0.0.2",
