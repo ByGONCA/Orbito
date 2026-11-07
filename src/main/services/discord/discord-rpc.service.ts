@@ -5,9 +5,9 @@ import { databaseService } from '../../db/database.service';
 import { detectProjectGitRemote, type NormalizedGitRemote } from '../git-remote-resolver';
 import { appLogger } from '../app-logger';
 
-export const DEFAULT_DISCORD_CLIENT_ID = '383226320970055681';
+export const DEFAULT_DISCORD_CLIENT_ID = '1568419446719127684';
 export const OFFICIAL_ORBITO_URL = 'https://github.com/ByGONCA/Orbito';
-export const OFFICIAL_ORBITO_ICON_URL = 'https://raw.githubusercontent.com/ByGONCA/Orbito/master/resources/icon.png';
+export const OFFICIAL_ORBITO_ICON_URL = 'https://cdn.discordapp.com/app-icons/1568419446719127684/d3fcb37422664c5e4e15a8448d5091a8.png?size=512';
 
 export type DiscordConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';
 
@@ -59,7 +59,14 @@ export class DiscordRpcService {
     try {
       const settings = databaseService.getSettings();
       this.isGloballyEnabled = Boolean(settings.discordRpcEnabled);
-      this.configuredClientId = (settings.discordClientId || '').trim() || DEFAULT_DISCORD_CLIENT_ID;
+      const dbClientId = (settings.discordClientId || '').trim();
+      // Auto-migrate from legacy VS Code placeholder ID
+      if (dbClientId === '383226320970055681') {
+        this.configuredClientId = DEFAULT_DISCORD_CLIENT_ID;
+        databaseService.updateSettings({ discordClientId: undefined });
+      } else {
+        this.configuredClientId = dbClientId || DEFAULT_DISCORD_CLIENT_ID;
+      }
 
       // Restore active project if available
       if (settings.currentProjectId) {

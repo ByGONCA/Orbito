@@ -1168,7 +1168,7 @@ export const SettingsModal: React.FC = () => {
                     type="text"
                     value={customClientIdInput}
                     onChange={(e) => setCustomClientIdInput(e.target.value)}
-                    placeholder="383226320970055681"
+                    placeholder="1568419446719127684"
                     className="flex-1 bg-[#101113] border border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-[#ECEDEF] placeholder:text-[#747982] focus:outline-none focus:border-white/30 font-mono"
                   />
                   <Button

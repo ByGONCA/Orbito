@@ -166,10 +166,10 @@ export interface WorkspaceState {
   skillExecutions: SkillExecutionRecord[];
   setSkillExecutions: (execs: SkillExecutionRecord[]) => void;
 
-  cliStatuses: Record<CLIProvider, CLIInstallationStatus> | null;
-  cliAuthStatuses: Record<CLIProvider, CLIAuthStatus> | null;
+  cliStatuses: Partial<Record<CLIProvider, CLIInstallationStatus>> | null;
+  cliAuthStatuses: Partial<Record<CLIProvider, CLIAuthStatus>> | null;
   activeProvider: CLIProvider;
-  customPaths: Record<CLIProvider, string>;
+  customPaths: Partial<Record<CLIProvider, string>>;
 
   // 9. Workflows & Visual Flows
   workflows: WorkflowRecord[];
@@ -311,8 +311,8 @@ export interface WorkspaceState {
   setCustomPath: (provider: CLIProvider, path: string) => void;
   loadGitStatus: (projectPath: string) => Promise<void>;
 
-  setCLIStatuses: (statuses: Record<CLIProvider, CLIInstallationStatus>) => void;
-  setCLIAuthStatuses: (auths: Record<CLIProvider, CLIAuthStatus>) => void;
+  setCLIStatuses: (statuses: Partial<Record<CLIProvider, CLIInstallationStatus>>) => void;
+  setCLIAuthStatuses: (auths: Partial<Record<CLIProvider, CLIAuthStatus>>) => void;
   setActiveProvider: (provider: CLIProvider) => void;
 }
 

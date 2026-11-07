@@ -4,19 +4,78 @@ import type {
   CLIAuthStatus
 } from '../../shared/cli';
 import type { ICLIAdapter } from './adapter.interface';
-import { claudeCodeAdapter } from './adapters/claude-code.adapter';
-import { codexAdapter } from './adapters/codex.adapter';
-import { geminiAdapter } from './adapters/gemini.adapter';
-import { ollamaAdapter } from './adapters/ollama.adapter';
+import {
+  claudeCodeAdapter,
+  codexAdapter,
+  geminiAdapter,
+  ollamaAdapter,
+  aiderAdapter,
+  ampAdapter,
+  anteAdapter,
+  auggieAdapter,
+  clineAdapter,
+  codebuddyAdapter,
+  codebuffAdapter,
+  continueAdapter,
+  crushAdapter,
+  cursorAdapter,
+  devinAdapter,
+  droidAdapter,
+  copilotAdapter,
+  gooseAdapter,
+  hermesAdapter,
+  kilocodeAdapter,
+  kimiAdapter,
+  kiroAdapter,
+  vibeAdapter,
+  opencodeAdapter,
+  openhandsAdapter,
+  piAdapter,
+  qwenAdapter,
+  roocodeAdapter,
+  rovoAdapter,
+  traeAdapter,
+  zedAdapter
+} from './adapters';
 
 export class CLIManager {
   private adapters: Map<CLIProvider, ICLIAdapter> = new Map();
 
   constructor() {
+    // 1. Existing baseline adapters
     this.registerAdapter(claudeCodeAdapter);
     this.registerAdapter(codexAdapter);
     this.registerAdapter(geminiAdapter);
     this.registerAdapter(ollamaAdapter);
+
+    // 2. Full 30 Integration Targets
+    this.registerAdapter(aiderAdapter);
+    this.registerAdapter(ampAdapter);
+    this.registerAdapter(anteAdapter);
+    this.registerAdapter(auggieAdapter);
+    this.registerAdapter(clineAdapter);
+    this.registerAdapter(codebuddyAdapter);
+    this.registerAdapter(codebuffAdapter);
+    this.registerAdapter(continueAdapter);
+    this.registerAdapter(crushAdapter);
+    this.registerAdapter(cursorAdapter);
+    this.registerAdapter(devinAdapter);
+    this.registerAdapter(droidAdapter);
+    this.registerAdapter(copilotAdapter);
+    this.registerAdapter(gooseAdapter);
+    this.registerAdapter(hermesAdapter);
+    this.registerAdapter(kilocodeAdapter);
+    this.registerAdapter(kimiAdapter);
+    this.registerAdapter(kiroAdapter);
+    this.registerAdapter(vibeAdapter);
+    this.registerAdapter(opencodeAdapter);
+    this.registerAdapter(openhandsAdapter);
+    this.registerAdapter(piAdapter);
+    this.registerAdapter(qwenAdapter);
+    this.registerAdapter(roocodeAdapter);
+    this.registerAdapter(rovoAdapter);
+    this.registerAdapter(traeAdapter);
+    this.registerAdapter(zedAdapter);
   }
 
   public registerAdapter(adapter: ICLIAdapter): void {
@@ -29,6 +88,14 @@ export class CLIManager {
       throw new Error(`Unsupported or unregistered CLI provider: '${provider}'`);
     }
     return adapter;
+  }
+
+  public getAllAdapters(): ICLIAdapter[] {
+    return Array.from(this.adapters.values());
+  }
+
+  public listAllProviders(): CLIProvider[] {
+    return Array.from(this.adapters.keys());
   }
 
   public async detectAll(customPaths?: Record<string, string>): Promise<Record<CLIProvider, CLIInstallationStatus>> {
@@ -62,7 +129,7 @@ export class CLIManager {
         state: 'not_installed',
         isAuthenticated: false,
         authType: 'missing',
-        details: 'CLI binary is not installed'
+        details: `${provider} CLI binary is not installed`
       };
     }
 

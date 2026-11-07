@@ -7,10 +7,10 @@ export async function findExecutableOnPath(executableName: string): Promise<stri
   const isWin = process.platform === 'win32';
   const probeCommand = isWin ? 'where.exe' : 'which';
 
-  return new Promise((resolve) => {
+  // 1. Try standard system PATH probe
+  const pathResult = await new Promise<string | null>((resolve) => {
     execFile(probeCommand, [executableName], { timeout: 3000 }, (error, stdout) => {
       if (error || !stdout) {
-        // Also check with .cmd or .exe extensions on Windows if not provided
         if (isWin && !executableName.endsWith('.cmd') && !executableName.endsWith('.exe')) {
           execFile('where.exe', [`${executableName}.cmd`], { timeout: 3000 }, (err2, out2) => {
             if (err2 || !out2) {
@@ -30,6 +30,50 @@ export async function findExecutableOnPath(executableName: string): Promise<stri
       resolve(firstLine || null);
     });
   });
+
+  if (pathResult && fs.existsSync(pathResult)) {
+    return pathResult;
+  }
+
+  // 2. Check well-known user & package manager directories
+  const homeDir = os.homedir();
+  const candidateDirs: string[] = [];
+
+  if (isWin) {
+    const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+    const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
+    candidateDirs.push(
+      path.join(appData, 'npm'),
+      path.join(localAppData, 'Programs'),
+      path.join(homeDir, '.cargo', 'bin'),
+      path.join(localAppData, 'Microsoft', 'WindowsApps')
+    );
+  } else {
+    candidateDirs.push(
+      '/usr/local/bin',
+      '/opt/homebrew/bin',
+      path.join(homeDir, '.local', 'bin'),
+      path.join(homeDir, '.cargo', 'bin'),
+      path.join(homeDir, '.npm-global', 'bin')
+    );
+  }
+
+  const exts = isWin ? ['.cmd', '.exe', '.bat', ''] : [''];
+
+  for (const dir of candidateDirs) {
+    for (const ext of exts) {
+      const fullPath = path.join(dir, `${executableName}${ext}`);
+      try {
+        if (fs.existsSync(fullPath)) {
+          return fullPath;
+        }
+      } catch {
+        // Ignore fs permission error
+      }
+    }
+  }
+
+  return null;
 }
 
 export async function probeVersion(executablePath: string, versionFlag = '--version'): Promise<string | null> {
