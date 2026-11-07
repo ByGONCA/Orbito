@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "task_id": "ORB-BACK-001",
+  "title": "Backend Architecture Stabilization and Native Terminal Reliability",
+  "assigned_agent": "backend",
+  "worktree": "orbito-backend",
+  "branch": "agent/backend-core",
+  "priority": "HIGH",
+  "status": "READY",
+  "created_at": "2026-11-07T22:37:00Z",
+  "updated_at": "2026-11-07T22:37:00Z",
+  "objective": "Audit, stabilize and improve the existing backend implementation established in the baseline, focusing on native terminal stability, PTY lifecycle, and CLI adapter reliability.",
+  "context": "The baseline established native terminal PTY integration and 30+ CLI adapters. The backend specialist must harden error handling, prevent orphaned processes, ensure reliable process cancellation, and improve resource cleanup without breaking IPC contracts.",
+  "scope": {
+    "allowed_files": [
+      "src/main/terminal/**",
+      "src/main/cli/**",
+      "src/main/services/execution-engine.service.ts",
+      "src/main/services/pty-service.ts",
+      "src/main/ipc/terminal-handlers.ts",
+      "tests/pty-terminal.test.ts",
+      "tests/adapters/**"
+    ],
+    "forbidden_files": [
+      "src/renderer/**",
+      "src/main/services/git/**",
+      "src/main/services/code-review/**",
+      "src/main/db/schema.ts",
+      "src/shared/ipc.ts",
+      "src/shared/types.ts",
+      "src/preload/index.ts",
+      "package.json",
+      "package-lock.json",
+      ".agents/coordination/REGISTRY.json"
+    ]
+  },
+  "priorities": [
+    "Native terminal stability",
+    "PTY process lifecycle and session management",
+    "CLI adapter reliability",
+    "Error handling and crash prevention",
+    "Resource cleanup and orphaned process termination",
+    "Test coverage for terminal edge cases"
+  ],
+  "dependencies": [],
+  "expected_deliverables": [
+    "Hardened PTY session lifecycle handling process exit, cancellation and cleanup",
+    "Zero orphaned processes on abrupt terminal closing or cancellation",
+    "Graceful handling of unhandled rejections in terminal and adapter subsystems",
+    "Unit and integration test coverage for terminal edge cases in tests/pty-terminal.test.ts",
+    "Completed HANDOFF.md with test logs and typecheck evidence"
+  ],
+  "acceptance_criteria": [
+    "Typecheck passes (0 errors across node and web targets)",
+    "All tests in tests/pty-terminal.test.ts and tests/adapters/** pass 100%",
+    "PTY process lifecycle cleanly handles exit, resize, signal propagation and resource cleanup",
+    "No orphaned ConPTY or cmd/powershell processes left in background after session termination",
+    "No unhandled promise rejections or main-process crashes under error conditions",
+    "No unauthorized modifications to protected shared files (src/shared/**, schema.ts, package.json)",
+    "Handoff submission created at .agents/coordination/agents/backend/HANDOFF.md with full verification evidence"
+  ],
+  "required_tests": [
+    "npm run typecheck",
+    "npx vitest run tests/pty-terminal.test.ts",
+    "npm test"
+  ],
+  "risk_assessment": {
+    "level": "MEDIUM",
+    "mitigation": "Do not rewrite working subsystems without demonstrating concrete defects. Any necessary change to shared IPC contracts requires an ADR proposal to the Lead Architect."
+  },
+  "handoff_requirements": {
+    "status_file": ".agents/coordination/agents/backend/STATUS.json",
+    "handoff_file": ".agents/coordination/agents/backend/HANDOFF.md",
+    "evidence_required": [
+      "npm run typecheck stdout",
+      "npx vitest run tests/pty-terminal.test.ts stdout",
+      "git status --short and diff summary"
+    ]
+  }
+}

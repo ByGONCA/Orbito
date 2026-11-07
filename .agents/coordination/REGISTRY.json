@@ -3,8 +3,8 @@
   "schema_version": "1.0.0",
   "project": "orc-ai-workspace",
   "project_name": "Orbito",
-  "last_updated": "2026-11-07T19:58:00Z",
-  "baseline_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+  "last_updated": "2026-11-07T22:37:00Z",
+  "baseline_commit": "1619be9a66d9205096c1ef06ce618f5499852ef9",
   "primary_repository": {
     "path": "C:/Users/gonca/OneDrive/Documents/Projects/Orbito/Orbito",
     "branch": "master",
@@ -27,9 +27,9 @@
       "path": "C:/Users/gonca/orca/workspaces/Orbito/orbito-backend",
       "branch": "agent/backend-core",
       "role": "backend-specialist",
-      "status": "IDLE",
-      "current_task": null,
-      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "status": "READY",
+      "current_task": "ORB-BACK-001",
+      "head_commit": "1619be9a66d9205096c1ef06ce618f5499852ef9",
       "status_file": ".agents/coordination/agents/backend/STATUS.json",
       "handoff_file": ".agents/coordination/agents/backend/HANDOFF.md"
     },
@@ -39,9 +39,9 @@
       "path": "C:/Users/gonca/orca/workspaces/Orbito/orbito-frontend",
       "branch": "agent/frontend-ui",
       "role": "frontend-specialist",
-      "status": "IDLE",
-      "current_task": null,
-      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "status": "READY",
+      "current_task": "ORB-FRONT-001",
+      "head_commit": "1619be9a66d9205096c1ef06ce618f5499852ef9",
       "status_file": ".agents/coordination/agents/frontend/STATUS.json",
       "handoff_file": ".agents/coordination/agents/frontend/HANDOFF.md"
     },
@@ -53,7 +53,7 @@
       "role": "git-specialist",
       "status": "IDLE",
       "current_task": null,
-      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "head_commit": "1619be9a66d9205096c1ef06ce618f5499852ef9",
       "status_file": ".agents/coordination/agents/git-review/STATUS.json",
       "handoff_file": ".agents/coordination/agents/git-review/HANDOFF.md"
     },
@@ -65,12 +65,29 @@
       "role": "workflows-specialist",
       "status": "IDLE",
       "current_task": null,
-      "head_commit": "b9fe0dfcda307258717987f5a09a454ad5e73d62",
+      "head_commit": "1619be9a66d9205096c1ef06ce618f5499852ef9",
       "status_file": ".agents/coordination/agents/workflows/STATUS.json",
       "handoff_file": ".agents/coordination/agents/workflows/HANDOFF.md"
     }
   ],
-  "active_tasks": [],
+  "active_tasks": [
+    {
+      "task_id": "ORB-BACK-001",
+      "title": "Backend Architecture Stabilization and Native Terminal Reliability",
+      "assigned_agent": "backend",
+      "status": "READY",
+      "priority": "HIGH",
+      "specification_file": ".agents/coordination/tasks/active/ORB-BACK-001.json"
+    },
+    {
+      "task_id": "ORB-FRONT-001",
+      "title": "Orbito Interface Architecture and Workspace UX Stabilization",
+      "assigned_agent": "frontend",
+      "status": "READY",
+      "priority": "HIGH",
+      "specification_file": ".agents/coordination/tasks/active/ORB-FRONT-001.json"
+    }
+  ],
   "blocked_issues": [],
   "integration_queue": []
 }

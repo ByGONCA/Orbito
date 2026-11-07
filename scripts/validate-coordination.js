@@ -83,7 +83,7 @@ if (fs.existsSync(registryPath)) {
         registeredAgentIds.add(wt.agent_id);
         registeredWorktrees.set(wt.agent_id, wt);
 
-        const validStatuses = ['IDLE', 'BUSY', 'WAITING', 'BLOCKED', 'OFFLINE'];
+        const validStatuses = ['IDLE', 'READY', 'BUSY', 'WAITING', 'BLOCKED', 'OFFLINE'];
         if (!validStatuses.includes(wt.status)) {
           reportFail(`Invalid agent status "${wt.status}" for agent ${wt.agent_id}`);
         }
