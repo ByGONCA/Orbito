@@ -165,6 +165,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
   const activeTab = openTabs.find(
     (t) => t.filePath === currentFilePath || t.id === `file:${currentFilePath}`
   );
+
+  // Ensure active tab / file is properly registered if filePath prop is provided
+  useEffect(() => {
+    if (filePath && filePath !== storeActiveFilePath && !storeActiveFilePath) {
+      useWorkspaceStore.getState().openFileTab(filePath, activeTab?.content || '');
+    }
+  }, [filePath, storeActiveFilePath, activeTab]);
   const content =
     (currentFilePath === storeActiveFilePath ? storeActiveFileContent : null) ??
     activeTab?.content ??
@@ -591,12 +598,17 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
               </div>
 
               {/* Syntax highlighted code with VS Code vertical indentation guides */}
-              <div className="flex-1 overflow-x-auto min-w-0">
+              <div
+                className="flex-1 overflow-x-auto min-w-0 cursor-text min-h-[400px]"
+                onClick={() => {
+                  if (!isEditingDirectly) setIsEditingDirectly(true);
+                }}
+              >
                 {isEditingDirectly ? (
                   <textarea
                     ref={textareaRef}
                     value={content}
-                    onChange={(e) => updateActiveFileContent(e.target.value)}
+                    onChange={(e) => updateActiveFileContent(e.target.value, currentFilePath)}
                     onBlur={() => setIsEditingDirectly(false)}
                     onKeyDown={(e) => {
                       if (e.key === 'Tab') {
@@ -606,7 +618,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
                         const end = textarea.selectionEnd;
                         const val = textarea.value;
                         const updated = val.substring(0, start) + '  ' + val.substring(end);
-                        updateActiveFileContent(updated);
+                        updateActiveFileContent(updated, currentFilePath);
                         setTimeout(() => {
                           textarea.selectionStart = textarea.selectionEnd = start + 2;
                         }, 0);
@@ -617,7 +629,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
                   />
                 ) : (
                   <div
-                    onClick={() => setIsEditingDirectly(true)}
                     className="w-full cursor-text space-y-0.5"
                     title="Click to edit file directly"
                   >

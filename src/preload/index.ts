@@ -209,7 +209,7 @@ const api: IElectronAPI = {
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
-  openDetachedTabWindow: (params: { tab: any; x?: number; y?: number }) =>
+  openDetachedTabWindow: (params: { tab: any; project?: any; x?: number; y?: number }) =>
     ipcRenderer.invoke('window:openDetachedTab', params),
   onWindowStateChange: (callback) => {
     const handler = (_: any, state: any) => callback(state);

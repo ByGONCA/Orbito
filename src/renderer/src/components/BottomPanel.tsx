@@ -114,10 +114,8 @@ export const BottomPanel: React.FC = () => {
         onMouseDown={handleMouseDown}
         onDoubleClick={toggleMaximize}
         title="Arrastar para aumentar/diminuir janela do terminal &bull; Duplo clique para maximizar"
-        className="w-full h-2 -mt-1 cursor-row-resize hover:bg-white/10 active:bg-accent/40 transition-colors z-30 flex items-center justify-center group select-none flex-shrink-0"
-      >
-        <div className="w-12 h-0.5 rounded-full bg-white/20 group-hover:bg-accent group-hover:w-20 transition-all" />
-      </div>
+        className="w-full h-1 cursor-row-resize hover:bg-white/20 active:bg-accent/40 transition-colors z-30 select-none flex-shrink-0"
+      />
 
       {/* 2. Top Header with Panel Tabs */}
       <div className="h-8 border-b border-white/[0.06] bg-transparent px-2.5 flex items-center justify-between text-[11px] flex-shrink-0">

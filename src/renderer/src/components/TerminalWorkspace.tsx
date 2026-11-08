@@ -1386,8 +1386,45 @@ export const TerminalWorkspace: React.FC = () => {
 
   const handleDetachTab = (tab: UnifiedTabItem, x?: number, y?: number) => {
     if (window.api?.openDetachedTabWindow) {
-      window.api.openDetachedTabWindow({ tab, x, y });
-      handleCloseTab(tab);
+      const currentProject = useWorkspaceStore.getState().project;
+      window.api.openDetachedTabWindow({ tab, project: currentProject, x, y });
+
+      // Cleanly remove tab from local window without killing the backend PTY session
+      if (tab.type === 'terminal' && tab.terminalId) {
+        useWorkspaceStore.setState((s) => ({
+          terminalSessions: s.terminalSessions.filter((ts) => ts.id !== tab.terminalId),
+          openTabs: s.openTabs.filter((t) => !(t.type === 'terminal' && (t.terminalId === tab.terminalId || t.id === tab.id))),
+          activeTerminalId: s.activeTerminalId === tab.terminalId ? (s.terminalSessions.filter((ts) => ts.id !== tab.terminalId)[0]?.id || null) : s.activeTerminalId
+        }));
+      } else {
+        closeTab(tab.id);
+      }
+
+      if (pane2TabIds.includes(tab.id)) {
+        const nextPane2 = pane2TabIds.filter((id) => id !== tab.id);
+        setPane2TabIds(nextPane2);
+        if (nextPane2.length === 0) {
+          setSplitDirection(null);
+          setSecondaryTabId(null);
+        } else if (secondaryTabId === tab.id) {
+          setSecondaryTabId(nextPane2[0]);
+        }
+      } else {
+        const nextPane1 = pane1Tabs.filter((t) => t.id !== tab.id);
+        if (nextPane1.length === 0) {
+          if (pane2TabIds.length > 0) {
+            setPane2TabIds([]);
+            setSplitDirection(null);
+            setPrimaryTabId(pane2TabIds[0]);
+            setSecondaryTabId(null);
+          } else {
+            setArcLauncherOpen(true);
+          }
+        } else if (primaryTabId === tab.id) {
+          setPrimaryTabId(nextPane1[0].id);
+          setActiveTabId(nextPane1[0].id);
+        }
+      }
     }
   };
 
@@ -1734,8 +1771,8 @@ export const TerminalWorkspace: React.FC = () => {
               title="Arrastar para aumentar/diminuir janela &bull; Duplo clique para restaurar 50%"
               className={
                 splitDirection === 'horizontal'
-                  ? 'h-1.5 relative cursor-row-resize bg-white/[0.06] hover:bg-white/20 active:bg-accent/60 transition-colors z-30 flex-shrink-0 flex items-center justify-center group select-none'
-                  : 'w-1.5 relative cursor-col-resize bg-white/[0.06] hover:bg-white/20 active:bg-accent/60 transition-colors z-30 flex-shrink-0 flex items-center justify-center group select-none'
+                  ? 'h-1 relative cursor-row-resize bg-white/[0.06] hover:bg-white/20 active:bg-accent/60 transition-colors z-30 flex-shrink-0 select-none'
+                  : 'w-1 relative cursor-col-resize bg-white/[0.06] hover:bg-white/20 active:bg-accent/60 transition-colors z-30 flex-shrink-0 select-none'
               }
             >
               <div
@@ -1743,13 +1780,6 @@ export const TerminalWorkspace: React.FC = () => {
                   splitDirection === 'horizontal'
                     ? 'absolute -top-1.5 -bottom-1.5 inset-x-0 cursor-row-resize'
                     : 'absolute -left-1.5 -right-1.5 inset-y-0 cursor-col-resize'
-                }
-              />
-              <div
-                className={
-                  splitDirection === 'horizontal'
-                    ? 'w-10 h-0.5 rounded-full bg-white/20 group-hover:bg-accent/80 transition-all group-hover:w-16'
-                    : 'h-10 w-0.5 rounded-full bg-white/20 group-hover:bg-accent/80 transition-all group-hover:h-16'
                 }
               />
             </div>

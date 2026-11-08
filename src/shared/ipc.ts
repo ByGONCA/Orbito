@@ -636,7 +636,7 @@ export interface IElectronAPI {
   closeWindow?: () => Promise<void>;
   isWindowMaximized?: () => Promise<boolean>;
   onWindowStateChange?: (callback: (state: { isMaximized: boolean }) => void) => () => void;
-  openDetachedTabWindow?: (params: { tab: any; x?: number; y?: number }) => Promise<{ success: boolean }>;
+  openDetachedTabWindow?: (params: { tab: any; project?: any; x?: number; y?: number }) => Promise<{ success: boolean }>;
 
   // Project Explorer: Changes & Code Review
   listProjectExecutions: (params: z.input<typeof ListProjectExecutionsSchema>) => Promise<import('./review').ProjectExecution[]>;

@@ -1021,19 +1021,19 @@ export function registerIpcHandlers(): void {
     return win?.isMaximized() ?? false;
   });
 
-  ipcMain.handle('window:openDetachedTab', async (_, params: { tab: any; x?: number; y?: number }) => {
+  ipcMain.handle('window:openDetachedTab', async (_, params: { tab: any; project?: any; x?: number; y?: number }) => {
     const isDev = !app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
     const icoPath = path.join(__dirname, '../../resources/icon.ico');
     const pngPath = path.join(__dirname, '../../resources/Orbit.png');
     const iconPath = process.platform === 'win32' && fs.existsSync(icoPath) ? icoPath : pngPath;
 
     const detachedWin = new BrowserWindow({
-      width: 960,
-      height: 650,
+      width: 1100,
+      height: 720,
       x: params.x ? Math.max(0, Math.round(params.x - 200)) : undefined,
       y: params.y ? Math.max(0, Math.round(params.y - 40)) : undefined,
-      minWidth: 480,
-      minHeight: 320,
+      minWidth: 540,
+      minHeight: 360,
       frame: false,
       titleBarStyle: 'hidden',
       autoHideMenuBar: true,
@@ -1049,7 +1049,12 @@ export function registerIpcHandlers(): void {
       }
     });
 
-    const serializedTab = encodeURIComponent(JSON.stringify(params.tab));
+    const payload = {
+      ...params.tab,
+      project: params.project || null
+    };
+
+    const serializedTab = encodeURIComponent(JSON.stringify(payload));
     if (process.env.ELECTRON_RENDERER_URL) {
       detachedWin.loadURL(`${process.env.ELECTRON_RENDERER_URL}?detachedTab=${serializedTab}`);
     } else {

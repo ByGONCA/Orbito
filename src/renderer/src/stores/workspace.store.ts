@@ -266,7 +266,7 @@ export interface WorkspaceState {
   openGraphTab: () => void;
   openBrowserTab: (url?: string) => void;
   closeTab: (tabId: string) => void;
-  updateActiveFileContent: (content: string) => void;
+  updateActiveFileContent: (content: string, targetFilePath?: string) => void;
   saveActiveFile: () => Promise<boolean>;
   loadFileSymbols: (filePath: string) => Promise<void>;
 
@@ -1330,14 +1330,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     scheduleSaveWorkspaceState(get);
   },
 
-  updateActiveFileContent: (content) => {
+  updateActiveFileContent: (content, targetFilePath) => {
     set((state) => {
-      if (!state.activeFilePath) return state;
-      const tabId = `file:${state.activeFilePath}`;
-      const updatedTabs = state.openTabs.map((t) =>
-        t.id === tabId ? { ...t, content, isDirty: true } : t
-      );
+      const path = targetFilePath || state.activeFilePath;
+      if (!path) return state;
+      const tabId = `file:${path}`;
+      const hasTab = state.openTabs.some((t) => t.id === tabId);
+      const updatedTabs = hasTab
+        ? state.openTabs.map((t) => (t.id === tabId ? { ...t, content, isDirty: true } : t))
+        : [
+            ...state.openTabs,
+            {
+              id: tabId,
+              type: 'file' as const,
+              title: path.split(/[/\\]/).pop() || path,
+              filePath: path,
+              content,
+              isDirty: true
+            }
+          ];
       return {
+        activeFilePath: path,
         activeFileContent: content,
         openTabs: updatedTabs
       };

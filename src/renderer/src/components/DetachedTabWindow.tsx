@@ -5,11 +5,13 @@ import {
   Square,
   Copy,
   X,
-  Globe
+  Globe,
+  PanelRight
 } from 'lucide-react';
 import { CodeEditor } from './CodeEditor';
 import { EmbeddedBrowser } from './EmbeddedBrowser';
-import { TerminalSurface } from './TerminalWorkspace';
+import { NativeTerminal } from './NativeTerminal';
+import { RightPanel } from './RightPanel';
 import { OfficialLogoRenderer } from './OfficialLogos';
 import { FileIcon } from '../utils/file-icons';
 import { useWorkspaceStore, TerminalSessionItem } from '../stores/workspace.store';
@@ -20,53 +22,124 @@ interface DetachedTabWindowProps {
 
 export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData }) => {
   const [isMaximized, setIsMaximized] = useState(false);
-  const { terminalSessions, createTerminalSession } = useWorkspaceStore();
+  const [, setIsResizingRight] = useState(false);
 
-  const [session, setSession] = useState<TerminalSessionItem | null>(tabData.session || null);
+  const {
+    activeFilePath,
+    isRightPanelOpen,
+    toggleRightPanel,
+    rightPanelWidth,
+    setRightPanelWidth,
+    restoreProjectWorkspace,
+    openFileTab,
+    setTheme
+  } = useWorkspaceStore();
 
+  // Create an isolated, dedicated terminal session with a unique ID for this detached window
+  // This guarantees a clean, responsive PTY that never collides with killed or background parent sessions
+  const [session] = useState<TerminalSessionItem | null>(() => {
+    if (tabData.type === 'terminal') {
+      const rawSess = tabData.session;
+      const detachedId = `term-det-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const provider = rawSess?.provider || tabData.provider || 'powershell';
+      const workDir = rawSess?.workingDirectory || tabData.project?.path || '';
+
+      return {
+        id: detachedId,
+        title: tabData.title || rawSess?.title || 'Terminal',
+        provider,
+        projectId: tabData.project?.id || rawSess?.projectId || '',
+        projectName: tabData.project?.name || rawSess?.projectName || '',
+        workingDirectory: workDir,
+        branch: rawSess?.branch || '',
+        model: rawSess?.model || '',
+        activeSkills: rawSess?.activeSkills || [],
+        status: 'idle',
+        streamOutput: ''
+      };
+    }
+    return null;
+  });
+
+  // Initialize Theme, Settings & Window State
   useEffect(() => {
+    setTheme('glass');
+    window.api?.getSettings?.().then((settings: any) => {
+      if (settings?.customPaths) {
+        useWorkspaceStore.setState({ customPaths: settings.customPaths });
+      }
+    }).catch(() => {});
+
     window.api?.isWindowMaximized?.().then(setIsMaximized).catch(() => {});
     const unsub = window.api?.onWindowStateChange?.((state) => {
       setIsMaximized(state.isMaximized);
     });
     return () => unsub?.();
-  }, []);
+  }, [setTheme]);
 
-  // If it's a terminal and has no existing session, create one
+  // Sync isolated terminal session into local store
   useEffect(() => {
-    if (tabData.type === 'terminal' && !session) {
-      const provider = tabData.session?.provider || 'powershell';
-      const id = createTerminalSession(provider);
-      const newSession: TerminalSessionItem = {
-        id,
-        title: tabData.title || 'Terminal',
-        provider,
-        projectId: tabData.session?.projectId || '',
-        projectName: tabData.session?.projectName || '',
-        workingDirectory: tabData.session?.workingDirectory || '',
-        branch: tabData.session?.branch || '',
-        model: tabData.session?.model || '',
-        activeSkills: [],
-        status: 'idle',
-        streamOutput: ''
-      };
-      setSession(newSession);
+    if (session) {
+      useWorkspaceStore.setState({
+        terminalSessions: [session],
+        activeTerminalId: session.id
+      });
     }
-  }, [tabData, session, createTerminalSession]);
+  }, [session]);
+
+  // Clean up terminal session on window close/unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (session?.id) {
+        window.api?.terminalKill?.({ terminalId: session.id }).catch(() => {});
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [session?.id]);
+
+  // Right explorer horizontal resize drag handler
+  const handleRightMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingRight(true);
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = window.innerWidth - moveEvent.clientX;
+      setRightPanelWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      setIsResizingRight(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   const handleMinimize = () => window.api?.minimizeWindow?.();
   const handleMaximize = async () => {
     const max = await window.api?.maximizeWindow?.();
     setIsMaximized(Boolean(max));
   };
-  const handleClose = () => window.api?.closeWindow?.();
+  const handleClose = () => {
+    if (session?.id) {
+      window.api?.terminalKill?.({ terminalId: session.id }).catch(() => {});
+    }
+    window.api?.closeWindow?.();
+  };
 
   const isTerminal = tabData.type === 'terminal';
   const isFile = tabData.type === 'file';
   const isBrowser = tabData.type === 'browser';
 
+  const displayedTitle = isFile
+    ? (activeFilePath ? activeFilePath.split(/[/\\]/).pop() : tabData.title)
+    : tabData.title;
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#0d0e12] select-none overflow-hidden font-sans text-white">
+    <div className="flex flex-col h-screen w-screen bg-[#101113] overflow-hidden font-sans text-white relative">
       {/* 1. Frameless Window Titlebar */}
       <div
         onDoubleClick={handleMaximize}
@@ -87,7 +160,7 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
               />
             ) : isFile ? (
               <FileIcon
-                name={tabData.title}
+                name={displayedTitle || 'file'}
                 isDirectory={false}
                 className="w-3.5 h-3.5"
                 theme="material"
@@ -99,7 +172,7 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
             )}
           </div>
           <span className="text-xs font-mono font-medium text-[#ECEDEF] truncate">
-            {tabData.title}
+            {displayedTitle}
           </span>
           <span className="text-[10px] text-[#717784] font-mono px-1.5 py-0.5 rounded bg-white/[0.04]">
             Detached Window
@@ -109,11 +182,27 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
         {/* Center Draggable Spacer */}
         <div className="flex-1 h-full min-w-0" />
 
-        {/* Right: Window Controls */}
+        {/* Right: Right Panel Toggle & Window Controls */}
         <div
-          className="flex items-center gap-0.5 flex-shrink-0"
+          className="flex items-center gap-1.5 flex-shrink-0"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          {/* Toggle Right Panel (Files Explorer, Outline, Changes, Agents) */}
+          <button
+            onClick={toggleRightPanel}
+            className={`w-7 h-7 flex items-center justify-center rounded-sm transition-colors cursor-pointer ${
+              isRightPanelOpen
+                ? 'text-[#ECEDEF] bg-white/[0.08]'
+                : 'text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04]'
+            }`}
+            title={isRightPanelOpen ? 'Hide Right Panel' : 'Show Right Panel'}
+            aria-label="Toggle Right Panel"
+          >
+            <PanelRight className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="h-4 w-[1px] bg-white/10 mx-1" />
+
           <button
             onClick={handleMinimize}
             className="w-8 h-7 flex items-center justify-center rounded-sm text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.08] transition-colors cursor-pointer"
@@ -142,22 +231,43 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
         </div>
       </div>
 
-      {/* 2. Full Workspace Body for this single tab */}
-      <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative flex flex-col bg-[#0d0e12]">
-        {isTerminal && session ? (
-          <TerminalSurface
-            session={session}
-            isActive={true}
-            onFocus={() => {}}
-          />
-        ) : isFile ? (
-          <CodeEditor filePath={tabData.filePath} />
-        ) : isBrowser ? (
-          <EmbeddedBrowser url={tabData.url || 'https://www.google.com'} tabId={tabData.id} />
-        ) : (
-          <div className="flex items-center justify-center h-full text-xs text-[#717784]">
-            Tab content loaded
-          </div>
+      {/* 2. Workspace Body (Main Tab Area + Right Sidebar) */}
+      <div className="flex-1 flex overflow-hidden relative min-h-0 bg-[#101113]">
+        {/* Center Canvas / Tab Surface */}
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative flex flex-col bg-[#101113]">
+          {isTerminal && session ? (
+            <NativeTerminal
+              session={session}
+              isActive={true}
+              onFocus={() => {}}
+            />
+          ) : isFile ? (
+            <CodeEditor filePath={activeFilePath || tabData.filePath} />
+          ) : isBrowser ? (
+            <EmbeddedBrowser url={tabData.url || 'https://www.google.com'} tabId={tabData.id} />
+          ) : (
+            <div className="flex items-center justify-center h-full text-xs text-[#717784]">
+              Tab content loaded
+            </div>
+          )}
+        </div>
+
+        {/* Right Sidebar (Project Explorer, Outline, Agents, Context, Skills) */}
+        {isRightPanelOpen && (
+          <>
+            {/* Clean Resize Drag Handle (no grey pill/bar) */}
+            <div
+              onMouseDown={handleRightMouseDown}
+              className="w-1 h-full cursor-col-resize hover:bg-white/20 transition-colors z-20 flex-shrink-0"
+            />
+
+            <div
+              style={{ width: `${rightPanelWidth}px` }}
+              className="flex-shrink-0 h-full overflow-hidden border-l border-white/[0.07] frosted-sidebar bg-[#121418]"
+            >
+              <RightPanel />
+            </div>
+          </>
         )}
       </div>
     </div>

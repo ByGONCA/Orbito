@@ -239,10 +239,18 @@ export const NativeTerminal: React.FC<NativeTerminalProps> = ({ session, isActiv
     };
     window.addEventListener(`terminal:reset:${session.id}`, handleResetEvent);
 
+    const handleWindowFocus = () => {
+      if (isActive && termRef.current) {
+        termRef.current.focus();
+      }
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
     return () => {
       isDisposed = true;
       if (resizeTimer) clearTimeout(resizeTimer);
       window.removeEventListener(`terminal:reset:${session.id}`, handleResetEvent);
+      window.removeEventListener('focus', handleWindowFocus);
       resizeObserver.disconnect();
       onDataDisposable.dispose();
       removeDataListener?.();
