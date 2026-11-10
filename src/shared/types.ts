@@ -57,11 +57,8 @@ export interface ProjectDescriptor {
 
 export type SettingsSectionId =
   | 'agents'
-  | 'providers'
   | 'orchestration'
   | 'memory'
-  | 'security'
-  | 'git'
   | 'plugins'
   | 'integrations'
   | 'appearance'

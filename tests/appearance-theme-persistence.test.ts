@@ -96,10 +96,10 @@ describe('Appearance & Theme Persistence Architecture', () => {
     } catch {}
   });
 
-  it('initializes new workspaces with default theme [glass] and fileIconTheme [vscode]', () => {
+  it('initializes new workspaces with default theme [glass] and fileIconTheme [material]', () => {
     const settings = dbService.getSettings();
     expect(settings.theme).toBe('glass');
-    expect(settings.fileIconTheme).toBe('vscode');
+    expect(settings.fileIconTheme).toBe('material');
   });
 
   it('preserves existing [glass] theme selection without alteration', () => {
@@ -147,7 +147,7 @@ describe('Appearance & Theme Persistence Architecture', () => {
       ui_mode: 'simple',
       theme: 'neon-cyberpunk-invalid',
       auto_index: 1,
-      file_icon_theme: 'vscode'
+      file_icon_theme: 'material'
     });
 
     const settings = dbService.getSettings();
@@ -157,16 +157,16 @@ describe('Appearance & Theme Persistence Architecture', () => {
   it('maintains strict independence between application theme and file icon theme updates', () => {
     dbService.updateSettings({ theme: 'light' });
     expect(dbService.getSettings().theme).toBe('light');
-    expect(dbService.getSettings().fileIconTheme).toBe('vscode');
+    expect(dbService.getSettings().fileIconTheme).toBe('material');
 
     // Updating file icon theme leaves application theme unchanged
-    dbService.updateSettings({ fileIconTheme: 'material' });
+    dbService.updateSettings({ fileIconTheme: 'minimal' });
     expect(dbService.getSettings().theme).toBe('light');
-    expect(dbService.getSettings().fileIconTheme).toBe('material');
+    expect(dbService.getSettings().fileIconTheme).toBe('minimal');
 
     // Updating application theme leaves file icon theme unchanged
     dbService.updateSettings({ theme: 'solid' });
     expect(dbService.getSettings().theme).toBe('solid');
-    expect(dbService.getSettings().fileIconTheme).toBe('material');
+    expect(dbService.getSettings().fileIconTheme).toBe('minimal');
   });
 });

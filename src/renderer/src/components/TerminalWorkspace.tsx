@@ -400,11 +400,11 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
         id: 'cmd-settings',
         type: 'command',
         category: 'Preferences',
-        title: 'Open Settings & Keyring',
+        title: 'Open Settings',
         renderIcon: () => <Settings className="w-4 h-4 text-[#A4A8AF] flex-shrink-0" />,
         action: () => {
           setIsPlusMenuOpen(false);
-          openSettingsToTab('security');
+          openSettingsToTab('agents');
         }
       }
     ],

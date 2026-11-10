@@ -151,7 +151,10 @@ export const useKeyboardShortcutsStore = create<KeyboardShortcutsState>((set, ge
   },
 
   resetAllToDefault: () => {
-    set({ shortcuts: DEFAULT_SHORTCUTS, recordingId: null });
+    set({
+      shortcuts: DEFAULT_SHORTCUTS.map((s) => ({ ...s, currentCombo: s.defaultCombo })),
+      recordingId: null
+    });
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}

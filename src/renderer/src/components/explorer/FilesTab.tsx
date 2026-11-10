@@ -319,10 +319,24 @@ export const FilesTab: React.FC = () => {
                     isExpanded={isExpanded}
                     theme={fileIconTheme}
                   />
-                  <span className="truncate flex-1 select-none">{node.name}</span>
+                  <span
+                    className={`truncate flex-1 select-none ${
+                      showGitFileColors && fileGitStatus
+                        ? fileGitStatus === 'M'
+                          ? 'text-amber-400'
+                          : fileGitStatus === 'D'
+                          ? 'text-rose-400'
+                          : fileGitStatus === 'R'
+                          ? 'text-purple-400'
+                          : 'text-emerald-400'
+                        : ''
+                    }`}
+                  >
+                    {node.name}
+                  </span>
 
                   {/* Git Status indicator (Modified, Untracked, Added, Deleted, Renamed) */}
-                  {fileGitStatus && (
+                  {showGitFileColors && fileGitStatus && (
                     <span
                       className={`ml-auto mr-1 font-mono text-[10px] font-semibold ${
                         fileGitStatus === 'M'

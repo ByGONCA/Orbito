@@ -1,11 +1,8 @@
 import React from 'react';
 import {
   Bot,
-  Sparkles,
   Layers,
   Database,
-  ShieldCheck,
-  FolderGit2,
   Blocks,
   Radio,
   Palette,
@@ -72,30 +69,6 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
     ]
   },
   {
-    id: 'providers',
-    label: 'Providers',
-    category: 'AI & Intelligence',
-    description: 'AI model accounts, API credentials, endpoints, and local model integrations.',
-    icon: Sparkles,
-    keywords: ['providers', 'models', 'api key', 'anthropic', 'openai', 'gemini', 'groq', 'ollama', 'tokens', 'credentials'],
-    settings: [
-      {
-        id: 'providers-credentials',
-        sectionId: 'providers',
-        label: 'Provider API Credentials',
-        description: 'Manage API tokens encrypted via OS-level safeStorage (DPAPI).',
-        keywords: ['api key', 'claude key', 'openai key', 'gemini key', 'groq key', 'token']
-      },
-      {
-        id: 'providers-local-models',
-        sectionId: 'providers',
-        label: 'Local Models (Ollama)',
-        description: 'Connect to local Ollama daemon for offline and private model execution.',
-        keywords: ['ollama', 'local model', 'llama', 'mistral', 'offline', 'daemon']
-      }
-    ]
-  },
-  {
     id: 'orchestration',
     label: 'Orchestration',
     category: 'AI & Intelligence',
@@ -143,63 +116,8 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
       }
     ]
   },
-  {
-    id: 'security',
-    label: 'Security',
-    category: 'AI & Intelligence',
-    description: 'Operating system safeStorage keyring status, Air-Gap isolation guard, and extension sandbox rules.',
-    icon: ShieldCheck,
-    keywords: ['security', 'safestorage', 'dpapi', 'keyring', 'air-gap', 'sandbox', 'isolation', 'network'],
-    settings: [
-      {
-        id: 'security-os-keyring',
-        sectionId: 'security',
-        label: 'OS Keychain Encryption',
-        description: 'Verify Electron safeStorage encryption status using Windows DPAPI user keys.',
-        keywords: ['dpapi', 'safestorage', 'keyring', 'encryption']
-      },
-      {
-        id: 'security-airgap-guard',
-        sectionId: 'security',
-        label: 'Air-Gap Isolation Guard',
-        description: 'Block outbound external network requests and enforce local model routing.',
-        keywords: ['air gap', 'offline', 'block network', 'airgap']
-      },
-      {
-        id: 'security-extension-sandbox',
-        sectionId: 'security',
-        label: 'Extension Host Sandboxing',
-        description: 'Enforce process-level isolation and filesystem boundaries for plugins.',
-        keywords: ['sandbox', 'process isolation', 'untrusted', 'permissions']
-      }
-    ]
-  },
 
   // Category: Workspace
-  {
-    id: 'git',
-    label: 'Git',
-    category: 'Workspace',
-    description: 'Repository health, active branch status, modified files tracking, and indexing exclusions.',
-    icon: FolderGit2,
-    keywords: ['git', 'repository', 'branch', 'changes', 'exclusions', 'node_modules', 'index', 'version control'],
-    settings: [
-      {
-        id: 'git-active-repository',
-        sectionId: 'git',
-        label: 'Active Repository Status',
-        description: 'View active workspace repository name, local path, current branch, and changed files.',
-        keywords: ['git status', 'branch', 'changed files', 'working tree']
-      },
-      {
-        id: 'git-index-exclusions',
-        sectionId: 'git',
-        label: 'Indexing Exclusions',
-        description: 'Directories ignored by file crawlers and intelligence engines for peak performance.',
-        keywords: ['exclude', 'ignore', 'node_modules', 'indexing']
-      }
-    ]
-  },
   {
     id: 'plugins',
     label: 'Plugins',
@@ -262,8 +180,8 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
         id: 'appearance-file-icons',
         sectionId: 'appearance',
         label: 'File Explorer Icon Theme',
-        description: 'Select between VSCode Icons (Default), Material Icons, or Minimal Monochrome.',
-        keywords: ['file icons', 'icon theme', 'vscode icons', 'material icons', 'minimal']
+        description: 'Select between Material Icon Theme or Minimal Monochrome.',
+        keywords: ['file icons', 'icon theme', 'material icons', 'minimal']
       },
       {
         id: 'appearance-git-colors',
@@ -424,7 +342,7 @@ export function searchSettingsRegistry(query: string): SearchResult[] {
 }
 
 /**
- * Normalizes legacy tab strings to one of the 12 verified section IDs.
+ * Normalizes legacy tab strings to one of the verified active section IDs.
  */
 export function normalizeSettingsSection(rawId?: string | null): SettingsSectionId {
   if (!rawId) return 'agents';
@@ -432,17 +350,10 @@ export function normalizeSettingsSection(rawId?: string | null): SettingsSection
     case 'agents':
     case 'computer-use':
     case 'automations':
-      return 'agents';
     case 'providers':
     case 'ai-providers':
-      return 'providers';
-    case 'orchestration':
-      return 'orchestration';
-    case 'memory':
-      return 'memory';
     case 'security':
     case 'keyring':
-      return 'security';
     case 'git':
     case 'workspace':
     case 'general-git':
@@ -452,7 +363,11 @@ export function normalizeSettingsSection(rawId?: string | null): SettingsSection
     case 'artifacts':
     case 'share-skills':
     case 'mobile':
-      return 'git';
+      return 'agents';
+    case 'orchestration':
+      return 'orchestration';
+    case 'memory':
+      return 'memory';
     case 'plugins':
       return 'plugins';
     case 'integrations':

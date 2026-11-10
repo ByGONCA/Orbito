@@ -617,7 +617,7 @@ export class DatabaseService {
         uiMode: 'simple',
         theme: 'glass',
         autoIndex: true,
-        fileIconTheme: 'vscode',
+        fileIconTheme: 'material',
         discordRpcEnabled: true
       };
       db.prepare(`
@@ -636,11 +636,11 @@ export class DatabaseService {
       return defaultSettings;
     }
 
-    // Safe migration: preserve existing selections ('material', 'minimal'); fallback to 'vscode' for unconfigured rows
+    // Safe migration: preserve existing selections ('material', 'minimal'); fallback to 'material' for unconfigured or deprecated rows
     const storedIconTheme = row.file_icon_theme;
-    const resolvedIconTheme = ['vscode', 'material', 'minimal'].includes(storedIconTheme)
+    const resolvedIconTheme = ['material', 'minimal'].includes(storedIconTheme)
       ? storedIconTheme
-      : (storedIconTheme ? 'material' : 'vscode');
+      : 'material';
 
     // Safe theme migration: preserve 'glass', 'solid', 'light'; fallback invalid to 'glass'
     const storedTheme = row.theme;
