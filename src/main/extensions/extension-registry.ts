@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { ExtensionRecord } from '../../shared/extensions';
+import type { ExtensionRecord, CatalogPluginItem } from '../../shared/extensions';
 import { databaseService } from '../db/database.service';
 import { ExtensionLoader } from './extension-loader';
 import { auditService } from '../services/audit.service';
+import { OFFICIAL_PLUGIN_CATALOG, PLUGIN_CODE_TEMPLATES } from './catalog';
 
 export class ExtensionRegistry {
   private extensions: Map<string, ExtensionRecord> = new Map();
@@ -55,8 +56,44 @@ export class ExtensionRegistry {
     return Array.from(this.extensions.values());
   }
 
+  public getDiscoverCatalog(): CatalogPluginItem[] {
+    return OFFICIAL_PLUGIN_CATALOG;
+  }
+
   public getExtension(id: string): ExtensionRecord | null {
     return this.extensions.get(id) || null;
+  }
+
+  /**
+   * Installs an extension from the discovery catalog.
+   */
+  public async installFromCatalog(pluginId: string): Promise<{
+    success: boolean;
+    extension?: ExtensionRecord;
+    error?: string;
+  }> {
+    const item = OFFICIAL_PLUGIN_CATALOG.find((p) => p.id === pluginId);
+    if (!item) {
+      return { success: false, error: `Plugin '${pluginId}' not found in discovery catalog` };
+    }
+
+    const targetDir = path.join(this.extensionsDir, item.id);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const manifestPath = path.join(targetDir, 'extension.json');
+    const manifestJson = JSON.stringify(item.manifest, null, 2);
+    fs.writeFileSync(manifestPath, manifestJson, 'utf8');
+
+    const entryPath = path.join(targetDir, 'index.js');
+    if (!fs.existsSync(entryPath)) {
+      const code = PLUGIN_CODE_TEMPLATES[item.id] ||
+        `// Orbito Plugin: ${item.displayName}\nmodule.exports = {\n  activate(context) {\n    context.log("[${item.displayName}] activated successfully");\n  },\n  deactivate() {}\n};\n`;
+      fs.writeFileSync(entryPath, code, 'utf8');
+    }
+
+    return await this.installFromDirectory(targetDir);
   }
 
   /**

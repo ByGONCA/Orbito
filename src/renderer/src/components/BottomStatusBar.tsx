@@ -51,30 +51,9 @@ export const BottomStatusBar: React.FC = () => {
 
   return (
     <>
-      <footer className="h-6.5 border-t border-white/[0.06] bg-[#121418]/90 backdrop-blur-xl px-3 flex items-center justify-between text-[10px] font-mono text-[#A4A8AF] select-none z-30">
-        {/* 1. Left: Current Project, Git Branch */}
-        <div className="flex items-center gap-2">
-          {project ? (
-            <>
-              <span className="truncate max-w-[140px] font-medium text-[#ECEDEF]">
-                {project.name}
-              </span>
-              {project.isGitRepo && (gitStatus?.branch || project.activeBranch) && (
-                <span className="flex items-center gap-1 text-[#A4A8AF]">
-                  <GitBranch className="w-3 h-3 flex-shrink-0 text-[#747982]" />
-                  <span className="truncate max-w-[100px]">{gitStatus?.branch || project.activeBranch}</span>
-                  {changedCount > 0 && (
-                    <span className="text-amber-400 font-mono text-[9.5px]">
-                      *{changedCount}
-                    </span>
-                  )}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="text-[#747982]">No Workspace Open</span>
-          )}
-        </div>
+      <footer className="h-6.5 px-3 flex items-center justify-between text-[10px] font-mono text-[#A4A8AF] select-none z-30 app-bottom-status-bar">
+        {/* 1. Left: Clean whitespace */}
+        <div className="flex items-center gap-2" />
 
         {/* 2. Center: Empty / Clean whitespace */}
         <div className="flex-1" />

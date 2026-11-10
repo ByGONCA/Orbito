@@ -11,4 +11,5 @@ graphify-out/cache/
 Thumbs.db
 __pycache__/
 *.pyc
+scratch/
 

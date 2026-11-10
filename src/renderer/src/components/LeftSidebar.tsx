@@ -30,9 +30,11 @@ import {
   ExternalLink,
   RefreshCw,
   Palette,
-  Terminal,
   Star,
-  AlertTriangle
+  AlertTriangle,
+  Home,
+  CheckCircle2,
+  Blocks
 } from 'lucide-react';
 import type { ProjectDescriptor } from '../../../shared/types';
 import { useWorkspaceStore } from '../stores/workspace.store';
@@ -41,6 +43,8 @@ import { ProjectCustomizeModal, ProjectIconRenderer } from './ProjectCustomizeMo
 import { WorktreeCustomizeModal } from './WorktreeCustomizeModal';
 import { NewProjectModal } from './NewProjectModal';
 import { ProjectSettingsModal } from './ProjectSettingsModal';
+import { OfficialLogoRenderer } from './OfficialLogos';
+import { HelpAndResourcesMenu } from './HelpAndResourcesMenu';
 
 export const LeftSidebar: React.FC = () => {
   const {
@@ -66,12 +70,16 @@ export const LeftSidebar: React.FC = () => {
     gitStatus,
     loadGitStatus,
     toggleSettings,
+    openPluginsTab,
     setCommandPaletteOpen,
     isRightPanelOpen,
     rightPanelTab,
     toggleRightPanel,
     setRightPanelTab,
     setExplorerActiveTab,
+    terminalSessions,
+    setActiveTerminalId,
+    orchestrationsHistory,
     addLog
   } = useWorkspaceStore();
 
@@ -88,6 +96,19 @@ export const LeftSidebar: React.FC = () => {
   const [customizingWorktree, setCustomizingWorktree] = useState<{ proj: ProjectDescriptor; wt: any } | null>(null);
   const [projectMenuOpenId, setProjectMenuOpenId] = useState<string | null>(null);
   const [copiedPathProjId, setCopiedPathProjId] = useState<string | null>(null);
+  const [projectWorktreesCache, setProjectWorktreesCache] = useState<Record<string, any[]>>({});
+
+  const formatRelativeTime = (timestamp?: number) => {
+    if (!timestamp) return '';
+    const diffSec = Math.floor((Date.now() - timestamp) / 1000);
+    if (diffSec < 60) return `${Math.max(1, diffSec)}s`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d`;
+  };
 
   // Close open project options menu on outside click
   useEffect(() => {
@@ -219,16 +240,8 @@ export const LeftSidebar: React.FC = () => {
         permissionLevel: realRootProj.permissionLevel || 'standard'
       };
       setProject(wtDescriptor);
-      try {
-        const files = await window.api.listFiles({ projectPath: wt.path });
-        setFiles(files);
-        loadGitStatus(wt.path);
-      } catch (e) {
-        // Non-blocking file list error
-      }
-      addLog(`Switched active worktree to: ${wt.branch}`, 'info');
 
-      // Immediate terminal switch (Orca style - default PowerShell)
+      // Immediate terminal switch without waiting for file system traversal (0ms lag)
       const store = useWorkspaceStore.getState();
       const normWtPath = normalizePath(wt.path);
       let term = store.terminalSessions.find(
@@ -250,6 +263,11 @@ export const LeftSidebar: React.FC = () => {
         store.openTerminalTab(term.id);
       }
       store.setActiveSection('terminal');
+      addLog(`Switched active worktree to: ${wt.branch}`, 'info');
+
+      // Asynchronous background file list & git status loading
+      window.api.listFiles({ projectPath: wt.path }).then(setFiles).catch(() => {});
+      loadGitStatus(wt.path);
     } catch (err: any) {
       addLog(`Failed to switch worktree: ${err.message}`, 'error');
     }
@@ -319,13 +337,37 @@ export const LeftSidebar: React.FC = () => {
     return [...list].sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
   }, [allProjects, searchQuery]);
 
+  // Proactively cache worktrees for all expanded projects so all branches/tags are always visible
+  useEffect(() => {
+    expandedProjectIds.forEach((projId) => {
+      const p = filteredProjects.find((x) => x.id === projId);
+      if (p?.path && p.isGitRepo) {
+        const norm = normalizePath(p.path);
+        if (!projectWorktreesCache[norm]) {
+          window.api.getGitStatus(p.path).then((status) => {
+            if (status?.worktrees && status.worktrees.length > 0) {
+              setProjectWorktreesCache((prev) => ({ ...prev, [norm]: status.worktrees }));
+            }
+          }).catch(() => {});
+        }
+      }
+    });
+  }, [expandedProjectIds, filteredProjects, projectWorktreesCache]);
+
+  useEffect(() => {
+    if (gitStatus?.worktrees && gitStatus.worktrees.length > 0 && project?.path) {
+      const norm = normalizePath(project.path);
+      setProjectWorktreesCache((prev) => ({ ...prev, [norm]: (gitStatus.worktrees || []) as any[] }));
+    }
+  }, [gitStatus, project?.path]);
+
   return (
-    <aside className="h-full flex flex-col bg-transparent select-none overflow-hidden text-xs font-sans pt-2">
+    <aside className="h-full flex flex-col bg-transparent select-none overflow-hidden text-xs font-sans pt-2 relative z-10">
       {/* 1. Global Search Bar */}
       <div className="px-2.5 pb-2 bg-transparent">
         <button
           onClick={() => setCommandPaletteOpen(true)}
-          className="w-full flex items-center justify-between px-3 py-1.5 bg-white/[0.04] rounded-lg text-[#A4A8AF] hover:text-white text-xs transition-all border border-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.06] cursor-pointer shadow-xs"
+          className="w-full flex items-center justify-between px-3 py-1.5 bg-white/[0.04] rounded-lg text-[#A4A8AF] hover:text-white text-xs transition-all border border-white/[0.05] hover:border-white/[0.12] hover:bg-white/[0.06] cursor-pointer shadow-xs"
         >
           <div className="flex items-center gap-2 truncate">
             <Search className="w-3.5 h-3.5 text-[#747982] flex-shrink-0" />
@@ -339,37 +381,6 @@ export const LeftSidebar: React.FC = () => {
 
       {/* 3. Core Workspace Navigation */}
       <div className="px-2 py-1 space-y-1 flex-shrink-0">
-        <button
-          onClick={() => {
-            if (!isRightPanelOpen) {
-              toggleRightPanel();
-            }
-            setRightPanelTab('files');
-            setExplorerActiveTab('files');
-          }}
-          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
-            isRightPanelOpen && (rightPanelTab === 'files' || rightPanelTab === 'changes' || rightPanelTab === 'review')
-              ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-xs'
-              : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <div className="flex items-center gap-2.5 truncate">
-            <FolderTree
-              className={`w-4 h-4 flex-shrink-0 ${
-                isRightPanelOpen && (rightPanelTab === 'files' || rightPanelTab === 'changes' || rightPanelTab === 'review')
-                  ? 'text-white'
-                  : 'text-[#747982]'
-              }`}
-            />
-            <span className="truncate">Explorer</span>
-          </div>
-          {gitStatus?.changedFiles && gitStatus.changedFiles.length > 0 && (
-            <span className="text-[10px] font-mono text-amber-400">
-              {gitStatus.changedFiles.length}
-            </span>
-          )}
-        </button>
-
         <button
           onClick={() => setActiveSection('tasks')}
           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${
@@ -418,20 +429,20 @@ export const LeftSidebar: React.FC = () => {
         </button>
       </div>
 
-      {/* 4. Projects & Worktrees Section */}
+      {/* 4. Worktrees Section */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="px-3 py-2 border-b border-border flex items-center justify-between text-[11px] font-semibold text-foreground-muted">
           <div className="flex items-center gap-1.5 text-foreground-secondary">
-            <Folders className="w-3.5 h-3.5 text-accent" />
-            <span className="uppercase tracking-wider text-[10px]">Projects & Worktrees</span>
+            <GitFork className="w-3.5 h-3.5 text-accent" />
+            <span className="uppercase tracking-wider text-[10px]">Worktrees</span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIsNewProjectModalOpen(true)}
               className="p-1 hover:bg-surface-elevated rounded text-foreground-muted hover:text-emerald-400 transition-all flex items-center justify-center cursor-pointer"
-              title="Create New Project"
+              title="Add Project / Worktree"
             >
-              <FolderPlus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={handleOpenFolder}
@@ -456,12 +467,88 @@ export const LeftSidebar: React.FC = () => {
               const branch = proj.activeBranch || (isActive && gitStatus?.branch) || 'main';
               const isClean = isActive ? gitStatus?.isClean ?? true : true;
               const changedCount = isActive ? gitStatus?.changedFiles.length ?? 0 : 0;
+              const normProjPath = normalizePath(proj.path);
 
               const worktrees = (isActive && gitStatus?.worktrees && gitStatus.worktrees.length > 0)
                 ? gitStatus.worktrees
-                : [{ path: proj.path, branch, isMain: true, head: 'HEAD' }];
+                : (projectWorktreesCache[normProjPath] || [{ path: proj.path, branch, isMain: true, head: 'HEAD' }]);
 
               const isAddingWorktree = addingWorktreeForProjId === proj.id;
+
+              const getWtCustom = (branchName: string, wtPath?: string) => {
+                const normP = normalizePath(proj.path);
+                const normW = wtPath ? normalizePath(wtPath) : '';
+                for (const [key, val] of Object.entries(worktreeCustomizations || {})) {
+                  const [savedPath, savedBranch] = key.split('::');
+                  if (savedBranch === branchName) {
+                    const normSaved = normalizePath(savedPath);
+                    if (
+                      normSaved === normP ||
+                      (normW && normSaved === normW) ||
+                      normSaved.endsWith(normP) ||
+                      normP.endsWith(normSaved)
+                    ) {
+                      return val;
+                    }
+                  }
+                }
+                return undefined;
+              };
+
+              const getWorktreeAISessions = (wt: any) => {
+                const normWtPath = normalizePath(wt.path);
+                const aiTerminals = (terminalSessions || [])
+                  .filter((ts) => {
+                    const normTitle = (ts.title || '').toLowerCase();
+                    if (
+                      normTitle.includes('powershell') ||
+                      normTitle.includes('pwsh') ||
+                      normTitle.includes('cmd') ||
+                      normTitle.includes('bash') ||
+                      (ts.provider as string) === 'powershell' ||
+                      (ts.provider as string) === 'cmd' ||
+                      (ts.provider as string) === 'bash'
+                    ) {
+                      return false;
+                    }
+                    const isAi = ts.provider && !['powershell', 'cmd', 'bash'].includes(ts.provider as string);
+                    if (!isAi) return false;
+                    const normSessionDir = normalizePath(ts.workingDirectory);
+                    return (
+                      normSessionDir === normWtPath ||
+                      (ts.branch === wt.branch && (normSessionDir.startsWith(normProjPath) || ts.projectName === proj.name))
+                    );
+                  })
+                  .map((ts) => ({
+                    id: ts.id,
+                    provider: ts.provider,
+                    title: ts.title.replace(/^(Antigravity|Claude|Gemini|Codex|Cursor|Copilot)\s*[-:]\s*/i, '').trim() || ts.provider,
+                    status: ts.status,
+                    timestamp: ts.lastActivityAt || ts.createdAt,
+                    terminalId: ts.id,
+                    orchestrationId: undefined
+                  }));
+
+                const agentTasks: any[] = [];
+                for (const orch of orchestrationsHistory || []) {
+                  for (const t of orch.tasks || []) {
+                    const match = (t.worktreePath && normalizePath(t.worktreePath) === normWtPath) || (t.branchName && t.branchName === wt.branch);
+                    if (match) {
+                      agentTasks.push({
+                        id: `task-${t.id}`,
+                        provider: t.assignedProvider || 'antigravity',
+                        title: t.title,
+                        status: t.status === 'running' ? 'running' : (t.status === 'completed' ? 'completed' : 'idle'),
+                        timestamp: t.completedAt || t.startedAt || t.createdAt,
+                        terminalId: undefined,
+                        orchestrationId: orch.id
+                      });
+                    }
+                  }
+                }
+
+                return [...aiTerminals, ...agentTasks].slice(0, 2);
+              };
 
               return (
                 <div
@@ -469,10 +556,10 @@ export const LeftSidebar: React.FC = () => {
                   style={proj.customColor ? {
                     backgroundColor: isActive ? `${proj.customColor}16` : `${proj.customColor}08`
                   } : undefined}
-                  className={`rounded-lg transition-all overflow-visible group/proj relative ${
+                  className={`rounded-lg transition-colors duration-75 overflow-visible group/proj relative ${
                     isActive
                       ? 'bg-white/[0.06]'
-                      : 'hover:bg-white/[0.03]'
+                      : 'hover:bg-white/[0.06]'
                   }`}
                 >
                   {/* Project Row Header */}
@@ -535,11 +622,23 @@ export const LeftSidebar: React.FC = () => {
                     </div>
 
                     {/* Right Project Actions */}
-                    <div className="flex items-center gap-1 flex-shrink-0 pl-1">
-                      <span className="text-[10px] text-foreground-muted font-mono flex items-center gap-1">
-                        <GitBranch className="w-2.5 h-2.5 text-accent/70" />
-                        <span className="truncate max-w-[55px]">{branch}</span>
-                      </span>
+                    <div className="flex items-center gap-0.5 flex-shrink-0 pl-1">
+                      {proj.isGitRepo && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isExpanded) toggleProjectExpanded(proj.id);
+                            setAddingWorktreeForProjId(isAddingWorktree ? null : proj.id);
+                          }}
+                          className={`p-1 rounded-md text-foreground-muted hover:text-foreground hover:bg-white/[0.08] transition-all cursor-pointer ${
+                            isAddingWorktree ? 'opacity-100 bg-white/[0.08] text-foreground' : 'opacity-0 group-hover/proj:opacity-100'
+                          }`}
+                          title="New worktree"
+                          aria-label="New worktree"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
                       {/* Project Options 3-Dots Button */}
                       <div className="relative">
@@ -552,6 +651,7 @@ export const LeftSidebar: React.FC = () => {
                             projectMenuOpenId === proj.id ? 'opacity-100 bg-white/[0.08] text-foreground' : 'opacity-0 group-hover/proj:opacity-100'
                           }`}
                           title="Project options"
+                          aria-label="Project options"
                         >
                           <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
@@ -580,176 +680,208 @@ export const LeftSidebar: React.FC = () => {
 
                   {/* Expanded Worktrees & Details (Clean, borderless, indented) */}
                   {isExpanded && (
-                    <div className="px-3 pb-2 pt-1 space-y-1.5 text-[11px]">
-                      {/* Worktree Hierarchy */}
-                      <div className="space-y-1">
-                        <div className="text-[10px] uppercase font-semibold text-foreground-muted flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-[#A4A8AF]">
-                            <GitFork className="w-3 h-3 text-[#747982]" />
-                            <span>Worktrees</span>
-                          </span>
-                          {proj.isGitRepo && (
+                    <div className="px-2 pb-2 pt-0.5 space-y-1 text-[11px]">
+                      {/* Inline Create Worktree Form */}
+                      {isAddingWorktree && (
+                        <form
+                          onSubmit={(e) => handleCreateWorktreeSubmit(e, proj)}
+                          className="p-2 bg-surface-elevated border border-border rounded-lg space-y-1.5 my-1"
+                        >
+                          <div className="text-[10px] text-foreground-muted font-medium">New Branch Name:</div>
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="e.g. feat/new-feature"
+                            value={newWorktreeBranch}
+                            onChange={(e) => setNewWorktreeBranch(e.target.value)}
+                            className="w-full bg-input border border-border focus:border-accent rounded px-2 py-1 text-xs text-foreground focus:outline-none"
+                          />
+                          <div className="flex items-center justify-end gap-1.5 pt-1">
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setAddingWorktreeForProjId(isAddingWorktree ? null : proj.id);
-                              }}
-                              className="px-1.5 py-0.2 rounded hover:bg-surface-elevated text-foreground-secondary hover:text-accent transition-colors flex items-center gap-1 text-[10px]"
-                              title="Create child worktree"
+                              type="button"
+                              onClick={() => setAddingWorktreeForProjId(null)}
+                              className="px-2 py-0.5 rounded text-[10px] text-foreground-muted hover:text-foreground"
                             >
-                              <Plus className="w-2.5 h-2.5" />
-                              <span>New</span>
+                              Cancel
                             </button>
-                          )}
-                        </div>
+                            <button
+                              type="submit"
+                              disabled={isSubmittingWorktree || !newWorktreeBranch.trim()}
+                              className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-accent text-background hover:bg-accent-hover disabled:opacity-50"
+                            >
+                              {isSubmittingWorktree ? 'Creating...' : 'Create'}
+                            </button>
+                          </div>
+                        </form>
+                      )}
 
-                        {/* Inline Create Worktree Form */}
-                        {isAddingWorktree && (
-                          <form
-                            onSubmit={(e) => handleCreateWorktreeSubmit(e, proj)}
-                            className="p-2 bg-surface-elevated border border-border rounded-lg space-y-1.5 my-1"
-                          >
-                            <div className="text-[10px] text-foreground-muted font-medium">New Branch Name:</div>
-                            <input
-                              type="text"
-                              autoFocus
-                              placeholder="e.g. feat/new-feature"
-                              value={newWorktreeBranch}
-                              onChange={(e) => setNewWorktreeBranch(e.target.value)}
-                              className="w-full bg-input border border-border focus:border-accent rounded px-2 py-1 text-xs text-foreground focus:outline-none"
-                            />
-                            <div className="flex items-center justify-end gap-1.5 pt-1">
-                              <button
-                                type="button"
-                                onClick={() => setAddingWorktreeForProjId(null)}
-                                className="px-2 py-0.5 rounded text-[10px] text-foreground-muted hover:text-foreground"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="submit"
-                                disabled={isSubmittingWorktree || !newWorktreeBranch.trim()}
-                                className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-accent text-background hover:bg-accent-hover disabled:opacity-50"
-                              >
-                                {isSubmittingWorktree ? 'Creating...' : 'Create'}
-                              </button>
-                            </div>
-                          </form>
-                        )}
-
-                        {/* Worktrees list (Straight clean list with flush vertical indicator) */}
-                        <div className="space-y-1">
+                      {/* Worktrees list (Straight clean list with flush vertical indicator) */}
+                      <div className="space-y-0.5">
                           {worktrees.map((wt: any, idx: number) => {
-                            const wtCustom = worktreeCustomizations[`${proj.path}::${wt.branch}`];
+                            const wtCustom = getWtCustom(wt.branch, wt.path);
                             const isPrimary = wt.isMain || wt.branch === 'main' || wt.branch === 'master';
                             const isWtActive = isActive && (gitStatus?.branch === wt.branch || normalizePath(project?.path) === normalizePath(wt.path));
                             const wtDisplayName = wtCustom?.customName || wt.branch;
+                            const wtHasChanges = isWtActive && (gitStatus?.changedFiles?.length ?? 0) > 0;
+                            const aiSessions = getWorktreeAISessions(wt);
 
                             return (
-                              <div
-                                key={`${wt.branch}-${idx}`}
-                                onClick={() => handleSelectWorktree(proj, wt)}
-                                className={`relative flex items-center justify-between py-1.5 px-2.5 rounded-md cursor-pointer group/wt transition-all text-xs ${
-                                  isWtActive
-                                    ? 'bg-white/[0.04] text-white font-medium'
-                                    : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.02]'
-                                }`}
-                              >
-                                {isWtActive && (
-                                  <div
-                                    className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full"
-                                    style={{ backgroundColor: wtCustom?.customColor || '#FFFFFF' }}
-                                  />
-                                )}
+                              <div key={`${wt.branch}-${idx}`} className="space-y-0.5">
+                                {/* Worktree Row */}
+                                <div
+                                  onClick={() => handleSelectWorktree(proj, wt)}
+                                  className={`relative flex items-center justify-between py-1 px-2 rounded-md cursor-pointer group/wt transition-colors duration-75 text-xs ${
+                                    isWtActive
+                                      ? 'bg-white/[0.08] text-white font-medium'
+                                      : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.08]'
+                                  }`}
+                                >
+                                  {isWtActive && (
+                                    <div
+                                      className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
+                                      style={{ backgroundColor: wtCustom?.customColor || '#FFFFFF' }}
+                                    />
+                                  )}
 
-                                <div className="flex items-center gap-2 truncate flex-1 min-w-0 pl-1">
-                                  <GitFork className={`w-3.5 h-3.5 flex-shrink-0 ${isWtActive ? 'text-white' : 'text-[#747982]'}`} />
-                                  <span className="truncate font-mono">{wtDisplayName}</span>
-                                  {wtCustom?.tag && (
-                                    <span
-                                      className="text-[9px] font-mono px-1.5 py-0.2 rounded flex-shrink-0"
-                                      style={{
-                                        backgroundColor: wtCustom.customColor ? `${wtCustom.customColor}22` : 'rgba(255, 255, 255, 0.08)',
-                                        color: wtCustom.customColor || '#A4A8AF'
-                                      }}
-                                    >
-                                      {wtCustom.tag}
-                                    </span>
-                                  )}
-                                  {isPrimary && !wtCustom?.customName && (
-                                    <span className="text-[10px] text-[#747982] font-mono opacity-70">
-                                      (default)
-                                    </span>
-                                  )}
+                                  <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 pl-0.5">
+                                    <GitFork className={`w-3.5 h-3.5 flex-shrink-0 ${isWtActive ? 'text-white' : 'text-[#747982]'}`} />
+                                    <span className="truncate font-mono" title={wtDisplayName}>{wtDisplayName}</span>
+                                    {isPrimary && (
+                                      <span title="Default branch" className="flex-shrink-0">
+                                        <Home className="w-2.5 h-2.5 text-neutral-500 opacity-70" />
+                                      </span>
+                                    )}
+                                    {wtCustom?.tag && (
+                                      <span
+                                        className="text-[9px] font-mono px-1.5 py-0.2 rounded flex-shrink-0"
+                                        style={{
+                                          backgroundColor: wtCustom.customColor ? `${wtCustom.customColor}22` : 'rgba(255, 255, 255, 0.08)',
+                                          color: wtCustom.customColor || '#A4A8AF'
+                                        }}
+                                      >
+                                        {wtCustom.tag}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover/wt:opacity-100 transition-opacity">
+                                      {/* Customize Worktree button */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setCustomizingWorktree({ proj, wt: { ...wt, ...wtCustom } });
+                                        }}
+                                        className="p-1 text-neutral-500 hover:text-white rounded cursor-pointer"
+                                        title="Customize worktree"
+                                        aria-label="Customize worktree"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+
+                                      {!isPrimary && wt.path && (
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            await removeProjectWorktree(proj.path, wt.path, wt.branch);
+                                          }}
+                                          className="p-1 text-foreground-muted hover:text-error rounded cursor-pointer"
+                                          title="Remove worktree"
+                                          aria-label="Remove worktree"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
 
-                                <div className="flex items-center gap-1.5 flex-shrink-0 pl-1">
-                                  {/* Customize Worktree button */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCustomizingWorktree({ proj, wt: { ...wt, ...wtCustom } });
-                                    }}
-                                    className="p-1 text-neutral-500 hover:text-white rounded opacity-0 group-hover/wt:opacity-100 transition-opacity cursor-pointer"
-                                    title="Customize worktree"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                  </button>
+                                {/* Orca-Style AI Terminals & Sessions under Worktree */}
+                                {aiSessions.map((sess) => {
+                                  const isRunning = sess.status === 'running';
+                                  const isFailed = sess.status === 'failed' || sess.status === 'error';
 
-                                  {wt.head && (
-                                    <span className="text-[10px] font-mono text-neutral-500">
-                                      {wt.head.substring(0, 7)}
-                                    </span>
-                                  )}
-                                  {!isPrimary && wt.path && (
-                                    <button
-                                      onClick={async (e) => {
+                                  return (
+                                    <div
+                                      key={sess.id}
+                                      onClick={(e) => {
                                         e.stopPropagation();
-                                        await removeProjectWorktree(proj.path, wt.path, wt.branch);
+                                        handleSelectWorktree(proj, wt);
+                                        if (sess.terminalId) {
+                                          setActiveTerminalId(sess.terminalId);
+                                          setActiveSection('terminal');
+                                        } else if (sess.orchestrationId) {
+                                          setActiveSection('agents');
+                                        }
                                       }}
-                                      className="p-1 text-foreground-muted hover:text-error rounded opacity-0 group-hover/wt:opacity-100 transition-opacity cursor-pointer"
-                                      title="Remove worktree"
+                                      className="flex items-center gap-1.5 pl-6 pr-2 py-0.5 rounded-md text-xs cursor-pointer text-[#A4A8AF] hover:text-white hover:bg-white/[0.06] transition-colors duration-75 group/aisess"
+                                      title={`AI Session: ${sess.title} (${sess.status})`}
                                     >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
+                                      {/* Status dot / checkmark */}
+                                      {isRunning ? (
+                                        <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0 animate-pulse" />
+                                      ) : isFailed ? (
+                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-[8px] flex-shrink-0 font-bold">✕</span>
+                                      ) : (
+                                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />
+                                      )}
+
+                                      {/* AI Provider Logo */}
+                                      <OfficialLogoRenderer provider={sess.provider} size={12} className="w-3 h-3 flex-shrink-0" />
+
+                                      {/* Summary / Task title */}
+                                      <span className="truncate text-[11px] text-[#A4A8AF] group-hover/aisess:text-white font-normal min-w-0 flex-1">
+                                        {sess.title}
+                                      </span>
+
+                                      {/* Relative time */}
+                                      {sess.timestamp && (
+                                        <span className="text-[10px] text-neutral-500 font-mono flex-shrink-0 ml-1">
+                                          {formatRelativeTime(sess.timestamp)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
+                    )}
+                  </div>
+                );
             })
           )}
         </div>
       </div>
 
-      {/* 5. Footer: Air-Gap & Settings */}
-      <div className="p-2 border-t border-white/[0.06] bg-transparent flex items-center justify-between text-xs">
-        <button
-          onClick={handleToggleAirGap}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.04] transition-colors cursor-pointer text-[11px]"
-          title={isAirGap ? 'Air-Gap Mode Active (Local Offline Models Only)' : 'Online Mode Active'}
-        >
-          {isAirGap ? (
-            <ShieldCheck className="w-3.5 h-3.5 text-[#ECEDEF]" />
-          ) : (
-            <ShieldAlert className="w-3.5 h-3.5 text-[#747982]" />
-          )}
-          <span className="font-medium">{isAirGap ? 'Air-Gap (Local)' : 'Online'}</span>
-        </button>
+      {/* 5. Footer: Settings, Help & Quick Functional Controls */}
+      <div className="p-1.5 px-2 border-t border-white/[0.05] bg-transparent flex items-center justify-between text-xs select-none">
+        {/* Left: Settings & Help */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => toggleSettings(true)}
+            className="p-1.5 rounded-md text-[#747982] hover:text-[#ECEDEF] hover:bg-white/[0.06] transition-colors cursor-pointer"
+            title="Settings & Keyring"
+            aria-label="Settings"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+          <HelpAndResourcesMenu />
+        </div>
 
-        <button
-          onClick={() => toggleSettings(true)}
-          className="p-1.5 rounded-md text-[#747982] hover:text-[#ECEDEF] hover:bg-white/[0.06] transition-colors cursor-pointer"
-          title="Settings & Keyring"
-        >
-          <Settings className="w-3.5 h-3.5" />
-        </button>
+        {/* Right: Plugins & Extensions */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => openPluginsTab()}
+            className="p-1.5 rounded-md text-[#747982] hover:text-[#ECEDEF] hover:bg-white/[0.06] transition-colors cursor-pointer"
+            title="Plugins & Extensions"
+            aria-label="Plugins & Extensions"
+          >
+            <Blocks className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Project Customization Modal */}
@@ -782,6 +914,9 @@ export const LeftSidebar: React.FC = () => {
           worktree={customizingWorktree.wt}
           onSave={async (data) => {
             updateWorktreeCustomization(customizingWorktree.proj.path, customizingWorktree.wt.branch, data);
+            if (customizingWorktree.wt.path && customizingWorktree.wt.path !== customizingWorktree.proj.path) {
+              updateWorktreeCustomization(customizingWorktree.wt.path, customizingWorktree.wt.branch, data);
+            }
             setCustomizingWorktree(null);
           }}
         />

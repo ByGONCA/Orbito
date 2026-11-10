@@ -49,13 +49,13 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 }) => {
   const { saveProjectSettings, updateProjectCustomization, addLog } = useWorkspaceStore();
 
-  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'git' | 'discord' | 'env'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'fileIcons' | 'git' | 'discord' | 'env'>('general');
   const [customName, setCustomName] = useState('');
   const [customTag, setCustomTag] = useState('');
   const [description, setDescription] = useState('');
-  const [defaultProvider, setDefaultProvider] = useState('claude');
-  const [defaultModel, setDefaultModel] = useState('');
-  const [instructions, setInstructions] = useState('');
+  const [customFileIcons, setCustomFileIcons] = useState<Record<string, string>>({});
+  const [newExt, setNewExt] = useState('');
+  const [newFileIconUrl, setNewFileIconUrl] = useState('');
   const [gitAutoFetch, setGitAutoFetch] = useState(false);
   const [discordRpcEnabled, setDiscordRpcEnabled] = useState(false);
   const [detectedRemote, setDetectedRemote] = useState<any>(null);
@@ -74,11 +74,9 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       setDescription(project.description || '');
 
       const s = project.settings || {};
-      setDefaultProvider(s.defaultProvider || 'claude');
-      setDefaultModel(s.defaultModel || '');
-      setInstructions(s.instructions || '');
       setGitAutoFetch(Boolean(s.gitAutoFetch));
       setDiscordRpcEnabled(Boolean(s.discordRpcEnabled));
+      setCustomFileIcons(s.customFileIcons || {});
 
       if (project.path) {
         setIsLoadingRemote(true);
@@ -148,12 +146,10 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
 
       // 3. Save project settings
       const settingsPayload: ProjectSettings = {
-        defaultProvider,
-        defaultModel: defaultModel.trim() || undefined,
-        instructions: instructions.trim() || undefined,
         gitAutoFetch,
         discordRpcEnabled,
-        envVars: envMap
+        envVars: envMap,
+        customFileIcons
       };
 
       await saveProjectSettings(project.id, settingsPayload);
@@ -213,14 +209,14 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             General & Metadata
           </button>
           <button
-            onClick={() => setActiveTab('ai')}
+            onClick={() => setActiveTab('fileIcons')}
             className={`py-3 border-b-2 transition-colors cursor-pointer ${
-              activeTab === 'ai'
+              activeTab === 'fileIcons'
                 ? 'border-white text-white'
                 : 'border-transparent text-[#747982] hover:text-[#A4A8AF]'
             }`}
           >
-            AI Engine & Defaults
+            File Icons
           </button>
           <button
             onClick={() => setActiveTab('git')}
@@ -295,58 +291,76 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: AI Engine & Precedence */}
-          {activeTab === 'ai' && (
+          {/* TAB 2: File Icons */}
+          {activeTab === 'fileIcons' && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] text-[#A4A8AF] space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-[#ECEDEF]">
-                  <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Configuration Precedence Hierarchy</span>
-                </div>
-                <p>
-                  1. <strong className="text-white">Active Session</strong> (manual terminal / agent selection) &gt;
-                  2. <strong className="text-white">Project Settings</strong> (configured below) &gt;
-                  3. <strong className="text-white">Global Defaults</strong> (app configuration).
+              <div>
+                <h4 className="text-xs font-semibold text-white">Custom File Type Icons</h4>
+                <p className="text-[11px] text-[#717784]">
+                  Assign custom icons or logos to file extensions (.ts, .tsx, .py, etc.) via URL or image link.
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#ECEDEF]">Default AI Provider</label>
-                <CustomSelect
-                  value={defaultProvider}
-                  onChange={(val) => setDefaultProvider(val)}
-                  options={PROVIDERS.map((prv) => ({
-                    value: prv.id,
-                    label: prv.name
-                  }))}
-                  className="w-full"
-                  buttonClassName="w-full justify-between"
-                  menuClassName="w-full"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#ECEDEF]">Default Model (Optional)</label>
+              <div className="flex gap-2">
                 <input
                   type="text"
-                  value={defaultModel}
-                  onChange={(e) => setDefaultModel(e.target.value)}
-                  placeholder="e.g. claude-3-7-sonnet, gemini-2.5-pro, deepseek-r1:8b"
-                  className="w-full px-3.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-white/25 focus:outline-none text-xs text-white placeholder-[#747982] font-mono"
+                  placeholder="Ext (e.g. py, tsx)"
+                  value={newExt}
+                  onChange={(e) => setNewExt(e.target.value.toLowerCase())}
+                  className="w-28 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white focus:outline-none"
                 />
+                <input
+                  type="url"
+                  placeholder="Icon URL (https://... or data:image/...)"
+                  value={newFileIconUrl}
+                  onChange={(e) => setNewFileIconUrl(e.target.value)}
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const clean = newExt.trim().replace(/^\./, '').toLowerCase();
+                    if (!clean || !newFileIconUrl.trim()) return;
+                    setCustomFileIcons((prev) => ({ ...prev, [clean]: newFileIconUrl.trim() }));
+                    setNewExt('');
+                    setNewFileIconUrl('');
+                  }}
+                  disabled={!newExt.trim() || !newFileIconUrl.trim()}
+                  className="px-3 py-1.5 bg-white text-black font-semibold text-xs rounded-lg disabled:opacity-40 cursor-pointer"
+                >
+                  Add
+                </button>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#ECEDEF]">
-                  Project-Specific System Instructions (Preamble)
-                </label>
-                <textarea
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  rows={4}
-                  placeholder="System instructions injected into orchestrations and agent tasks for this project (e.g. 'Use strict TypeScript, prefer Tailwind utility classes, never edit database schemas directly')..."
-                  className="w-full px-3.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-white/25 focus:outline-none text-xs text-white placeholder-[#747982] font-mono text-[11px] resize-none"
-                />
+              <div className="space-y-1.5 pt-2">
+                {Object.entries(customFileIcons).length === 0 ? (
+                  <p className="text-[11px] text-[#717784] font-mono">No custom file icons configured.</p>
+                ) : (
+                  Object.entries(customFileIcons).map(([ext, url]) => (
+                    <div
+                      key={ext}
+                      className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] text-xs font-mono"
+                    >
+                      <div className="flex items-center gap-2">
+                        <img src={url} alt={ext} className="w-4 h-4 object-contain rounded" />
+                        <span className="text-white font-medium">.{ext}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomFileIcons((prev) => {
+                            const next = { ...prev };
+                            delete next[ext];
+                            return next;
+                          });
+                        }}
+                        className="text-[#717784] hover:text-rose-400 p-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -390,7 +404,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                   <div>
                     <span className="font-semibold text-white">Integração Global Discord Desativada</span>
                     <p className="text-[11px] text-amber-300/80 mt-0.5">
-                      Para que este projeto seja publicado no Discord, ative também o Discord Rich Presence nas Definições Globais (Definições → Integrações).
+                      To publish this project to Discord, also enable Discord Rich Presence in Global Settings (Settings → Integrations).
                     </p>
                   </div>
                 </div>
@@ -458,7 +472,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                   </div>
                 ) : (
                   <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-[#747982] space-y-1">
-                    <div className="font-medium text-[#A4A8AF]">Nenhum repositório Git remoto detetado</div>
+                    <div className="font-medium text-[#A4A8AF]">No remote Git repository detected</div>
                     <p className="text-[11px]">
                       Este projeto não tem nenhum remote configurado (ou não é um repositório Git). O Discord exibirá este projeto como "Local project" com o botão predefinido do Orbito.
                     </p>

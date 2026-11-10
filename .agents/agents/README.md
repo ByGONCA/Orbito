@@ -6,12 +6,13 @@ This directory contains the persistent configuration, identity profiles, and cap
 
 | Agent Identifier | Display Name | Tier | Tools Config | Primary Focus |
 | :--- | :--- | :--- | :--- | :--- |
-| `lead-architect` | Lead Architect & Development Orchestrator | Orchestrator | Subagent, MCP, Write | Coordination, decomposition, wave planning, integration |
-| `frontend-specialist` | Frontend Specialist | Primary | MCP, Write | React 19, Tailwind, Zustand, Anti-boxiness, virtualized UI |
+| `lead-architect` | Lead Architect & Development Orchestrator | Orchestrator | Subagent, MCP, Write | Coordination, decomposition, wave planning, integration, skill discovery |
+| `frontend-specialist` | Frontend Specialist | Primary | MCP, Write | React 19, Tailwind, Zustand, Anti-boxiness, clean typography, icon-only toolbars |
+| `glass-material-specialist` | Glass Material Specialist | Primary | MCP, Write | Advanced glass materials, refraction, SVG displacement filters, blur tokens |
 | `backend-specialist` | Backend & Infrastructure Specialist | Primary | Write | Electron main, IPC, SQLite (better-sqlite3), PTY, filesystem |
 | `git-specialist` | Git & Version Control Specialist | Primary | Write | Git worktrees, atomic commits, diffs, conflict resolution |
 | `security-specialist` | Security Specialist | Primary | Read-only | IPC security, Electron sandboxing, path traversal, secrets |
-| `qa-specialist` | QA & Testing Specialist | Primary | Write | Vitest tests, typecheck (`tsc`), build validation, bug repro |
+| `qa-specialist` | QA & Visual Testing Specialist | Primary | MCP, Write | Vitest tests, typecheck (`tsc`), screenshot-based visual QA, 6-dimension scoring |
 | `performance-specialist` | Performance Specialist | Primary | Write | CPU/memory profiling, React re-renders, DB indexes, IPC |
 | `code-quality-specialist` | Code Quality Specialist | Primary | Write | SOLID, clean code, DRY, Ponytail simplicity ladder |
 | `documentation-specialist` | Documentation Specialist | Optional | Write | Specs, `README.md`, changelogs, API documentation |

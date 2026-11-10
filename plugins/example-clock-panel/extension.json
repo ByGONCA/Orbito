@@ -1,0 +1,32 @@
+{
+  "id": "orbito-example-clock",
+  "name": "example-clock",
+  "displayName": "Workspace Time & Productivity Clock",
+  "version": "1.0.0",
+  "description": "Demonstrates a community Orbito plugin contributing a productivity panel and status clock.",
+  "author": "Community Contributor",
+  "license": "MIT",
+  "main": "index.js",
+  "permissions": {
+    "filesystem": {
+      "read": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "clock.showCurrentTime",
+        "title": "Show Current Time in UTC",
+        "handler": "showCurrentTime"
+      }
+    ],
+    "skills": [
+      {
+        "id": "productivity-timer",
+        "name": "Productivity Timer",
+        "version": "1.0.0",
+        "description": "Agent skill providing time-tracking metrics for pomodoro work sessions."
+      }
+    ]
+  }
+}

@@ -624,6 +624,20 @@ export const OfficialLogoRenderer: React.FC<{
   className?: string;
   size?: number | string;
 }> = ({ provider = '', title = '', className = 'w-3.5 h-3.5', size }) => {
+  const normTitle = (title || '').toLowerCase();
+  const normProv = (provider || '').toLowerCase();
+
+  // System shells prioritized by title or provider
+  if (normTitle.includes('powershell') || normTitle.includes('pwsh') || normProv.includes('powershell') || normProv.includes('pwsh')) {
+    return <PowerShellLogo className={className} size={size} />;
+  }
+  if (normTitle.includes('cmd') || normTitle.includes('command') || normProv === 'cmd') {
+    return <CmdLogo className={className} size={size} />;
+  }
+  if (normTitle.includes('git bash') || normTitle.includes('bash') || normProv === 'bash') {
+    return <GitBashLogo className={className} size={size} />;
+  }
+
   const norm = (provider || title).toLowerCase();
 
   // Web & system shells
@@ -632,15 +646,6 @@ export const OfficialLogoRenderer: React.FC<{
   }
   if (norm.includes('google') || norm.includes('chrome')) {
     return <GoogleLogo className={className} size={size} />;
-  }
-  if (norm.includes('power') || norm.includes('pwsh')) {
-    return <PowerShellLogo className={className} size={size} />;
-  }
-  if (norm.includes('cmd') || norm.includes('command')) {
-    return <CmdLogo className={className} size={size} />;
-  }
-  if (norm.includes('git') || norm.includes('bash')) {
-    return <GitBashLogo className={className} size={size} />;
   }
 
   // All 30 AI Coding Agents + Orbito AI engines

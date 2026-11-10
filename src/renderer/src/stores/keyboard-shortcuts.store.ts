@@ -1,9 +1,19 @@
 import { create } from 'zustand';
 
+export type ShortcutCategory =
+  | 'Navigation'
+  | 'Windows & Panels'
+  | 'Terminals'
+  | 'General'
+  | 'Navegação'
+  | 'Janelas & Painéis'
+  | 'Terminais'
+  | 'Geral';
+
 export interface ShortcutDefinition {
   id: string;
   label: string;
-  category: 'Navegação' | 'Janelas & Painéis' | 'Terminais' | 'Geral';
+  category: ShortcutCategory;
   defaultCombo: string; // e.g. "Ctrl+K"
   currentCombo: string;
   description: string;
@@ -12,75 +22,75 @@ export interface ShortcutDefinition {
 const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
   {
     id: 'commandPalette',
-    label: 'Paleta de Comandos',
-    category: 'Geral',
+    label: 'Command Palette',
+    category: 'General',
     defaultCombo: 'Ctrl+K',
     currentCombo: 'Ctrl+K',
-    description: 'Abre a pesquisa global de ficheiros, ações e comandos do workspace.'
+    description: 'Open global search for files, actions, and workspace commands.'
   },
   {
     id: 'toggleLeftSidebar',
-    label: 'Alternar Barra Lateral Esquerda',
-    category: 'Janelas & Painéis',
+    label: 'Toggle Left Sidebar',
+    category: 'Windows & Panels',
     defaultCombo: 'Ctrl+B',
     currentCombo: 'Ctrl+B',
-    description: 'Expande ou recolhe a barra lateral de projetos e navegação.'
+    description: 'Expand or collapse the project navigation sidebar.'
   },
   {
     id: 'toggleRightPanel',
-    label: 'Alternar Painel Direito',
-    category: 'Janelas & Painéis',
+    label: 'Toggle Right Panel',
+    category: 'Windows & Panels',
     defaultCombo: 'Ctrl+Shift+B',
     currentCombo: 'Ctrl+Shift+B',
-    description: 'Mostra ou oculta o explorador de ficheiros, agentes e contexto.'
+    description: 'Show or hide the file explorer, agents, and context panel.'
   },
   {
     id: 'toggleBottomPanel',
-    label: 'Alternar Painel Inferior do Terminal',
-    category: 'Janelas & Painéis',
+    label: 'Toggle Bottom Terminal Panel',
+    category: 'Windows & Panels',
     defaultCombo: 'Ctrl+`',
     currentCombo: 'Ctrl+`',
-    description: 'Abre ou fecha o painel inferior de saída de terminal e diagnósticos.'
+    description: 'Open or close the bottom terminal and diagnostics panel.'
   },
   {
     id: 'newTerminal',
-    label: 'Novo Terminal',
-    category: 'Terminais',
+    label: 'New Terminal',
+    category: 'Terminals',
     defaultCombo: 'Ctrl+Shift+`',
     currentCombo: 'Ctrl+Shift+`',
-    description: 'Cria uma nova sessão de terminal no projeto ou worktree ativo.'
+    description: 'Create a new terminal session in the active project or worktree.'
   },
   {
     id: 'splitTerminal',
-    label: 'Dividir Terminal (Split)',
-    category: 'Terminais',
+    label: 'Split Terminal',
+    category: 'Terminals',
     defaultCombo: 'Ctrl+\\',
     currentCombo: 'Ctrl+\\',
-    description: 'Divide o terminal horizontal ou verticalmente para multitarefa.'
+    description: 'Split the terminal horizontally or vertically for multitasking.'
   },
   {
     id: 'openBrowser',
-    label: 'Abrir Separador do Navegador',
-    category: 'Navegação',
+    label: 'Open Browser Tab',
+    category: 'Navigation',
     defaultCombo: 'Ctrl+Shift+U',
     currentCombo: 'Ctrl+Shift+U',
-    description: 'Abre o browser web embutido diretamente no canvas de trabalho.'
+    description: 'Open the embedded web browser directly in the workspace canvas.'
   },
   {
     id: 'openArcLauncher',
-    label: 'Lançador de Comandos (Arc Launcher)',
-    category: 'Geral',
+    label: 'Command Launcher (Arc Launcher)',
+    category: 'General',
     defaultCombo: 'Ctrl+T',
     currentCombo: 'Ctrl+T',
-    description: 'Lança comandos rápidos e pesquisa omni-direcional.'
+    description: 'Launch quick commands and omni-directional search.'
   },
   {
     id: 'openSettings',
-    label: 'Definições do Workspace',
-    category: 'Geral',
+    label: 'Workspace Settings',
+    category: 'General',
     defaultCombo: 'Ctrl+,',
     currentCombo: 'Ctrl+,',
-    description: 'Abre a janela de definições, integrações e atalhos.'
+    description: 'Open settings modal, integrations, and keyboard shortcuts.'
   }
 ];
 

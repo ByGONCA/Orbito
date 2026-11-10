@@ -91,8 +91,8 @@ for (const w of workflows) {
 // 5. Verify Shared Knowledge Base
 console.log('\nChecking Shared Knowledge:');
 const sharedDocs = [
-  'docs/DEVELOPMENT_GUIDE.md',
-  'docs/AI_CONTEXT.md'
+  'docs/development/DEVELOPMENT_GUIDE.md',
+  'docs/development/AI_CONTEXT.md'
 ];
 
 for (const d of sharedDocs) {

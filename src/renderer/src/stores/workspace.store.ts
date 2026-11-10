@@ -69,11 +69,13 @@ export interface TerminalSessionItem {
   streamOutput: string;
   cliSessionId?: string;
   executionHistory?: any[];
+  createdAt?: number;
+  lastActivityAt?: number;
 }
 
 export interface WorkspaceTab {
   id: string; // 'tab:file:...' or 'tab:term:...' or 'tab:flow:...' or 'tab:graph'
-  type: 'file' | 'terminal' | 'flow' | 'project' | 'graph' | 'browser' | 'project-settings';
+  type: 'file' | 'terminal' | 'flow' | 'project' | 'graph' | 'browser' | 'project-settings' | 'plugins';
   title: string;
   filePath?: string;
   terminalId?: string;
@@ -214,9 +216,9 @@ export interface WorkspaceState {
   expandedDirs: Set<string>;
   uiMode: UIMode;
   theme: 'glass' | 'solid' | 'dark' | 'light' | 'system';
-  fileIconTheme: 'material' | 'minimal';
+  fileIconTheme: 'vscode' | 'material' | 'minimal';
   showGitFileColors: boolean;
-  setFileIconTheme: (theme: 'material' | 'minimal') => void;
+  setFileIconTheme: (theme: 'vscode' | 'material' | 'minimal') => void;
   setShowGitFileColors: (show: boolean) => void;
 
   // AI Intelligence Graph State
@@ -229,6 +231,7 @@ export interface WorkspaceState {
   // Actions
   setProject: (project: ProjectDescriptor | null) => void;
   createProject: (options: CreateProjectOptions) => Promise<ProjectDescriptor>;
+  cloneProject: (options: { url: string; parentDirectory: string; customName?: string }) => Promise<ProjectDescriptor>;
   toggleProjectFavorite: (projectId: string) => Promise<boolean>;
   saveProjectSettings: (projectId: string, settings: ProjectSettings) => Promise<boolean>;
   removeStaleProject: (projectId: string) => Promise<void>;
@@ -264,6 +267,7 @@ export interface WorkspaceState {
   openProjectSettingsTab: (projectId: string) => void;
   openFlowTab: (workflow: WorkflowRecord) => void;
   openGraphTab: () => void;
+  openPluginsTab: () => void;
   openBrowserTab: (url?: string) => void;
   closeTab: (tabId: string) => void;
   updateActiveFileContent: (content: string, targetFilePath?: string) => void;
@@ -507,9 +511,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   })(),
 
   updateWorktreeCustomization: (projectPath, branch, data) => {
-    const key = `${projectPath}::${branch}`;
+    const rawKey = `${projectPath}::${branch}`;
+    const normPath = (projectPath || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const normKey = `${normPath}::${branch}`;
     set((state) => {
-      const next = { ...state.worktreeCustomizations, [key]: data };
+      const next = { ...state.worktreeCustomizations, [rawKey]: data, [normKey]: data };
       try {
         localStorage.setItem('orc_worktree_customizations', JSON.stringify(next));
       } catch {}
@@ -522,7 +528,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   expandedProjectIds: new Set(),
   files: [],
   isLeftSidebarOpen: true,
-  leftSidebarWidth: 240,
+  leftSidebarWidth: 260,
   activeSidebarSection: 'projects',
   activeSection: 'terminal',
 
@@ -868,6 +874,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
+  cloneProject: async (options) => {
+    try {
+      const desc = await window.api.cloneProject(options);
+      get().setProject(desc);
+      try {
+        const fileList = await window.api.listFiles({ projectPath: desc.path });
+        set({ files: fileList });
+        get().loadProjectGraph(desc.path);
+      } catch {}
+      const recents = await window.api.getRecentProjects();
+      set({ recentProjects: recents });
+      get().addLog(`Cloned repository successfully: ${desc.name}`, 'info');
+      return desc;
+    } catch (err: any) {
+      get().addLog(`Failed to clone project: ${err.message}`, 'error');
+      throw err;
+    }
+  },
+
   toggleProjectFavorite: async (projectId: string) => {
     try {
       const isFav = await window.api.toggleProjectFavorite({ projectId });
@@ -1101,6 +1126,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         activeFileContent: null,
         activeSection: 'terminal'
       });
+    } else if (tab.type === 'plugins') {
+      set({
+        activeTabId,
+        activeFilePath: null,
+        activeFileContent: null,
+        activeSection: 'extensions'
+      });
     }
     scheduleSaveWorkspaceState(get);
     scheduleSaveLayout(get);
@@ -1280,6 +1312,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     get().loadProjectGraph();
   },
 
+  openPluginsTab: () => {
+    const tabId = 'tab:plugins';
+    set((state) => {
+      const existing = state.openTabs.find((t) => t.id === tabId);
+      let updatedTabs = [...state.openTabs];
+      if (!existing) {
+        updatedTabs.push({
+          id: tabId,
+          type: 'plugins',
+          title: 'Plugins & Ecosystem'
+        });
+      }
+      return {
+        openTabs: updatedTabs,
+        activeTabId: tabId,
+        activeFilePath: null,
+        activeFileContent: null,
+        activeSection: 'extensions'
+      };
+    });
+  },
+
   openBrowserTab: (url = 'https://www.google.com') => {
     const tabId = `browser:${Date.now()}`;
     const domain = url.includes('google') ? 'Google' : (url.replace(/^https?:\/\//, '').split('/')[0] || 'Browser');
@@ -1303,10 +1357,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   closeTab: (tabId) => {
     set((state) => {
+      const closingIndex = state.openTabs.findIndex((t) => t.id === tabId);
       const remaining = state.openTabs.filter((t) => t.id !== tabId);
       if (state.activeTabId === tabId) {
         if (remaining.length > 0) {
-          const nextTab = remaining[remaining.length - 1];
+          const nextIndex = closingIndex > 0 ? closingIndex - 1 : 0;
+          const nextTab = remaining[nextIndex];
           return {
             openTabs: remaining,
             activeTabId: nextTab.id,
@@ -1577,6 +1633,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     const initialOutput = '';
 
+    const now = Date.now();
     const newSession: TerminalSessionItem = {
       id: newId,
       title: defaultTitle,
@@ -1589,7 +1646,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       agentRole: 'coordinator',
       activeSkills: [],
       status: 'idle',
-      streamOutput: initialOutput
+      streamOutput: initialOutput,
+      createdAt: now,
+      lastActivityAt: now
     };
 
     const tabId = `term:${newId}`;
@@ -1682,18 +1741,53 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       window.api?.terminalKill?.({ terminalId: id });
     } catch {}
     set((s) => {
+      const sessionIndex = s.terminalSessions.findIndex((ts) => ts.id === id);
       const remaining = s.terminalSessions.filter((ts) => ts.id !== id);
-      const nextActive = s.activeTerminalId === id ? (remaining[0]?.id || null) : s.activeTerminalId;
-      const nextTabs = s.openTabs.filter((t) => !(t.type === 'terminal' && t.terminalId === id));
-      const nextActiveTabId =
-        s.activeTabId === `term:${id}`
-          ? (nextTabs[nextTabs.length - 1]?.id || null)
-          : s.activeTabId;
+      const nextSessionIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
+      const nextActiveSession = remaining[nextSessionIndex]?.id || null;
+      const nextActive = s.activeTerminalId === id ? nextActiveSession : s.activeTerminalId;
+
+      const closingTabIndex = s.openTabs.findIndex(
+        (t) => t.type === 'terminal' && (t.terminalId === id || t.id === `term:${id}`)
+      );
+      const nextTabs = s.openTabs.filter(
+        (t) => !(t.type === 'terminal' && (t.terminalId === id || t.id === `term:${id}`))
+      );
+
+      let nextActiveTabId = s.activeTabId;
+      let nextActiveFilePath = s.activeFilePath;
+      let nextActiveFileContent = s.activeFileContent;
+      let nextActiveSection = s.activeSection;
+
+      if (s.activeTabId === `term:${id}` || s.activeTabId === id) {
+        if (nextTabs.length > 0) {
+          const nextTabIndex = closingTabIndex > 0 ? closingTabIndex - 1 : 0;
+          const nextTab = nextTabs[nextTabIndex];
+          nextActiveTabId = nextTab.id;
+          if (nextTab.type === 'terminal') {
+            nextActiveSection = 'terminal';
+            nextActiveFilePath = null;
+            nextActiveFileContent = null;
+          } else if (nextTab.type === 'file') {
+            nextActiveSection = 'editor';
+            nextActiveFilePath = nextTab.filePath || null;
+            nextActiveFileContent = nextTab.content || null;
+          }
+        } else {
+          nextActiveTabId = null;
+          nextActiveFilePath = null;
+          nextActiveFileContent = null;
+          nextActiveSection = 'terminal';
+        }
+      }
 
       return {
         terminalSessions: remaining,
         activeTerminalId: nextActive,
         activeTabId: nextActiveTabId,
+        activeFilePath: nextActiveFilePath,
+        activeFileContent: nextActiveFileContent,
+        activeSection: nextActiveSection,
         openTabs: nextTabs,
         maximizedTerminalId: s.maximizedTerminalId === id ? null : s.maximizedTerminalId,
         detachedTerminalIds: s.detachedTerminalIds.filter((dId) => dId !== id)
@@ -1880,7 +1974,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     scheduleSaveLayout(get);
   },
   setLeftSidebarWidth: (w) => {
-    set({ leftSidebarWidth: Math.max(180, Math.min(420, w)) });
+    set({ leftSidebarWidth: Math.max(180, Math.min(480, w)) });
     scheduleSaveLayout(get);
   },
 
@@ -1918,11 +2012,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   toggleSettings: (open) => set((s) => ({ isSettingsOpen: open !== undefined ? open : !s.isSettingsOpen })),
   setTheme: (theme) => {
+    const prev = get().theme;
+    const validTheme = (['glass', 'solid', 'light'].includes(theme) ? theme : 'glass') as 'glass' | 'solid' | 'light';
     if (typeof document !== 'undefined') {
-      document.documentElement.classList.remove('theme-solid', 'theme-glass');
-      document.documentElement.classList.add(theme === 'solid' ? 'theme-solid' : 'theme-glass');
+      document.documentElement.classList.remove('theme-solid', 'theme-glass', 'theme-light', 'dark');
+      if (validTheme === 'light') {
+        document.documentElement.classList.add('theme-light');
+      } else if (validTheme === 'solid') {
+        document.documentElement.classList.add('theme-solid', 'dark');
+      } else {
+        document.documentElement.classList.add('theme-glass', 'dark');
+      }
     }
-    set({ theme });
+    set({ theme: validTheme });
+    if (prev !== validTheme && typeof window !== 'undefined') {
+      window.api?.updateSettings?.({ theme: validTheme });
+    }
   },
   setFileIconTheme: (fileIconTheme) => {
     set({ fileIconTheme });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Check,
@@ -21,6 +22,7 @@ import {
   Palette,
   Upload,
   RotateCcw,
+  Link as LinkIcon,
   Image as ImageIcon
 } from 'lucide-react';
 import type { ProjectDescriptor } from '../../../shared/types';
@@ -72,9 +74,26 @@ export const ProjectIconRenderer: React.FC<{
 }> = ({ iconId, color, className = 'w-4 h-4' }) => {
   const style = color ? { color } : undefined;
 
-  // Custom uploaded image (Data URL or local file path)
-  if (iconId && (iconId.startsWith('data:image/') || iconId.startsWith('file:') || iconId.startsWith('http') || iconId.includes('.'))) {
-    return <img src={iconId} alt="Project Icon" className={`${className} object-contain rounded-[3px]`} />;
+  // Custom uploaded image or external URL (Data URL, local file path, http/https)
+  if (
+    iconId &&
+    (iconId.startsWith('data:image/') ||
+      iconId.startsWith('file:') ||
+      iconId.startsWith('http://') ||
+      iconId.startsWith('https://') ||
+      iconId.startsWith('/') ||
+      iconId.includes('.'))
+  ) {
+    return (
+      <img
+        src={iconId}
+        alt="Project Icon"
+        className={`${className} object-contain rounded-[3px]`}
+        onError={(e) => {
+          (e.target as HTMLElement).style.display = 'none';
+        }}
+      />
+    );
   }
 
   // Check if it's a devicon language logo
@@ -161,7 +180,7 @@ export const ProjectCustomizeModal: React.FC<ProjectCustomizeModalProps> = ({
     }
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none font-sans animate-in fade-in duration-150">
       <div className="w-[520px] max-w-[95vw] max-h-[90vh] flex flex-col bg-[#141619] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
         {/* Header Bar */}
@@ -371,6 +390,8 @@ export const ProjectCustomizeModal: React.FC<ProjectCustomizeModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
 
 export default ProjectCustomizeModal;

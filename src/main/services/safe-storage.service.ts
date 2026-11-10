@@ -56,6 +56,14 @@ export class SafeStorageService {
   }
 
   /**
+   * Checks whether a secret exists for the given key without decrypting or exposing it.
+   */
+  public hasSecret(key: string): boolean {
+    const encryptedBase64 = databaseService.getEncryptedSecret(key);
+    return Boolean(encryptedBase64 && encryptedBase64.length > 0);
+  }
+
+  /**
    * Scans the database and returns the keys of any legacy unencrypted credentials.
    * Does NOT expose plaintext secrets in logs or output.
    */

@@ -87,7 +87,8 @@ import type {
 import { WorkflowRecordSchema } from './workflows';
 import type {
   ExtensionRecord,
-  ExtensionManifest
+  ExtensionManifest,
+  CatalogPluginItem
 } from './extensions';
 import type {
   AnalyticsEvent,
@@ -111,6 +112,12 @@ export const CreateProjectSchema = z.object({
   parentDirectory: z.string().min(1),
   template: z.enum(['empty', 'node', 'react', 'python']),
   initGit: z.boolean().default(true)
+});
+
+export const CloneProjectSchema = z.object({
+  url: z.string().min(1),
+  parentDirectory: z.string().min(1),
+  customName: z.string().optional()
 });
 
 export const ToggleProjectFavoriteSchema = z.object({
@@ -180,7 +187,7 @@ export const UpdateSettingsSchema = z.object({
   uiMode: z.enum(['simple', 'advanced']).optional(),
   theme: z.enum(['glass', 'solid', 'dark', 'light', 'system']).optional(),
   autoIndex: z.boolean().optional(),
-  fileIconTheme: z.enum(['material', 'minimal']).optional(),
+  fileIconTheme: z.enum(['vscode', 'material', 'minimal']).optional(),
   showGitFileColors: z.boolean().optional(),
   discordRpcEnabled: z.boolean().optional(),
   discordClientId: z.string().optional()
@@ -296,6 +303,9 @@ export const ToggleExtensionSchema = z.object({
 });
 export const InstallExtensionSchema = z.object({
   directoryPath: z.string().min(1)
+});
+export const InstallCatalogPluginSchema = z.object({
+  pluginId: z.string().min(1)
 });
 export const UninstallExtensionSchema = z.object({
   extensionId: z.string().min(1)
@@ -468,6 +478,7 @@ export interface IElectronAPI {
   // Workspace & File Management
   openDirectoryDialog: (params?: z.input<typeof OpenDirectorySchema>) => Promise<ProjectDescriptor | null>;
   createProject: (params: z.input<typeof CreateProjectSchema>) => Promise<ProjectDescriptor>;
+  cloneProject: (params: z.input<typeof CloneProjectSchema>) => Promise<ProjectDescriptor>;
   selectDirectory: (title?: string) => Promise<string | null>;
   verifyProjectPath: (projectPath: string) => Promise<boolean>;
   listFiles: (params: z.input<typeof ListFilesSchema>) => Promise<FileNode[]>;
@@ -503,6 +514,7 @@ export interface IElectronAPI {
   // Credentials (safeStorage)
   storeSecret: (params: z.input<typeof StoreSecretSchema>) => Promise<{ success: boolean }>;
   getSecret: (params: z.input<typeof GetSecretSchema>) => Promise<string | null>;
+  hasSecret: (params: z.input<typeof GetSecretSchema>) => Promise<boolean>;
   
   // Memories (5-tier system)
   listMemories: (tier?: string) => Promise<MemoryRecord[]>;
@@ -587,10 +599,12 @@ export interface IElectronAPI {
   generateWorkflowFromPrompt: (params: z.input<typeof GenerateWorkflowFromPromptSchema>) => Promise<NLWorkflowGenerationResult>;
   onWorkflowEvent: (callback: (event: WorkflowEvent) => void) => () => void;
 
-  // Custom Extension SDK (Phase 7)
+  // Custom Extension SDK & Plugins Ecosystem
   listExtensions: () => Promise<ExtensionRecord[]>;
+  getCatalogPlugins: () => Promise<CatalogPluginItem[]>;
   toggleExtension: (params: z.input<typeof ToggleExtensionSchema>) => Promise<{ success: boolean }>;
   installExtension: (params: z.input<typeof InstallExtensionSchema>) => Promise<{ success: boolean; extension?: ExtensionRecord; error?: string }>;
+  installCatalogPlugin: (params: z.input<typeof InstallCatalogPluginSchema>) => Promise<{ success: boolean; extension?: ExtensionRecord; error?: string }>;
   uninstallExtension: (params: z.input<typeof UninstallExtensionSchema>) => Promise<{ success: boolean }>;
 
   // Advanced Analytics & Telemetry (Phase 7)
@@ -635,6 +649,7 @@ export interface IElectronAPI {
   maximizeWindow?: () => Promise<boolean>;
   closeWindow?: () => Promise<void>;
   isWindowMaximized?: () => Promise<boolean>;
+  refreshMaterial?: () => Promise<boolean>;
   onWindowStateChange?: (callback: (state: { isMaximized: boolean }) => void) => () => void;
   openDetachedTabWindow?: (params: { tab: any; project?: any; x?: number; y?: number }) => Promise<{ success: boolean }>;
 

@@ -10,11 +10,12 @@ This rule governs how AI development is executed in Orbito. Antigravity operates
 - **`lead-architect` (Lead Architect & Development Orchestrator):** Central coordinator. Analyzes requirements, inspects repository architecture, breaks work into disjoint tasks, selects specialists, coordinates parallel execution waves, reviews code diffs, resolves discrepancies, and compiles the final report.
 
 ### B. Primary Specialists
-- **`frontend-specialist`:** React 19, Electron renderer, Tailwind CSS, Zustand 5, virtualized UI, strict compliance with anti-boxiness and clean typography rules.
+- **`frontend-specialist`:** React 19, Electron renderer, Tailwind CSS, Zustand 5, virtualized UI, strict compliance with anti-boxiness, clean typography, and icon-only toolbar rules.
+- **`glass-material-specialist`:** Authority on advanced physical glass materials, refraction indices, SVG displacement filters (`<feDisplacementMap>`), specular rim highlights, blur tokens, and dark glass layering.
 - **`backend-specialist`:** Node.js, Electron main process, IPC handlers, SQLite persistence (`better-sqlite3`, Drizzle ORM), PTY management, and safe filesystem operations.
 - **`git-specialist`:** Git repository operations, worktree isolation, atomic commits, diff analysis, and safe conflict management (NEVER destructive operations).
 - **`security-specialist`:** Read-only audits of IPC security, Electron context isolation/sandboxing, path traversal prevention, secrets storage, and dependency CVEs.
-- **`qa-specialist`:** Automated test suites (Vitest), TypeScript validation (`npm run typecheck`), build verification, regression testing, and bug reproduction.
+- **`qa-specialist`:** Automated test suites (Vitest), TypeScript validation (`npm run typecheck`), build verification, regression testing, bug reproduction, and independent screenshot-based visual QA (6-dimension scoring, PASS >= 90 verdict).
 - **`performance-specialist`:** Evidence-based profiling of React re-renders, SQLite query indexes, memory leaks, IPC overhead, and CPU bottlenecks.
 - **`code-quality-specialist`:** Code reviews, SOLID principles, clean architecture, DRY enforcement, and Ponytail simplicity ladder optimization.
 
@@ -45,6 +46,7 @@ Every substantial development task in Orbito follows this workflow:
    - Lead Architect reviews diffs, checks compatibility across layers, and resolves any cross-boundary integration issues.
 6. **Phase 6 — Quality Assurance:**
    - Lead Architect dispatches `qa-specialist` to execute `npm run typecheck` and `npm run test`.
+   - For UI, material, or visual work, execute the 14-step **Visual Engineering Protocol** (`.agents/workflows/visual-engineering.md`): capture rendered screenshots via Chrome DevTools MCP, calculate 6-dimension scores, and require an independent **PASS** verdict (>= 90/100) before completion.
    - Dispatches `security-specialist` for security-sensitive boundaries (IPC, auth, filesystem).
    - Dispatches `performance-specialist` if performance-critical paths are affected.
 7. **Phase 7 — Final Delivery:**
@@ -123,10 +125,11 @@ All agents and the Lead Architect must strictly abide by these rules:
 12. **Keep changes focused:** Smallest working diff; do not refactor unrelated parts of the codebase.
 13. **Write tests where appropriate:** Unit tests for business logic, Vitest assertions, regression coverage.
 14. **Verify claims before reporting success:** Never claim a test or build passed without executing it.
-15. **Document important architectural decisions:** Record key choices in `docs/DECISIONS.md` or relevant architecture specs.
+15. **Document important architectural decisions:** Record key choices in `docs/architecture/DECISIONS.md` or relevant architecture specs.
 16. **Avoid unnecessary large-scale refactoring:** Fix bugs at the root cause, but do not reorganize untouched systems.
 17. **Never overwrite user work without authorization:** Inspect `git status` first; protect uncommitted files.
 18. **Never perform destructive operations without authorization:** No `git reset --hard`, `push --force`, or unprompted file deletions.
+19. **Follow Permanent Repository Organisation Policy:** Adhere strictly to `docs/development/REPOSITORY_ORGANISATION.md`. Never create markdown files or audit reports in the repository root. Centralize documentation in the appropriate `docs/` subdirectory and update `docs/README.md`.
 
 ---
 

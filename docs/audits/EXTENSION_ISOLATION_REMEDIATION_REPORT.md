@@ -253,7 +253,7 @@ The dedicated test suite [`tests/extension-os-sandboxing.test.ts`](file:///C:/Us
 - Graceful degradation: built-in extensions permitted; untrusted extensions rejected without sandboxing; override permitted with warning.
 - Platform security reporting.
 
-For full architectural details, see [`OS_LEVEL_EXTENSION_SANDBOX_REPORT.md`](file:///C:/Users/gonca/Documents/coding/Projects/Orc/OS_LEVEL_EXTENSION_SANDBOX_REPORT.md).
+For full architectural details, see [`OS_LEVEL_EXTENSION_SANDBOX_REPORT.md`](./OS_LEVEL_EXTENSION_SANDBOX_REPORT.md).
 
 ---
 

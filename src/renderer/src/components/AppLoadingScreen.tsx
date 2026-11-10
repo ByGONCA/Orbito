@@ -9,6 +9,7 @@ import {
   Square,
   X
 } from 'lucide-react';
+import orbitLogo from '../assets/Orbit.png';
 
 export interface AppLoadingScreenProps {
   onComplete: () => void;
@@ -106,7 +107,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
       // Graceful completion handoff
       setTimeout(() => {
         onComplete();
-      }, 350);
+      }, 50);
     } catch (err: any) {
       console.error('[AppLoadingScreen] Startup error:', err);
       setErrorDetails({
@@ -138,7 +139,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
   const handleClose = () => window.api?.closeWindow?.();
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#101113] text-[#ECEDEF] select-none font-sans overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-transparent text-[#ECEDEF] select-none font-sans overflow-hidden animate-in fade-in duration-150 app-loading-screen-root">
       {/* 1. Minimal Window Title Bar (drag region + window controls) */}
       <div
         className="h-10 w-full flex items-center justify-between px-3 bg-transparent flex-shrink-0"
@@ -192,7 +193,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
           <div className="relative flex items-center justify-center mb-1">
             <div className="absolute w-20 h-20 rounded-full bg-white/[0.03] blur-xl animate-pulse pointer-events-none" />
             <img
-              src="/Orbit.png"
+              src={orbitLogo}
               alt="Orbito Logo"
               className="w-14 h-14 object-contain select-none pointer-events-none drop-shadow-md"
             />

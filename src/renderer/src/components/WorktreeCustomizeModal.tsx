@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Check,
@@ -106,7 +107,7 @@ export const WorktreeCustomizeModal: React.FC<WorktreeCustomizeModalProps> = ({
     }
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none font-sans animate-in fade-in duration-150">
       <div className="w-[500px] max-w-[95vw] max-h-[90vh] flex flex-col bg-[#141619] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
         {/* Header Bar */}
@@ -295,6 +296,8 @@ export const WorktreeCustomizeModal: React.FC<WorktreeCustomizeModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
 
 export default WorktreeCustomizeModal;

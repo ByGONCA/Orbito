@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useTransition } from 'react';
 import {
   FileCode,
   X,
@@ -16,7 +16,12 @@ import {
   Redo,
   Share2,
   BookOpen,
-  Eye
+  Eye,
+  Layers,
+  Cpu,
+  Sparkles,
+  Box,
+  Package
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 import { Devicon } from '../utils/devicon-svgs';
@@ -31,6 +36,136 @@ interface LineToken {
 interface HighlightedLine {
   indentUnits: number;
   tokens: LineToken[];
+}
+
+export interface SuggestionItem {
+  label: string;
+  kind: 'function' | 'method' | 'variable' | 'class' | 'interface' | 'keyword' | 'property' | 'type' | 'module';
+  detail?: string;
+  documentation?: string;
+  insertText?: string;
+}
+
+const JS_TS_KEYWORDS: SuggestionItem[] = [
+  { label: 'const', kind: 'keyword', detail: 'keyword', documentation: 'Declares a block-scoped constant' },
+  { label: 'let', kind: 'keyword', detail: 'keyword', documentation: 'Declares a block-scoped variable' },
+  { label: 'function', kind: 'keyword', detail: 'keyword', documentation: 'Declares a function' },
+  { label: 'return', kind: 'keyword', detail: 'keyword', documentation: 'Returns a value from a function' },
+  { label: 'import', kind: 'keyword', detail: 'keyword', documentation: 'Imports bindings from a module' },
+  { label: 'export', kind: 'keyword', detail: 'keyword', documentation: 'Exports bindings from a module' },
+  { label: 'default', kind: 'keyword', detail: 'keyword', documentation: 'Specifies the default export' },
+  { label: 'async', kind: 'keyword', detail: 'keyword', documentation: 'Declares an asynchronous function' },
+  { label: 'await', kind: 'keyword', detail: 'keyword', documentation: 'Waits for a Promise to resolve' },
+  { label: 'interface', kind: 'keyword', detail: 'keyword', documentation: 'Declares a TypeScript interface' },
+  { label: 'type', kind: 'keyword', detail: 'keyword', documentation: 'Declares a TypeScript type alias' },
+  { label: 'class', kind: 'keyword', detail: 'keyword', documentation: 'Declares a class' },
+  { label: 'if', kind: 'keyword', detail: 'keyword', documentation: 'Conditionally executes statements' },
+  { label: 'else', kind: 'keyword', detail: 'keyword', documentation: 'Executes if condition is false' },
+  { label: 'for', kind: 'keyword', detail: 'keyword', documentation: 'Creates a loop' },
+  { label: 'while', kind: 'keyword', detail: 'keyword', documentation: 'Executes while condition is true' },
+  { label: 'try', kind: 'keyword', detail: 'keyword', documentation: 'Attempts to execute code that might throw' },
+  { label: 'catch', kind: 'keyword', detail: 'keyword', documentation: 'Handles thrown errors' },
+  { label: 'finally', kind: 'keyword', detail: 'keyword', documentation: 'Executes regardless of error' },
+  { label: 'throw', kind: 'keyword', detail: 'keyword', documentation: 'Throws an exception' },
+  { label: 'typeof', kind: 'keyword', detail: 'keyword', documentation: 'Returns the type of an operand' },
+  { label: 'console.log', kind: 'function', detail: '(method) console.log(...data: any[]): void', documentation: 'Prints to standard output' },
+  { label: 'console.error', kind: 'function', detail: '(method) console.error(...data: any[]): void', documentation: 'Prints error message to stderr' },
+  { label: 'console.warn', kind: 'function', detail: '(method) console.warn(...data: any[]): void', documentation: 'Prints warning message to stderr' },
+  { label: 'JSON.stringify', kind: 'function', detail: '(method) JSON.stringify(value, replacer?, space?): string', documentation: 'Converts value to JSON string' },
+  { label: 'JSON.parse', kind: 'function', detail: '(method) JSON.parse(text: string): any', documentation: 'Parses JSON string' },
+  { label: 'Promise', kind: 'class', detail: 'class Promise<T>', documentation: 'Represents the completion of an async operation' },
+  { label: 'Array', kind: 'class', detail: 'interface Array<T>', documentation: 'JavaScript Array object' },
+  { label: 'Record', kind: 'type', detail: 'type Record<K, T>', documentation: 'Constructs an object type with property keys K of type T' },
+  { label: 'React', kind: 'module', detail: 'import React from "react"', documentation: 'React library root namespace' },
+  { label: 'useState', kind: 'function', detail: 'function useState<S>(initialState): [S, Dispatch<SetStateAction<S>>]', documentation: 'React state hook' },
+  { label: 'useEffect', kind: 'function', detail: 'function useEffect(effect, deps?): void', documentation: 'React side-effect hook' },
+  { label: 'useMemo', kind: 'function', detail: 'function useMemo<T>(factory, deps): T', documentation: 'React memoization hook' },
+  { label: 'useRef', kind: 'function', detail: 'function useRef<T>(initialValue): RefObject<T>', documentation: 'React mutable reference hook' },
+  { label: 'useCallback', kind: 'function', detail: 'function useCallback<T>(callback, deps): T', documentation: 'React memoized callback hook' }
+];
+
+const MEMBER_SUGGESTIONS: SuggestionItem[] = [
+  { label: 'length', kind: 'property', detail: '(property) length: number', documentation: 'Returns length of string or array' },
+  { label: 'map', kind: 'method', detail: '(method) Array<T>.map<U>(callback): U[]', documentation: 'Calls a defined callback on each element and returns an array of results' },
+  { label: 'filter', kind: 'method', detail: '(method) Array<T>.filter(predicate): T[]', documentation: 'Returns elements of array that meet condition' },
+  { label: 'reduce', kind: 'method', detail: '(method) Array<T>.reduce(callback, initialValue?): any', documentation: 'Calls callback on all elements, accumulating a single result' },
+  { label: 'forEach', kind: 'method', detail: '(method) Array<T>.forEach(callback): void', documentation: 'Performs action for each element' },
+  { label: 'find', kind: 'method', detail: '(method) Array<T>.find(predicate): T | undefined', documentation: 'Returns value of first element satisfying condition' },
+  { label: 'findIndex', kind: 'method', detail: '(method) Array<T>.findIndex(predicate): number', documentation: 'Returns index of first element satisfying condition' },
+  { label: 'includes', kind: 'method', detail: '(method) includes(searchElement): boolean', documentation: 'Determines whether array or string includes element' },
+  { label: 'indexOf', kind: 'method', detail: '(method) indexOf(searchElement): number', documentation: 'Returns index of first occurrence' },
+  { label: 'slice', kind: 'method', detail: '(method) slice(start?, end?): any', documentation: 'Returns a section of an array or string' },
+  { label: 'splice', kind: 'method', detail: '(method) Array<T>.splice(start, deleteCount, ...items): T[]', documentation: 'Removes and/or inserts elements' },
+  { label: 'push', kind: 'method', detail: '(method) Array<T>.push(...items: T[]): number', documentation: 'Appends elements to the end of an array' },
+  { label: 'pop', kind: 'method', detail: '(method) Array<T>.pop(): T | undefined', documentation: 'Removes last element and returns it' },
+  { label: 'split', kind: 'method', detail: '(method) String.split(separator, limit?): string[]', documentation: 'Splits string into substrings using specified separator' },
+  { label: 'join', kind: 'method', detail: '(method) Array<T>.join(separator?): string', documentation: 'Joins all elements of an array into a string' },
+  { label: 'toLowerCase', kind: 'method', detail: '(method) String.toLowerCase(): string', documentation: 'Converts string to lowercase' },
+  { label: 'toUpperCase', kind: 'method', detail: '(method) String.toUpperCase(): string', documentation: 'Converts string to uppercase' },
+  { label: 'trim', kind: 'method', detail: '(method) String.trim(): string', documentation: 'Removes leading and trailing whitespace' },
+  { label: 'startsWith', kind: 'method', detail: '(method) String.startsWith(searchString): boolean', documentation: 'Checks if string begins with characters' },
+  { label: 'endsWith', kind: 'method', detail: '(method) String.endsWith(searchString): boolean', documentation: 'Checks if string ends with characters' },
+  { label: 'replace', kind: 'method', detail: '(method) String.replace(searchValue, replaceValue): string', documentation: 'Replaces matches with replacement string' },
+  { label: 'replaceAll', kind: 'method', detail: '(method) String.replaceAll(searchValue, replaceValue): string', documentation: 'Replaces all occurrences with replacement' },
+  { label: 'then', kind: 'method', detail: '(method) Promise<T>.then(onfulfilled?, onrejected?): Promise', documentation: 'Attaches callbacks for resolution/rejection of Promise' },
+  { label: 'catch', kind: 'method', detail: '(method) Promise<T>.catch(onrejected?): Promise', documentation: 'Attaches callback for rejection of Promise' },
+  { label: 'toString', kind: 'method', detail: '(method) Object.toString(): string', documentation: 'Returns string representation' }
+];
+
+const PYTHON_KEYWORDS: SuggestionItem[] = [
+  { label: 'def', kind: 'keyword', detail: 'keyword', documentation: 'Defines a function' },
+  { label: 'class', kind: 'keyword', detail: 'keyword', documentation: 'Defines a class' },
+  { label: 'import', kind: 'keyword', detail: 'keyword', documentation: 'Imports a module' },
+  { label: 'from', kind: 'keyword', detail: 'keyword', documentation: 'Imports specific members from a module' },
+  { label: 'return', kind: 'keyword', detail: 'keyword', documentation: 'Returns a value from a function' },
+  { label: 'if', kind: 'keyword', detail: 'keyword', documentation: 'Conditional check' },
+  { label: 'elif', kind: 'keyword', detail: 'keyword', documentation: 'Else-if condition' },
+  { label: 'else', kind: 'keyword', detail: 'keyword', documentation: 'Else block' },
+  { label: 'for', kind: 'keyword', detail: 'keyword', documentation: 'For loop' },
+  { label: 'while', kind: 'keyword', detail: 'keyword', documentation: 'While loop' },
+  { label: 'try', kind: 'keyword', detail: 'keyword', documentation: 'Exception handling block' },
+  { label: 'except', kind: 'keyword', detail: 'keyword', documentation: 'Catches exceptions' },
+  { label: 'finally', kind: 'keyword', detail: 'keyword', documentation: 'Always executes cleanup' },
+  { label: 'print', kind: 'function', detail: 'print(*values, sep=" ", end="\\n")', documentation: 'Prints to stdout' },
+  { label: 'len', kind: 'function', detail: 'len(obj) -> int', documentation: 'Returns length of an object' },
+  { label: 'range', kind: 'function', detail: 'range(stop) or range(start, stop[, step])', documentation: 'Generates sequence of numbers' }
+];
+
+function extractLocalSymbols(text: string): SuggestionItem[] {
+  const symbols: SuggestionItem[] = [];
+  const seen = new Set<string>();
+
+  // Function matches
+  const fnMatches = text.matchAll(/(?:function|def)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)|(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:async\s*)?\(/g);
+  for (const m of fnMatches) {
+    const name = m[1] || m[2];
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      symbols.push({ label: name, kind: 'function', detail: `function ${name}()`, documentation: 'Local function in file' });
+    }
+  }
+
+  // Variable matches
+  const varMatches = text.matchAll(/(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/g);
+  for (const m of varMatches) {
+    const name = m[1];
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      symbols.push({ label: name, kind: 'variable', detail: `local ${name}`, documentation: 'Local variable in file' });
+    }
+  }
+
+  // Type & Class matches
+  const typeMatches = text.matchAll(/(?:class|interface|type)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g);
+  for (const m of typeMatches) {
+    const name = m[1];
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      symbols.push({ label: name, kind: 'interface', detail: `type ${name}`, documentation: 'Local type or class in file' });
+    }
+  }
+
+  return symbols;
 }
 
 // Fast regex tokenizer for code syntax highlighting with VS Code Dark+ Modern theme
@@ -55,24 +190,31 @@ function highlightCode(code: string, language: string): HighlightedLine[] {
       return { indentUnits: 0, tokens: [{ text: ' ', className: '' }] };
     }
 
-    // Calculate leading indentation units (every 2 spaces or 1 tab = 1 guide unit)
+    // Leading indentation calculation
     const leadingMatch = line.match(/^(\s+)/);
-    const leadingSpaces = leadingMatch ? leadingMatch[1].replace(/\t/g, '  ').length : 0;
-    const indentUnits = Math.floor(leadingSpaces / 2);
-    const remainder = leadingSpaces % 2;
-    const content = (remainder > 0 ? ' ' : '') + line.trimStart();
+    const leadingWhitespace = leadingMatch ? leadingMatch[1].replace(/\t/g, '  ') : '';
+    const indentUnits = Math.floor(leadingWhitespace.length / 2);
+    const remainder = leadingWhitespace.length % 2;
+    const content = line.slice(leadingMatch ? leadingMatch[1].length : 0);
+
+    const tokens: LineToken[] = [];
+
+    // Indentation guide tokens (each unit is 2 spaces with a left guide line)
+    for (let i = 0; i < indentUnits; i++) {
+      tokens.push({ text: '  ', className: 'indent-guide-unit' });
+    }
+    if (remainder > 0) {
+      tokens.push({ text: ' '.repeat(remainder), className: '' });
+    }
 
     // Full line comment
     if (content.startsWith('//') || content.startsWith('#')) {
-      return {
-        indentUnits,
-        tokens: [{ text: content, className: 'hl-comment' }]
-      };
+      tokens.push({ text: content, className: 'hl-comment' });
+      return { indentUnits, tokens };
     }
 
-    const tokens: LineToken[] = [];
     const chunkRegex =
-      /(["'`].*?["'`]|\/\/.*$|#.*$|\b[a-zA-Z_$][a-zA-Z0-9_$]*\b|\d+(\.\d+)?|[{}()[\]]|[-+*/=><!&|%?:;,.]|[^\s\w])/g;
+      /(["'`].*?["'`]|\/\/.*$|#.*$|\b[a-zA-Z_$][a-zA-Z0-9_$]*\b|\d+(\.\d+)?|[{}()[\]]|[-+*/=><!&|%?:;,.]|[^\s\w]|\s+)/g;
     let match;
     let lastIndex = 0;
 
@@ -124,7 +266,7 @@ function highlightCode(code: string, language: string): HighlightedLine[] {
 
     return {
       indentUnits,
-      tokens: tokens.length > 0 ? tokens : [{ text: content, className: '' }]
+      tokens: tokens.length > 0 ? tokens : [{ text: content || ' ', className: '' }]
     };
   });
 }
@@ -155,11 +297,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
   const [replaceQuery, setReplaceQuery] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
-  const [isEditingDirectly, setIsEditingDirectly] = useState(false);
   const [markdownViewMode, setMarkdownViewMode] = useState<'code' | 'preview'>('preview');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const highlightLayerRef = useRef<HTMLDivElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
 
   // Determine active tab
   const activeTab = openTabs.find(
@@ -176,7 +318,144 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
     (currentFilePath === storeActiveFilePath ? storeActiveFileContent : null) ??
     activeTab?.content ??
     '';
-  const lines = useMemo(() => content.split('\n'), [content]);
+
+  // Local buffer for instant, 0-latency typing and deleting
+  const [localContent, setLocalContent] = useState(content);
+  const localContentRef = useRef(content);
+  localContentRef.current = localContent;
+  const pendingSyncRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync local buffer when switching active file or tab, and flush pending changes on unmount/switch
+  useEffect(() => {
+    setLocalContent(content);
+    localContentRef.current = content;
+    return () => {
+      if (pendingSyncRef.current) {
+        clearTimeout(pendingSyncRef.current);
+        pendingSyncRef.current = null;
+        updateActiveFileContent(localContentRef.current, currentFilePath || undefined);
+      }
+    };
+  }, [currentFilePath, content]);
+
+  // Flush pending changes on window close or beforeunload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      flushSync();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      flushSync();
+    };
+  }, []);
+
+  const flushSync = () => {
+    if (pendingSyncRef.current) {
+      clearTimeout(pendingSyncRef.current);
+      pendingSyncRef.current = null;
+    }
+    updateActiveFileContent(localContentRef.current, currentFilePath || undefined);
+  };
+
+  const handleContentChange = (newVal: string) => {
+    setLocalContent(newVal);
+    localContentRef.current = newVal;
+
+    if (pendingSyncRef.current) clearTimeout(pendingSyncRef.current);
+    pendingSyncRef.current = setTimeout(() => {
+      updateActiveFileContent(newVal, currentFilePath || undefined);
+    }, 300);
+
+    if (textareaRef.current) {
+      triggerIntelliSense(newVal, textareaRef.current.selectionStart);
+    }
+  };
+
+  const lines = useMemo(() => localContent.split('\n'), [localContent]);
+
+  // IntelliSense autocompletion state
+  const [intellisenseOpen, setIntellisenseOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState(0);
+  const [suggestionCoords, setSuggestionCoords] = useState({ top: 30, left: 50 });
+
+  const triggerIntelliSense = (text: string, cursorIndex: number) => {
+    if (!text || cursorIndex <= 0) {
+      setIntellisenseOpen(false);
+      return;
+    }
+
+    const textBefore = text.slice(0, cursorIndex);
+    const lastLine = textBefore.split('\n').pop() || '';
+
+    const dotMatch = lastLine.match(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)?$/);
+    const wordMatch = lastLine.match(/([a-zA-Z_$][a-zA-Z0-9_$]*)$/);
+
+    let items: SuggestionItem[] = [];
+
+    if (dotMatch) {
+      const prefix = (dotMatch[1] || '').toLowerCase();
+      items = MEMBER_SUGGESTIONS.filter((s) => s.label.toLowerCase().startsWith(prefix));
+    } else if (wordMatch && wordMatch[1].length >= 1) {
+      const prefix = wordMatch[1].toLowerCase();
+      const baseList = language === 'Python' ? PYTHON_KEYWORDS : JS_TS_KEYWORDS;
+      const localSymbols = extractLocalSymbols(text);
+      const combined = [...baseList, ...localSymbols];
+
+      const seen = new Set<string>();
+      items = combined.filter((s) => {
+        if (!s.label.toLowerCase().startsWith(prefix)) return false;
+        if (seen.has(s.label)) return false;
+        seen.add(s.label);
+        return true;
+      });
+    }
+
+    if (items.length > 0) {
+      setSuggestions(items.slice(0, 15));
+      setSelectedSuggestionIdx(0);
+
+      const lineNum = textBefore.split('\n').length;
+      const colNum = lastLine.length;
+      const topPos = Math.max(26, lineNum * 22 + 4);
+      const leftPos = Math.max(48, 44 + colNum * 7.4);
+      setSuggestionCoords({ top: topPos, left: leftPos });
+      setIntellisenseOpen(true);
+    } else {
+      setIntellisenseOpen(false);
+    }
+  };
+
+  const handleAcceptSuggestion = (item: SuggestionItem) => {
+    if (!textareaRef.current) return;
+    const ta = textareaRef.current;
+    const cursor = ta.selectionStart;
+    const val = ta.value;
+
+    const textBefore = val.slice(0, cursor);
+    const wordMatch = textBefore.match(/([a-zA-Z_$][a-zA-Z0-9_$]*)$/);
+    const dotMatch = textBefore.match(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)?$/);
+
+    let replaceStart = cursor;
+    if (dotMatch && dotMatch[1]) {
+      replaceStart = cursor - dotMatch[1].length;
+    } else if (wordMatch) {
+      replaceStart = cursor - wordMatch[1].length;
+    }
+
+    const insertText = item.insertText || item.label;
+    const updated = val.slice(0, replaceStart) + insertText + val.slice(cursor);
+    handleContentChange(updated);
+    setIntellisenseOpen(false);
+
+    setTimeout(() => {
+      ta.focus();
+      const newCursor = replaceStart + insertText.length;
+      ta.selectionStart = ta.selectionEnd = newCursor;
+      updateCursorFromTextarea(ta);
+    }, 0);
+  };
 
   // Language detection from extension
   const ext = (currentFilePath || '').split('.').pop()?.toLowerCase() || '';
@@ -309,17 +588,36 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
     }
   }, [ext]);
 
+  const updateCursorFromTextarea = (ta: HTMLTextAreaElement) => {
+    const textBefore = ta.value.substring(0, ta.selectionStart);
+    const linesBefore = textBefore.split('\n');
+    const line = linesBefore.length;
+    const col = linesBefore[linesBefore.length - 1].length + 1;
+    setCursorPos({ line, col });
+  };
+
+  const handleLineClick = (lineNum: number) => {
+    if (!textareaRef.current) return;
+    const lineIdx = lineNum - 1;
+    const charIndex = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0);
+    textareaRef.current.focus();
+    textareaRef.current.setSelectionRange(charIndex, charIndex);
+    setCursorPos({ line: lineNum, col: 1 });
+  };
+
   // Jump to target line when clicked from Outline
   useEffect(() => {
-    if (targetEditorLine && scrollContainerRef.current) {
-      const lineElement = document.getElementById(`editor-line-${targetEditorLine}`);
-      if (lineElement) {
-        lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    if (targetEditorLine && textareaRef.current) {
+      const lineIdx = targetEditorLine - 1;
+      const targetTop = lineIdx * 22;
+      textareaRef.current.scrollTo({ top: Math.max(0, targetTop - 100), behavior: 'smooth' });
+      const charIndex = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0);
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(charIndex, charIndex);
       setCursorPos({ line: targetEditorLine, col: 1 });
       setTargetEditorLine(null);
     }
-  }, [targetEditorLine, setTargetEditorLine]);
+  }, [targetEditorLine, setTargetEditorLine, lines]);
 
   // Keyboard shortcut listener (Ctrl+S, Ctrl+F)
   useEffect(() => {
@@ -337,14 +635,87 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [saveActiveFile]);
 
-  // Tokenized highlighted lines with indentation data
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // IntelliSense keyboard navigation
+    if (intellisenseOpen && suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSuggestionIdx((i) => (i + 1) % suggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestionIdx((i) => (i - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        handleAcceptSuggestion(suggestions[selectedSuggestionIdx]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIntellisenseOpen(false);
+        return;
+      }
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      flushSync();
+      saveActiveFile();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      setIsSearching(true);
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const val = textarea.value;
+
+      if (e.shiftKey) {
+        // Outdent
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        if (val.substring(lineStart, lineStart + 2) === '  ') {
+          const updated = val.substring(0, lineStart) + val.substring(lineStart + 2);
+          handleContentChange(updated);
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = Math.max(lineStart, start - 2);
+            updateCursorFromTextarea(textarea);
+          }, 0);
+        } else if (val[lineStart] === ' ') {
+          const updated = val.substring(0, lineStart) + val.substring(lineStart + 1);
+          handleContentChange(updated);
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = Math.max(lineStart, start - 1);
+            updateCursorFromTextarea(textarea);
+          }, 0);
+        }
+      } else {
+        // Indent 2 spaces
+        const updated = val.substring(0, start) + '  ' + val.substring(end);
+        handleContentChange(updated);
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 2;
+          updateCursorFromTextarea(textarea);
+        }, 0);
+      }
+    }
+  };
+
+  // Tokenized highlighted lines with indentation data (computed from localContent)
   const highlightedLines = useMemo(() => {
-    return highlightCode(content, language);
-  }, [content, language]);
+    return highlightCode(localContent, language);
+  }, [localContent, language]);
 
   // Find matches
   const searchMatches = useMemo(() => {
-    if (!searchQuery || !content) return [];
+    if (!searchQuery || !localContent) return [];
     const matches: Array<{ line: number; ch: number }> = [];
     const q = searchQuery.toLowerCase();
     lines.forEach((line, lIdx) => {
@@ -355,15 +726,22 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
       }
     });
     return matches;
-  }, [searchQuery, content, lines]);
+  }, [searchQuery, localContent, lines]);
 
   const handleNextMatch = () => {
     if (searchMatches.length === 0) return;
     const next = (currentMatchIndex + 1) % searchMatches.length;
     setCurrentMatchIndex(next);
     const target = searchMatches[next];
-    const el = document.getElementById(`editor-line-${target.line}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (textareaRef.current) {
+      const top = (target.line - 1) * 22;
+      textareaRef.current.scrollTo({ top: Math.max(0, top - 100), behavior: 'smooth' });
+      const lineIdx = target.line - 1;
+      const charIndex = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0) + target.ch;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(charIndex, charIndex + searchQuery.length);
+      setCursorPos({ line: target.line, col: target.ch + 1 });
+    }
   };
 
   const handlePrevMatch = () => {
@@ -371,8 +749,15 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
     const prev = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
     setCurrentMatchIndex(prev);
     const target = searchMatches[prev];
-    const el = document.getElementById(`editor-line-${target.line}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (textareaRef.current) {
+      const top = (target.line - 1) * 22;
+      textareaRef.current.scrollTo({ top: Math.max(0, top - 100), behavior: 'smooth' });
+      const lineIdx = target.line - 1;
+      const charIndex = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0) + target.ch;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(charIndex, charIndex + searchQuery.length);
+      setCursorPos({ line: target.line, col: target.ch + 1 });
+    }
   };
 
   const handleReplace = () => {
@@ -423,7 +808,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-transparent select-none overflow-hidden font-sans">
+    <div className="flex flex-col h-full bg-transparent select-none overflow-hidden font-sans glass-workspace-surface">
       {/* Breadcrumbs Bar & View Toggles */}
       <div className="h-8 border-b border-border bg-surface/30 backdrop-blur-glass px-3 flex items-center justify-between text-[11px] font-mono text-foreground-secondary flex-shrink-0">
         <div className="flex items-center gap-1 overflow-x-auto truncate">
@@ -575,96 +960,140 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ filePath }) => {
           <MarkdownPreview content={content} filePath={currentFilePath} />
         </div>
       ) : (
-        <div className="flex-1 relative overflow-hidden flex bg-transparent font-mono text-xs">
+        <div className="flex-1 relative overflow-hidden flex bg-transparent font-mono text-xs select-text">
+          {/* Line numbers gutter: subtle grey, zero border, compact padding */}
           <div
-            ref={scrollContainerRef}
-            className="flex-1 overflow-auto p-2 select-text leading-relaxed font-mono"
+            ref={gutterRef}
+            className="w-10 flex-shrink-0 overflow-hidden select-none text-right pr-2 text-zinc-500/70 font-mono text-xs leading-[22px] py-2 z-20 pointer-events-none"
           >
-            <div className="flex min-w-full">
-              {/* Line numbers gutter */}
-              <div className="w-12 flex-shrink-0 select-none text-right pr-4 text-foreground-muted/40 font-mono text-[11px] leading-relaxed">
-                {lines.map((_, idx) => (
-                  <div
-                    key={idx}
-                    id={`editor-line-${idx + 1}`}
-                    onClick={() => setCursorPos({ line: idx + 1, col: 1 })}
-                    className={`cursor-pointer hover:text-foreground-secondary ${
-                      cursorPos.line === idx + 1 ? 'text-foreground font-bold' : ''
-                    }`}
-                  >
-                    {idx + 1}
-                  </div>
-                ))}
-              </div>
-
-              {/* Syntax highlighted code with VS Code vertical indentation guides */}
+            {lines.map((_, idx) => (
               <div
-                className="flex-1 overflow-x-auto min-w-0 cursor-text min-h-[400px]"
-                onClick={() => {
-                  if (!isEditingDirectly) setIsEditingDirectly(true);
-                }}
+                key={idx}
+                id={`editor-line-${idx + 1}`}
+                onClick={() => handleLineClick(idx + 1)}
+                className={`h-[22px] cursor-pointer hover:text-zinc-400 pointer-events-auto transition-colors ${
+                  cursorPos.line === idx + 1 ? 'text-zinc-300 font-medium' : ''
+                }`}
               >
-                {isEditingDirectly ? (
-                  <textarea
-                    ref={textareaRef}
-                    value={content}
-                    onChange={(e) => updateActiveFileContent(e.target.value, currentFilePath)}
-                    onBlur={() => setIsEditingDirectly(false)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Tab') {
-                        e.preventDefault();
-                        const textarea = e.currentTarget;
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const val = textarea.value;
-                        const updated = val.substring(0, start) + '  ' + val.substring(end);
-                        updateActiveFileContent(updated, currentFilePath);
-                        setTimeout(() => {
-                          textarea.selectionStart = textarea.selectionEnd = start + 2;
-                        }, 0);
-                      }
-                    }}
-                    className="w-full h-full min-h-[500px] bg-transparent text-foreground font-mono text-xs leading-relaxed resize-none border-none outline-none whitespace-pre"
-                    autoFocus
-                  />
-                ) : (
-                  <div
-                    className="w-full cursor-text space-y-0.5"
-                    title="Click to edit file directly"
-                  >
-                    {highlightedLines.map((lineData, lIdx) => (
-                      <div
-                        key={lIdx}
-                        className={`flex items-center leading-relaxed whitespace-pre hover:bg-white/[0.02] px-1 rounded transition-colors group/line ${
-                          cursorPos.line === lIdx + 1 ? 'bg-white/[0.04]' : ''
-                        }`}
-                      >
-                        {/* Indentation guide lines */}
-                        {Array.from({ length: lineData.indentUnits }).map((_, gIdx) => (
-                          <span
-                            key={gIdx}
-                            className={`inline-block w-4 h-4 flex-shrink-0 border-l select-none pointer-events-none ${
-                              cursorPos.line === lIdx + 1
-                                ? 'border-white/20'
-                                : 'border-white/[0.08]'
-                            }`}
-                          />
-                        ))}
+                {idx + 1}
+              </div>
+            ))}
+          </div>
 
-                        {/* Tokens */}
-                        <div className="flex-1">
-                          {lineData.tokens.map((token, tIdx) => (
-                            <span key={tIdx} className={token.className}>
-                              {token.text}
-                            </span>
-                          ))}
-                        </div>
+          {/* Dual-layer Synchronized Canvas */}
+          <div className="relative flex-1 h-full min-w-0 overflow-hidden">
+            {/* Background Layer: Real-time Syntax Highlighted Tokens + Indentation Guides */}
+            <div
+              ref={highlightLayerRef}
+              className="absolute inset-0 overflow-hidden font-mono text-xs leading-[22px] px-3 py-2 whitespace-pre pointer-events-none select-none"
+              aria-hidden="true"
+            >
+              {highlightedLines.map((lineData, lIdx) => (
+                <div
+                  key={lIdx}
+                  className={`h-[22px] ${
+                    cursorPos.line === lIdx + 1 ? 'bg-white/[0.035] -mx-3 px-3' : ''
+                  }`}
+                >
+                  {lineData.tokens.map((token, tIdx) => (
+                    <span key={tIdx} className={token.className}>
+                      {token.text}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Foreground Layer: Interactive Textarea with transparent text, visible caret & selection */}
+            <textarea
+              ref={textareaRef}
+              value={localContent}
+              onChange={(e) => handleContentChange(e.target.value)}
+              onBlur={flushSync}
+              onScroll={(e) => {
+                const top = e.currentTarget.scrollTop;
+                const left = e.currentTarget.scrollLeft;
+                if (highlightLayerRef.current) {
+                  highlightLayerRef.current.scrollTop = top;
+                  highlightLayerRef.current.scrollLeft = left;
+                }
+                if (gutterRef.current) {
+                  gutterRef.current.scrollTop = top;
+                }
+              }}
+              onSelect={(e) => {
+                updateCursorFromTextarea(e.currentTarget);
+                triggerIntelliSense(e.currentTarget.value, e.currentTarget.selectionStart);
+              }}
+              onKeyUp={(e) => updateCursorFromTextarea(e.currentTarget)}
+              onClick={(e) => {
+                updateCursorFromTextarea(e.currentTarget);
+                setIntellisenseOpen(false);
+              }}
+              onKeyDown={handleEditorKeyDown}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+              className="absolute inset-0 w-full h-full overflow-auto font-mono text-xs leading-[22px] px-3 py-2 whitespace-pre bg-transparent text-transparent caret-white selection:bg-blue-500/35 resize-none border-none outline-none z-10"
+            />
+
+            {/* IntelliSense Suggestion Popup */}
+            {intellisenseOpen && suggestions.length > 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${Math.min(suggestionCoords.top, 380)}px`,
+                  left: `${Math.min(suggestionCoords.left, 450)}px`
+                }}
+                className="w-72 max-h-56 bg-[#16171A] border border-white/[0.14] rounded-xl shadow-2xl overflow-hidden flex flex-col z-30 text-xs text-[#ECEDEF] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-75 select-none font-sans"
+              >
+                <div className="overflow-y-auto max-h-44 py-1 divide-y divide-white/[0.04]">
+                  {suggestions.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleAcceptSuggestion(item);
+                      }}
+                      className={`flex items-center justify-between px-2.5 py-1.5 cursor-pointer transition-colors ${
+                        idx === selectedSuggestionIdx
+                          ? 'bg-blue-600/30 text-white font-medium border-l-2 border-blue-400'
+                          : 'hover:bg-white/[0.06] text-neutral-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        {item.kind === 'function' || item.kind === 'method' ? (
+                          <Code2 className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                        ) : item.kind === 'variable' || item.kind === 'property' ? (
+                          <Layers className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        ) : item.kind === 'class' || item.kind === 'interface' || item.kind === 'type' ? (
+                          <Cpu className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                        ) : item.kind === 'module' ? (
+                          <Package className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        )}
+                        <span className="truncate font-mono text-[11px]">{item.label}</span>
                       </div>
-                    ))}
+                      <span className="text-[10px] text-neutral-500 font-mono flex-shrink-0 ml-1">
+                        {item.detail || item.kind}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Selected item documentation footer */}
+                {suggestions[selectedSuggestionIdx]?.documentation && (
+                  <div className="p-2 bg-black/40 border-t border-white/[0.08] text-[10px] text-neutral-400 leading-snug">
+                    <span className="text-white font-mono block mb-0.5 truncate">
+                      {suggestions[selectedSuggestionIdx].detail || suggestions[selectedSuggestionIdx].label}
+                    </span>
+                    <p className="line-clamp-2">{suggestions[selectedSuggestionIdx].documentation}</p>
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

@@ -35,6 +35,7 @@ export interface ProjectSettings {
   gitAutoFetch?: boolean;
   envVars?: Record<string, string>;
   discordRpcEnabled?: boolean;
+  customFileIcons?: Record<string, string>;
 }
 
 export interface ProjectDescriptor {
@@ -54,14 +55,30 @@ export interface ProjectDescriptor {
   settings?: ProjectSettings;
 }
 
+export type SettingsSectionId =
+  | 'agents'
+  | 'providers'
+  | 'orchestration'
+  | 'memory'
+  | 'security'
+  | 'git'
+  | 'plugins'
+  | 'integrations'
+  | 'appearance'
+  | 'shortcuts'
+  | 'general'
+  | 'about';
+
+export type WorkspaceTheme = 'glass' | 'solid' | 'light' | 'dark' | 'system';
+
 export interface WorkspaceConfig {
   id: string;
   name: string;
   currentProjectId?: string;
   uiMode: UIMode;
-  theme: 'glass' | 'solid' | 'dark' | 'light' | 'system';
+  theme: WorkspaceTheme;
   autoIndex: boolean;
-  fileIconTheme?: 'material' | 'minimal';
+  fileIconTheme?: 'vscode' | 'material' | 'minimal';
   showGitFileColors?: boolean;
   discordRpcEnabled?: boolean;
   discordClientId?: string;

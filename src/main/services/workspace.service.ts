@@ -332,6 +332,81 @@ export class WorkspaceService {
   }
 
   /**
+   * Clones a remote Git repository (GitHub/GitLab/etc) into a local folder and registers it as a project.
+   */
+  public async cloneProject(options: { url: string; parentDirectory: string; customName?: string }): Promise<ProjectDescriptor> {
+    const rawUrl = options.url?.trim();
+    if (!rawUrl) {
+      throw new Error('Git repository URL cannot be empty.');
+    }
+
+    if (!options.parentDirectory || !fs.existsSync(options.parentDirectory)) {
+      throw new Error(`Destination directory does not exist: ${options.parentDirectory}`);
+    }
+
+    // Extract repository name from URL if customName not provided
+    // e.g. https://github.com/facebook/react.git -> react
+    // e.g. git@github.com:facebook/react.git -> react
+    let repoName = options.customName?.trim();
+    if (!repoName) {
+      const match = rawUrl.match(/\/([^/]+?)(?:\.git)?$/) || rawUrl.match(/:([^/]+?)(?:\.git)?$/);
+      repoName = match ? match[1] : 'cloned-repo';
+    }
+
+    // Sanitize repo name
+    repoName = repoName.replace(/\.git$/i, '');
+
+    if (/[<>:"/\\|?*]/.test(repoName)) {
+      throw new Error('Project name contains invalid characters (<>:"/\\|?*).');
+    }
+
+    const targetPath = path.join(options.parentDirectory, repoName);
+    if (fs.existsSync(targetPath)) {
+      const contents = fs.readdirSync(targetPath);
+      if (contents.length > 0) {
+        throw new Error(`Target directory "${repoName}" already exists in the destination folder and is not empty.`);
+      }
+    }
+
+    // Execute git clone
+    await execFileAsync('git', ['clone', rawUrl, targetPath], {
+      windowsHide: true,
+      maxBuffer: 20 * 1024 * 1024
+    });
+
+    const canonicalPath = fs.realpathSync(targetPath);
+    let activeBranch = 'main';
+    try {
+      const headFile = path.join(canonicalPath, '.git', 'HEAD');
+      if (fs.existsSync(headFile)) {
+        const headContent = fs.readFileSync(headFile, 'utf8').trim();
+        if (headContent.startsWith('ref: refs/heads/')) {
+          activeBranch = headContent.replace('ref: refs/heads/', '');
+        }
+      }
+    } catch {
+      // Ignore git head parse errors
+    }
+
+    const descriptor: ProjectDescriptor = {
+      id: `proj-${Buffer.from(canonicalPath).toString('base64url').substring(0, 16)}`,
+      name: repoName,
+      path: canonicalPath,
+      lastOpenedAt: Date.now(),
+      isGitRepo: true,
+      activeBranch,
+      permissionLevel: 'standard',
+      customIcon: 'git-branch',
+      tag: 'GIT CLONE'
+    };
+
+    databaseService.recordProjectOpen(descriptor);
+    databaseService.updateSettings({ currentProjectId: descriptor.id });
+
+    return descriptor;
+  }
+
+  /**
    * Recursively reads directory contents up to a maximum depth, respecting exclusions.
    */
   public listFiles(projectPath: string, maxDepth = 6): FileNode[] {

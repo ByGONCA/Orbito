@@ -4,6 +4,7 @@ import type { IElectronAPI } from '../shared/ipc';
 const api: IElectronAPI = {
   openDirectoryDialog: (params) => ipcRenderer.invoke('workspace:openDirectory', params),
   createProject: (params) => ipcRenderer.invoke('workspace:createProject', params),
+  cloneProject: (params) => ipcRenderer.invoke('workspace:cloneProject', params),
   selectDirectory: (title) => ipcRenderer.invoke('workspace:selectDirectory', title),
   verifyProjectPath: (projectPath) => ipcRenderer.invoke('workspace:verifyProjectPath', projectPath),
   listFiles: (params) => ipcRenderer.invoke('workspace:listFiles', params),
@@ -37,6 +38,7 @@ const api: IElectronAPI = {
 
   storeSecret: (params) => ipcRenderer.invoke('secret:store', params),
   getSecret: (params) => ipcRenderer.invoke('secret:get', params),
+  hasSecret: (params) => ipcRenderer.invoke('secret:has', params),
 
   listMemories: (tier) => ipcRenderer.invoke('memory:list', tier),
   saveMemory: (params) => ipcRenderer.invoke('memory:save', params),
@@ -163,10 +165,12 @@ const api: IElectronAPI = {
     };
   },
 
-  // Custom Extension SDK (Phase 7)
+  // Custom Extension SDK & Plugins Ecosystem
   listExtensions: () => ipcRenderer.invoke('extensions:list'),
+  getCatalogPlugins: () => ipcRenderer.invoke('extensions:catalog'),
   toggleExtension: (params) => ipcRenderer.invoke('extensions:toggle', params),
   installExtension: (params) => ipcRenderer.invoke('extensions:install', params),
+  installCatalogPlugin: (params) => ipcRenderer.invoke('extensions:install-catalog', params),
   uninstallExtension: (params) => ipcRenderer.invoke('extensions:uninstall', params),
 
   // Advanced Analytics & Telemetry (Phase 7)
@@ -209,6 +213,7 @@ const api: IElectronAPI = {
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  refreshMaterial: () => ipcRenderer.invoke('window:refreshMaterial'),
   openDetachedTabWindow: (params: { tab: any; project?: any; x?: number; y?: number }) =>
     ipcRenderer.invoke('window:openDetachedTab', params),
   onWindowStateChange: (callback) => {

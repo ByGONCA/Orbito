@@ -82,7 +82,7 @@ export class DatabaseService {
         name TEXT NOT NULL,
         current_project_id TEXT,
         ui_mode TEXT NOT NULL DEFAULT 'simple',
-        theme TEXT NOT NULL DEFAULT 'system',
+        theme TEXT NOT NULL DEFAULT 'glass',
         auto_index INTEGER NOT NULL DEFAULT 1,
         file_icon_theme TEXT NOT NULL DEFAULT 'material',
         show_git_file_colors INTEGER NOT NULL DEFAULT 1,
@@ -615,33 +615,47 @@ export class DatabaseService {
         id: 'default-workspace',
         name: 'Default Workspace',
         uiMode: 'simple',
-        theme: 'system',
+        theme: 'glass',
         autoIndex: true,
+        fileIconTheme: 'vscode',
         discordRpcEnabled: true
       };
       db.prepare(`
-        INSERT INTO workspaces (id, name, ui_mode, theme, auto_index, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO workspaces (id, name, ui_mode, theme, auto_index, file_icon_theme, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         defaultSettings.id,
         defaultSettings.name,
         defaultSettings.uiMode,
         defaultSettings.theme,
         defaultSettings.autoIndex ? 1 : 0,
+        defaultSettings.fileIconTheme,
         Date.now(),
         Date.now()
       );
       return defaultSettings;
     }
 
+    // Safe migration: preserve existing selections ('material', 'minimal'); fallback to 'vscode' for unconfigured rows
+    const storedIconTheme = row.file_icon_theme;
+    const resolvedIconTheme = ['vscode', 'material', 'minimal'].includes(storedIconTheme)
+      ? storedIconTheme
+      : (storedIconTheme ? 'material' : 'vscode');
+
+    // Safe theme migration: preserve 'glass', 'solid', 'light'; fallback invalid to 'glass'
+    const storedTheme = row.theme;
+    const resolvedTheme = ['glass', 'solid', 'light'].includes(storedTheme)
+      ? storedTheme
+      : (storedTheme === 'solid' ? 'solid' : 'glass');
+
     return {
       id: row.id,
       name: row.name,
       currentProjectId: row.current_project_id || undefined,
       uiMode: row.ui_mode as any,
-      theme: row.theme as any,
+      theme: resolvedTheme as any,
       autoIndex: Boolean(row.auto_index),
-      fileIconTheme: row.file_icon_theme || 'material',
+      fileIconTheme: resolvedIconTheme,
       showGitFileColors: row.show_git_file_colors !== undefined ? Boolean(row.show_git_file_colors) : true,
       discordRpcEnabled: row.discord_rpc_enabled !== null && row.discord_rpc_enabled !== undefined ? Boolean(row.discord_rpc_enabled) : true,
       discordClientId: row.discord_client_id || undefined

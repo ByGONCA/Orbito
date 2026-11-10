@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Local-first AI Workspace Desktop Application",
   "main": "./out/main/index.js",
+  "bin": {
+    "orbito": "./bin/orbito.js"
+  },
   "author": "AI Workspace Team",
   "license": "MIT",
   "scripts": {
@@ -15,7 +18,8 @@
     "postinstall": "electron-rebuild -f -w better-sqlite3",
     "test": "node scripts/run-electron-tests.js run",
     "test:host": "vitest run",
-    "validate:coordination": "node scripts/validate-coordination.js"
+    "validate:coordination": "node scripts/validate-coordination.js",
+    "validate:structure": "node scripts/validate-structure.js"
   },
   "dependencies": {
     "@glass-sdk/liquid-glass": "^0.0.2",

@@ -7,7 +7,7 @@ import { FlowBuilderWorkspace } from './FlowBuilder/FlowBuilderWorkspace';
 import { ContextInspector } from './ContextInspector';
 import { SkillsManager } from './SkillsManager';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
-import { ExtensionsManager } from './ExtensionsManager';
+import { PluginsWorkspace } from './plugins/PluginsWorkspace';
 import { ProvidersPanel } from './ProvidersPanel';
 import { CodeEditor } from './CodeEditor';
 import { TerminalWorkspace } from './TerminalWorkspace';
@@ -41,8 +41,8 @@ export const CenterArea: React.FC = () => {
   if (activeSection === 'analytics') {
     return <AnalyticsDashboard />;
   }
-  if (activeSection === 'extensions') {
-    return <ExtensionsManager />;
+  if (activeSection === 'extensions' || activeTab?.type === 'plugins') {
+    return <PluginsWorkspace />;
   }
   if (activeSection === 'providers') {
     return <ProvidersPanel />;

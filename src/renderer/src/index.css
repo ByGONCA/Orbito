@@ -9,6 +9,31 @@
     --background-deep: #0D0E10;
     --background-secondary: #141619;
     --background-ambient: #101113;
+
+    /* Base Window Canvas Atmosphere (Deep Dark Charcoal over native Windows Acrylic) */
+    --app-window-bg: rgba(9, 10, 13, 0.42);
+    --app-window-rim: none;
+
+    /* Deep Dark Charcoal Glass Palette - Unified, Harmonious Column Opacities */
+    --glass-surface-bg: rgba(12, 13, 16, 0.42);
+    --glass-sidebar-bg: rgba(12, 13, 16, 0.38);
+    --glass-explorer-bg: rgba(12, 13, 16, 0.40);
+    --glass-header-bg: rgba(12, 13, 16, 0.45);
+    --glass-status-bg: rgba(10, 11, 14, 0.52);
+    --glass-panel-bg: rgba(12, 13, 16, 0.40);
+
+    --glass-blur: 14px;
+    --glass-blur-header: 14px;
+    --glass-blur-sidebar: 14px;
+    --glass-blur-modal: 16px;
+    --glass-saturate: 110%;
+    --glass-border: 1px solid rgba(255, 255, 255, 0.05);
+    --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.035);
+    --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --glass-rim-subtle: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --glass-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+    --glass-shadow-floating: 0 12px 36px -4px rgba(0, 0, 0, 0.45);
+
     --surface: rgba(255, 255, 255, 0.035);
     --surface-elevated: rgba(255, 255, 255, 0.06);
     --surface-hover: rgba(255, 255, 255, 0.08);
@@ -33,6 +58,29 @@
     --background-deep: #0D0E10;
     --background-secondary: #141619;
     --background-ambient: #101113;
+
+    /* Solid Dark Tokens - Strict 100% Opaque */
+    --app-window-bg: rgba(8, 10, 14, 0.38);
+    --app-window-rim: none;
+
+    --glass-surface-bg: rgba(12, 15, 20, 0.48);
+    --glass-sidebar-bg: rgba(10, 13, 18, 0.60);
+    --glass-header-bg: rgba(13, 16, 22, 0.52);
+    --glass-status-bg: rgba(9, 11, 16, 0.68);
+    --glass-panel-bg: #17191C;
+
+    --glass-blur: 0px;
+    --glass-blur-header: 0px;
+    --glass-blur-sidebar: 0px;
+    --glass-blur-modal: 0px;
+    --glass-saturate: 100%;
+    --glass-border: 1px solid #2A2D33;
+    --glass-border-subtle: 1px solid #1E2024;
+    --glass-rim: none;
+    --glass-rim-subtle: none;
+    --glass-shadow: none;
+    --glass-shadow-floating: none;
+
     --surface: #17191C;
     --surface-elevated: #1F2226;
     --surface-hover: #26292E;
@@ -52,14 +100,369 @@
     --radius: 10px;
   }
 
+  :root.theme-light {
+    --background: #F8F9FA;
+    --background-deep: #EFF1F4;
+    --background-secondary: #FFFFFF;
+    --background-ambient: #F8F9FA;
+
+    /* Base Window Canvas Atmosphere (Clean Off-White) */
+    --app-window-bg: #F8F9FA;
+    --app-window-rim: none;
+
+    /* Light Surfaces Palette */
+    --glass-surface-bg: #FFFFFF;
+    --glass-sidebar-bg: #F1F3F5;
+    --glass-explorer-bg: #F5F7F9;
+    --glass-header-bg: #FFFFFF;
+    --glass-status-bg: #F1F3F5;
+    --glass-panel-bg: #FFFFFF;
+
+    --glass-blur: 0px;
+    --glass-blur-header: 0px;
+    --glass-blur-sidebar: 0px;
+    --glass-blur-modal: 0px;
+    --glass-saturate: 100%;
+    --glass-border: 1px solid #E1E4E8;
+    --glass-border-subtle: 1px solid #EAECEF;
+    --glass-rim: none;
+    --glass-rim-subtle: none;
+    --glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --glass-shadow-floating: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+
+    --surface: #FFFFFF;
+    --surface-elevated: #F1F3F6;
+    --surface-hover: #E9ECEF;
+    --surface-active: #DEE2E6;
+    --border: #E1E4E8;
+    --border-subtle: #EAECEF;
+    --border-strong: #CED4DA;
+    --highlight: #DEE2E6;
+    --foreground: #1E2024;
+    --foreground-secondary: #585D65;
+    --foreground-muted: #868E96;
+    --focus: #3B82F6;
+    --accent: #212529;
+    --accent-hover: #000000;
+    --accent-subtle: #F1F3F5;
+    --accent-border: #CED4DA;
+    --radius: 10px;
+  }
+
+  html,
   body {
-    background: var(--background);
+    background: transparent !important;
     color: var(--foreground);
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     user-select: none;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  html.theme-solid,
+  html.theme-solid body {
+    background: #101113 !important;
+  }
+
+  html.theme-light,
+  html.theme-light body {
+    background: #F8F9FA !important;
+    color: #1E2024 !important;
+  }
+
+  .app-canvas-root {
+    background: var(--app-window-bg, transparent);
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0px !important;
+  }
+
+  .theme-solid .app-canvas-root {
+    background: #101113 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0px !important;
+  }
+
+  .theme-light .app-canvas-root {
+    background: #F8F9FA !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0px !important;
+  }
+
+  .theme-solid .app-canvas-ambient {
+    opacity: 1;
+  }
+
+  .theme-light .app-canvas-ambient {
+    opacity: 0 !important;
+  }
+
+  .theme-glass .app-canvas-ambient,
+  .app-canvas-ambient {
+    opacity: 0.10;
+  }
+
+  .app-loading-screen-root,
+  .theme-glass .app-loading-screen-root {
+    background: radial-gradient(800px 500px at 50% 50%, rgba(14, 15, 19, 0.60) 0%, rgba(9, 10, 13, 0.75) 100%) !important;
+    backdrop-filter: blur(16px) saturate(110%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(110%) !important;
+  }
+  .theme-solid .app-loading-screen-root {
+    background: #101113 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .theme-light .app-loading-screen-root {
+    background: #F8F9FA !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* 1. Top Tab Bar */
+  .app-top-tab-bar,
+  .theme-glass .app-top-tab-bar {
+    background: var(--glass-header-bg) !important;
+    backdrop-filter: blur(var(--glass-blur-header, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur-header, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  }
+  .theme-solid .app-top-tab-bar {
+    background: #121418 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 1px solid #2A2D33 !important;
+    box-shadow: none !important;
+  }
+  .theme-light .app-top-tab-bar {
+    background: #FFFFFF !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 1px solid #E1E4E8 !important;
+    box-shadow: none !important;
+  }
+
+  /* 2. Left Sidebar (Navigation) & Right Panel (Project Explorer) */
+  .frosted-sidebar,
+  .liquid-glass-sidebar,
+  .theme-glass .frosted-sidebar,
+  .theme-glass .liquid-glass-sidebar {
+    position: relative;
+    background: var(--glass-sidebar-bg) !important;
+    backdrop-filter: blur(var(--glass-blur-sidebar, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur-sidebar, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    border: none !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  }
+
+  .frosted-explorer,
+  .theme-glass .frosted-explorer {
+    position: relative;
+    background: var(--glass-explorer-bg, var(--glass-panel-bg)) !important;
+    backdrop-filter: blur(var(--glass-blur-sidebar, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur-sidebar, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    border: none !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  }
+
+  .theme-solid .frosted-sidebar,
+  .theme-solid .liquid-glass-sidebar,
+  .theme-solid .frosted-explorer {
+    background: #141619 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-color: #2A2D33 !important;
+    box-shadow: none !important;
+  }
+  .theme-light .frosted-sidebar,
+  .theme-light .liquid-glass-sidebar {
+    background: #F1F3F5 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-right: 1px solid #E1E4E8 !important;
+    box-shadow: none !important;
+  }
+  .theme-light .frosted-explorer {
+    background: #F5F7F9 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-right: 1px solid #E1E4E8 !important;
+    box-shadow: none !important;
+  }
+
+  /* 3. Central Terminal / Editor Workspace */
+  .glass-workspace-surface,
+  .theme-glass .glass-workspace-surface {
+    position: relative;
+    background: var(--glass-surface-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    border: none !important;
+  }
+
+  /* Unified Delicate Inner Reflection for All 3 Main Panes */
+  .theme-glass .frosted-sidebar::before,
+  .theme-glass .frosted-explorer::before,
+  .theme-glass .glass-workspace-surface::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.022) 0%, rgba(255, 255, 255, 0.004) 20px, transparent 48px);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .theme-solid .glass-workspace-surface {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+  .theme-solid .frosted-sidebar::before,
+  .theme-solid .frosted-explorer::before,
+  .theme-solid .glass-workspace-surface::before {
+    display: none !important;
+  }
+  .theme-light .glass-workspace-surface {
+    background: #FFFFFF !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+  .theme-light .frosted-sidebar::before,
+  .theme-light .frosted-explorer::before,
+  .theme-light .glass-workspace-surface::before {
+    display: none !important;
+  }
+
+  /* 4. Terminal Pane Header */
+  .terminal-pane-header,
+  .theme-glass .terminal-pane-header {
+    background: rgba(255, 255, 255, 0.02) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow: none !important;
+  }
+  .theme-solid .terminal-pane-header {
+    background: #0e1015 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 1px solid #2A2D33 !important;
+    box-shadow: none !important;
+  }
+  .theme-light .terminal-pane-header {
+    background: #F1F3F5 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 1px solid #E1E4E8 !important;
+    box-shadow: none !important;
+  }
+
+  /* 5. Terminal Canvas & Viewport (Transparent so glass shines behind) */
+  .xterm,
+  .xterm-viewport,
+  .xterm-scrollable-element,
+  .xterm-screen,
+  .theme-glass .xterm,
+  .theme-glass .xterm .xterm-viewport,
+  .theme-glass .xterm-viewport,
+  .theme-glass .xterm .xterm-scrollable-element,
+  .theme-glass .xterm-scrollable-element,
+  .theme-glass .xterm .xterm-screen,
+  .theme-glass .xterm-screen {
+    background-color: transparent !important;
+  }
+  .theme-solid .xterm,
+  .theme-solid .xterm .xterm-viewport,
+  .theme-solid .xterm-viewport,
+  .theme-solid .xterm .xterm-scrollable-element,
+  .theme-solid .xterm-scrollable-element,
+  .theme-solid .xterm .xterm-screen,
+  .theme-solid .xterm-screen {
+    background-color: #21242d !important;
+  }
+  .theme-light .xterm,
+  .theme-light .xterm .xterm-viewport,
+  .theme-light .xterm-viewport,
+  .theme-light .xterm .xterm-scrollable-element,
+  .theme-light .xterm-scrollable-element,
+  .theme-light .xterm .xterm-screen,
+  .theme-light .xterm-screen {
+    background-color: #F8F9FA !important;
+  }
+
+  /* 6. Bottom Status Bar */
+  .app-bottom-status-bar,
+  .theme-glass .app-bottom-status-bar {
+    background: var(--glass-status-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  }
+  .theme-solid .app-bottom-status-bar {
+    background: #121418 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-top: 1px solid #2A2D33 !important;
+    box-shadow: none !important;
+  }
+  .theme-light .app-bottom-status-bar {
+    background: #F1F3F5 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-top: 1px solid #E1E4E8 !important;
+    box-shadow: none !important;
+  }
+
+  /* 7. Dialogs, Modals & Floating Popovers */
+  .glass-panel,
+  .frosted-card,
+  .frosted-modal,
+  .theme-glass .glass-panel,
+  .theme-glass .frosted-card,
+  .theme-glass .frosted-modal {
+    background: var(--glass-panel-bg) !important;
+    backdrop-filter: blur(var(--glass-blur-modal, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur-modal, var(--glass-blur))) saturate(var(--glass-saturate)) !important;
+    border: var(--glass-border) !important;
+    box-shadow: var(--glass-rim), var(--glass-shadow-floating, var(--glass-shadow)) !important;
+  }
+  .theme-solid .glass-panel,
+  .theme-solid .frosted-card,
+  .theme-solid .frosted-modal {
+    background: #17191C !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid #2A2D33 !important;
+    box-shadow: none !important;
+  }
+  .theme-light .glass-panel,
+  .theme-light .frosted-card,
+  .theme-light .frosted-modal,
+  .theme-light .frosted-canvas {
+    background: #FFFFFF !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid #E1E4E8 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  /* Child elements inside the glass workspace surface paint no redundant backdrop filter */
+  .theme-glass .glass-workspace-surface .backdrop-blur-glass,
+  .theme-glass .glass-workspace-surface .bg-surface\/30 {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: transparent !important;
   }
 
   /* Custom text selection */
@@ -75,24 +478,13 @@
    ========================================================================= */
 
 .frosted-canvas,
-.liquid-glass-island,
-.glass-panel {
-  background: rgba(20, 22, 26, 0.72);
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  box-shadow: 
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 16px 36px -12px rgba(0, 0, 0, 0.65);
+.liquid-glass-island {
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
   border-radius: 14px;
-}
-
-.frosted-sidebar,
-.liquid-glass-sidebar {
-  background: rgba(16, 18, 22, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-color: rgba(255, 255, 255, 0.07);
 }
 
 .frosted-card,
@@ -274,24 +666,12 @@
 .hl-attr { color: #9CDCFE; } /* className, onClick */
 .hl-regex { color: #D16969; } /* /regex/ */
 
-/* Indentation Guide Line */
+/* Indentation Guide Line (Character-aligned) */
 .indent-guide-unit {
-  position: relative;
-  display: inline-block;
-  width: 1.25rem;
-  height: 100%;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.08);
 }
-.indent-guide-unit::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 1px;
-  background-color: rgba(255, 255, 255, 0.08);
-}
-.indent-guide-unit.active::before {
-  background-color: rgba(255, 255, 255, 0.22);
+.indent-guide-unit.active {
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.22);
 }
 
 /* Continuous Fluid Loading Bar Keyframe */
@@ -302,4 +682,97 @@
   100% {
     transform: translateX(100%);
   }
+}
+
+/* =========================================================================
+   LIGHT THEME EXTENSION & SYNTAX SPECIFICATIONS
+   ========================================================================= */
+
+.theme-light,
+.theme-light * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.theme-light .glass-surface,
+.theme-light .glass-panel,
+.theme-light .glass-card,
+.theme-light .glass-elevated {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16) !important;
+}
+.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28) !important;
+}
+.theme-light ::selection {
+  background-color: rgba(37, 99, 235, 0.18) !important;
+  color: #1E2024 !important;
+}
+
+/* VS Code Light+ Modern Syntax Theme */
+.theme-light .hl-control { color: #AF00DB; font-weight: 500; }
+.theme-light .hl-keyword { color: #0000FF; font-weight: 500; }
+.theme-light .hl-constant { color: #0000FF; }
+.theme-light .hl-string { color: #A31515; }
+.theme-light .hl-number { color: #098658; }
+.theme-light .hl-comment { color: #008000; font-style: italic; }
+.theme-light .hl-type { color: #267F99; }
+.theme-light .hl-function { color: #795E26; }
+.theme-light .hl-property { color: #001080; }
+.theme-light .hl-variable { color: #001080; }
+.theme-light .hl-punctuation { color: #1E2024; }
+.theme-light .hl-bracket-1 { color: #0431FA; }
+.theme-light .hl-bracket-2 { color: #319331; }
+.theme-light .hl-bracket-3 { color: #7B3814; }
+.theme-light .hl-operator { color: #1E2024; }
+.theme-light .hl-tag { color: #800000; font-weight: 500; }
+.theme-light .hl-attr { color: #E50000; }
+.theme-light .hl-regex { color: #811F3F; }
+
+.theme-light .indent-guide-unit {
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.08) !important;
+}
+.theme-light .indent-guide-unit.active {
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.22) !important;
+}
+
+/* Universal Light Theme overrides for hardcoded dark classes */
+.theme-light [class*="text-[#ECEDEF]"],
+.theme-light [class*="text-[#F1F3F5]"] {
+  color: #1E2024 !important;
+}
+.theme-light [class*="text-[#A4A8AF]"],
+.theme-light [class*="text-neutral-400"],
+.theme-light [class*="text-neutral-300"] {
+  color: #585D65 !important;
+}
+.theme-light [class*="text-[#747982]"],
+.theme-light [class*="text-neutral-500"] {
+  color: #868E96 !important;
+}
+.theme-light [class*="border-white/"] {
+  border-color: #E1E4E8 !important;
+}
+.theme-light [class*="bg-white/[0.0"],
+.theme-light [class*="bg-white/5"],
+.theme-light [class*="bg-white/10"] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+.theme-light [class*="hover:bg-white/"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+.theme-light [class*="hover:text-white"]:hover {
+  color: #000000 !important;
+}
+.theme-light [class*="bg-[#101113]"],
+.theme-light [class*="bg-[#0D0E10]"],
+.theme-light [class*="bg-[#0e1015]"],
+.theme-light [class*="bg-[#141619]"],
+.theme-light [class*="bg-[#17191C]"],
+.theme-light [class*="bg-[#141418]"],
+.theme-light [class*="bg-[#1C1D24]"] {
+  background-color: #FFFFFF !important;
 }

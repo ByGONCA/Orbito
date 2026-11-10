@@ -53,7 +53,7 @@ export const ProjectExplorer: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-transparent select-none overflow-hidden font-sans text-xs">
       {/* Compact Top Navigation Bar for Explorer */}
-      <div className="h-9 px-2 border-b border-white/[0.06] bg-transparent flex items-center justify-between flex-shrink-0">
+      <div className="h-9 px-2 border-b border-white/[0.05] bg-transparent flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1">
           {tabs.map((tab) => {
             const isActive = explorerActiveTab === tab.id;

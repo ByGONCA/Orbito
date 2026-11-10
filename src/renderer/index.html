@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark theme-glass">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,12 +11,12 @@
     <link rel="icon" type="image/png" href="/Orbit.png" />
     <style>
       /* Initial zero-latency launch splash styling */
-      html, body {
+      html, body, #root {
         margin: 0;
         padding: 0;
         width: 100%;
         height: 100%;
-        background-color: #101113;
+        background-color: transparent;
         color: #ECEDEF;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         overflow: hidden;
@@ -30,15 +30,15 @@
         justify-content: center;
         width: 100vw;
         height: 100vh;
-        background: #101113;
+        background: transparent;
         position: relative;
         z-index: 9999;
       }
 
       .preloader-card {
-        width: 380px;
+        width: 320px;
         max-width: 90vw;
-        padding: 24px;
+        padding: 16px;
         background: transparent;
         border: none;
         box-shadow: none;
@@ -46,39 +46,41 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
       }
 
       .preloader-icon-wrap {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
       }
 
       .preloader-title {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         letter-spacing: -0.01em;
         color: #ECEDEF;
       }
 
       .preloader-subtitle {
-        font-size: 12px;
+        font-size: 11px;
         color: #747982;
-        margin-top: -8px;
+        margin-top: -6px;
+        letter-spacing: 0.01em;
       }
 
       .preloader-bar-bg {
-        width: 220px;
+        width: 180px;
         max-width: 80vw;
-        height: 3px;
+        height: 2.5px;
         background: rgba(255, 255, 255, 0.08);
         border-radius: 999px;
         overflow: hidden;
         position: relative;
-        margin: 6px auto 0;
+        margin: 4px auto 0;
       }
 
       .preloader-bar-fill {
@@ -92,12 +94,12 @@
         background: linear-gradient(
           90deg,
           transparent 0%,
-          rgba(236, 237, 239, 0.25) 20%,
+          rgba(236, 237, 239, 0.3) 20%,
           #ECEDEF 50%,
-          rgba(236, 237, 239, 0.25) 80%,
+          rgba(236, 237, 239, 0.3) 80%,
           transparent 100%
         );
-        animation: preloader-fluid 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation: preloader-fluid 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         will-change: transform;
       }
 
@@ -142,21 +144,21 @@
       }
     </style>
   </head>
-  <body class="bg-[#101113] text-[#ECEDEF] antialiased overflow-hidden select-none">
+  <body class="text-[#ECEDEF] antialiased overflow-hidden select-none">
     <div id="root">
       <div id="preloader-splash">
         <div class="preloader-card">
           <div class="preloader-icon-wrap">
-            <img src="/Orbit.png" alt="Orbito" width="34" height="34" style="object-fit: contain;" />
+            <img src="/Orbit.png" alt="Orbito" width="36" height="36" style="object-fit: contain;" />
           </div>
           <div class="preloader-title">Orbito</div>
-          <div class="preloader-subtitle" id="preloader-text">A inicializar ambiente de trabalho...</div>
+          <div class="preloader-subtitle" id="preloader-text">Starting workspace...</div>
           <div class="preloader-bar-bg" id="preloader-bar-wrap">
             <div class="preloader-bar-fill"></div>
           </div>
           <div class="preloader-error-box" id="preloader-error"></div>
           <button class="preloader-btn" id="preloader-reload-btn" style="display: none;" onclick="window.location.reload()">
-            Recarregar Aplicação
+            Reload Application
           </button>
         </div>
       </div>
@@ -168,10 +170,10 @@
           var text = document.getElementById('preloader-text');
           var btn = document.getElementById('preloader-reload-btn');
           if (errBox && text) {
-            text.textContent = 'Erro fatal no carregamento inicial';
+            text.textContent = 'Fatal startup error';
             text.style.color = '#f87171';
             errBox.style.display = 'block';
-            errBox.textContent = e.message || 'Erro desconhecido ao carregar scripts';
+            errBox.textContent = e.message || 'Unknown script error during launch';
             if (bar) bar.style.display = 'none';
             if (btn) btn.style.display = 'inline-block';
           }

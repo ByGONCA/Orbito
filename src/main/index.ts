@@ -1,9 +1,10 @@
 // Disable Electron development security warnings in dev mode (for Vite HMR/eval)
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
-import { app, BrowserWindow, shell, session } from 'electron';
+import { app, BrowserWindow, shell, session, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 import { databaseService } from './db/database.service';
 import { registerIpcHandlers } from './ipc/register';
 import { skillRegistry } from './skills/skill-registry';
@@ -13,6 +14,7 @@ import { airGapManager } from './services/air-gap.manager';
 import { appLogger } from './services/app-logger';
 import { discordRpcService } from './services/discord/discord-rpc.service';
 import { ptyService } from './terminal/pty-service';
+import { setWindowMaterial } from './services/window-material';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -31,6 +33,9 @@ function createWindow(): BrowserWindow {
   const pngPath = path.join(__dirname, '../../resources/Orbit.png');
   const iconPath = process.platform === 'win32' && fs.existsSync(icoPath) ? icoPath : pngPath;
 
+  const initialTheme = databaseService.getSettings()?.theme;
+  const isSolid = initialTheme === 'solid';
+
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -42,7 +47,8 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: `Orbito${isDev ? ' [DEV]' : ''}`,
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
-    backgroundColor: '#101113',
+    backgroundColor: '#00000000',
+    backgroundMaterial: isSolid ? 'none' : 'acrylic',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: true,
@@ -51,6 +57,8 @@ function createWindow(): BrowserWindow {
       devTools: isDev
     }
   });
+
+  setWindowMaterial(win, isSolid ? 'none' : 'acrylic');
 
   win.on('maximize', () => {
     win.webContents.send('window:state-changed', { isMaximized: true });
@@ -63,11 +71,127 @@ function createWindow(): BrowserWindow {
   win.once('ready-to-show', () => {
     if (!win.isDestroyed()) {
       win.show();
+      win.maximize();
       win.focus();
-      appLogger.info('Window', 'Main desktop window ready and visible');
+      appLogger.info('Window', `Main desktop window ready and visible (maximized: ${win.isMaximized()})`);
     }
     if (isDev && (process.env.DEBUG_DEVTOOLS === '1' || process.env.ELECTRON_DEVTOOLS === 'true')) {
       win.webContents.openDevTools({ mode: 'detach' });
+    }
+
+    const isQAScreenshot = process.env.ORBITO_QA_SCREENSHOT === '1' || process.argv.includes('--qa-screenshot');
+    try {
+      fs.writeFileSync(path.join(__dirname, '../../scratch/main-launch.log'), JSON.stringify({ argv: process.argv, env: process.env.ORBITO_QA_SCREENSHOT, isQAScreenshot }) + '\n');
+    } catch {}
+    if (isQAScreenshot) {
+      setTimeout(async () => {
+        try {
+          const outDirArg = process.argv.find((a) => a.startsWith('--qa-outdir='))?.split('=')[1];
+          const outDir = process.env.ORBITO_QA_OUTDIR || outDirArg || path.join(__dirname, '../../out');
+          fs.mkdirSync(outDir, { recursive: true });
+
+          // Explicitly restore window to 1280x800 centered on the desktop
+          win.unmaximize();
+          win.setBounds({ x: 320, y: 140, width: 1280, height: 800 });
+          win.setAlwaysOnTop(true, 'screen-saver');
+          win.show();
+          win.focus();
+
+          const captureScript = path.join(__dirname, '../../scripts/capture-desktop.ps1');
+
+          // 1. Capture Glassmorphism
+          appLogger.info('QA', 'Step 1: Setting up Glassmorphism mode...');
+          await win.webContents.executeJavaScript(`
+            if (window.__WORKSPACE_STORE__) {
+              const store = window.__WORKSPACE_STORE__.getState();
+              store.setTheme('glass');
+              if (store.openTabs.length === 0) {
+                store.openTerminalTab();
+              }
+            } else {
+              document.documentElement.classList.remove('theme-solid');
+              document.documentElement.classList.add('theme-glass');
+            }
+            const preloader = document.getElementById('preloader-splash');
+            if (preloader) preloader.remove();
+            if (window.api && window.api.updateSettings) {
+              window.api.updateSettings({ theme: 'glass' });
+            }
+            true;
+          `);
+          if (typeof win.setBackgroundMaterial === 'function') {
+            win.setBackgroundMaterial('acrylic');
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+
+          // A. Full Real Windows Desktop Screenshot - Glassmorphism
+          const glassDesktopPath = path.join(outDir, 'orbito-glassmorphism.png');
+          appLogger.info('QA', `Capturing Glass desktop -> ${glassDesktopPath}`);
+          execSync(`powershell -ExecutionPolicy Bypass -File "${captureScript}" -outFile "${glassDesktopPath}" -width 1920 -height 1080`);
+
+          // C. Restored Electron Window Capture
+          const glassImg = await win.webContents.capturePage();
+          fs.writeFileSync(path.join(outDir, 'orbito-glassmorphism-window-raw.png'), glassImg.toPNG());
+
+          // 2. Capture Solid Dark
+          appLogger.info('QA', 'Step 2: Switching to Solid Dark mode...');
+          await win.webContents.executeJavaScript(`
+            if (window.__WORKSPACE_STORE__) {
+              window.__WORKSPACE_STORE__.getState().setTheme('solid');
+            } else {
+              document.documentElement.classList.remove('theme-glass');
+              document.documentElement.classList.add('theme-solid');
+            }
+            if (window.api && window.api.updateSettings) {
+              window.api.updateSettings({ theme: 'solid' });
+            }
+            true;
+          `);
+          if (typeof win.setBackgroundMaterial === 'function') {
+            win.setBackgroundMaterial('none');
+          }
+          await new Promise((r) => setTimeout(r, 2500));
+
+          // B. Full Real Windows Desktop Screenshot - Solid Dark
+          const solidDesktopPath = path.join(outDir, 'orbito-solid-dark.png');
+          appLogger.info('QA', `Capturing Solid desktop -> ${solidDesktopPath}`);
+          execSync(`powershell -ExecutionPolicy Bypass -File "${captureScript}" -outFile "${solidDesktopPath}" -width 1920 -height 1080`);
+
+          const solidImg = await win.webContents.capturePage();
+          fs.writeFileSync(path.join(outDir, 'orbito-solid-dark-window-raw.png'), solidImg.toPNG());
+
+          // 3. Restore Glassmorphism
+          appLogger.info('QA', 'Step 3: Restoring Glassmorphism mode...');
+          await win.webContents.executeJavaScript(`
+            if (window.__WORKSPACE_STORE__) {
+              window.__WORKSPACE_STORE__.getState().setTheme('glass');
+            } else {
+              document.documentElement.classList.remove('theme-solid');
+              document.documentElement.classList.add('theme-glass');
+            }
+            if (window.api && window.api.updateSettings) {
+              window.api.updateSettings({ theme: 'glass' });
+            }
+            true;
+          `);
+          if (typeof win.setBackgroundMaterial === 'function') {
+            win.setBackgroundMaterial('acrylic');
+          }
+          appLogger.info('QA', 'QA capture workflow finished successfully.');
+
+          const shouldExit = process.env.ORBITO_QA_EXIT === '1' || process.argv.includes('--qa-exit');
+          if (shouldExit) {
+            setTimeout(() => app.quit(), 500);
+          }
+        } catch (e: any) {
+          try {
+            fs.writeFileSync(path.join(__dirname, '../../scratch/qa-error.log'), String(e.stack || e.message || e));
+          } catch {}
+          appLogger.error('QA', 'Failed to capture QA screenshots', e);
+          const shouldExit = process.env.ORBITO_QA_EXIT === '1' || process.argv.includes('--qa-exit');
+          if (shouldExit) app.quit();
+        }
+      }, 4000);
     }
   });
 

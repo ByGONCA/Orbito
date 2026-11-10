@@ -25,6 +25,7 @@ import {
 import { useWorkspaceStore } from '../stores/workspace.store';
 import { FileIcon } from '../utils/file-icons';
 import { OfficialLogoRenderer } from './OfficialLogos';
+import orbitLogo from '../assets/Orbit.png';
 
 export const TopTabBar: React.FC = () => {
   const {
@@ -113,7 +114,7 @@ export const TopTabBar: React.FC = () => {
   return (
     <div
       onDoubleClick={handleMaximize}
-      className="flex flex-col flex-shrink-0 z-30 border-b border-white/[0.07] bg-[#121418]/90 backdrop-blur-xl select-none font-sans"
+      className="flex flex-col flex-shrink-0 z-30 select-none font-sans app-top-tab-bar"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* 1. Main Header Strip Row */}
@@ -132,7 +133,7 @@ export const TopTabBar: React.FC = () => {
             title="Orbito"
           >
             <img
-              src="/Orbit.png"
+              src={orbitLogo}
               alt="Orbito"
               className="w-5 h-5 object-contain select-none pointer-events-none"
               style={{ imageRendering: 'auto' }}

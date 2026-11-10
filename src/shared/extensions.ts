@@ -145,3 +145,18 @@ export interface ExtensionHostRpcMessage {
   payload?: any;
   error?: string;
 }
+
+export interface CatalogPluginItem {
+  id: string;
+  name: string;
+  displayName: string;
+  version: string;
+  description: string;
+  author: string;
+  category: 'editor' | 'git' | 'developer' | 'ai-tools' | 'themes' | 'general';
+  isOfficial: boolean;
+  downloads: number;
+  rating: number;
+  permissions: ExtensionPermissions;
+  manifest: ExtensionManifest;
+}

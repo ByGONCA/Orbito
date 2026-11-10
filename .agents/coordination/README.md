@@ -97,20 +97,22 @@ Defined strictly in `OWNERSHIP.json`:
 1. **Specification:** Lead Architect creates task file in `tasks/active/<TASK_ID>.json` with explicit `allowed_files` and `forbidden_files`.
 2. **Assignment:** Specialist transitions task to `IN_PROGRESS` and updates its `STATUS.json`.
 3. **Execution:** Specialist implements the solution strictly adhering to the **Ponytail Simplicity Ladder** and **Anti-Boxiness Rules**.
-4. **Local Verification:** Specialist runs `npm run typecheck` and `npm test` within its worktree.
-5. **Handoff:** Specialist fills out `agents/<agent-id>/HANDOFF.md` and transitions status to `WAITING`.
-6. **Architect Review:** Lead Architect reviews the diff, validates test outputs, and checks against Quality Gates.
-7. **Integration & Completion:** Branch is merged into `master`, task is moved to `tasks/completed/`, and `REGISTRY.json` is updated.
+4. **Local Verification:** Specialist runs `npm run typecheck`, `npm test`, and `npm run validate:structure` within its worktree.
+5. **Documentation & Structure Compliance:** Any technical documentation, architecture notes, or audit reports produced must reside in `docs/<category>/` in strict accordance with [Permanent Repository Organisation Policy](../../docs/development/REPOSITORY_ORGANISATION.md) and be linked in `docs/README.md`. Never place markdown files in the repository root.
+6. **Handoff:** Specialist fills out `agents/<agent-id>/HANDOFF.md` and transitions status to `WAITING`.
+7. **Architect Review:** Lead Architect reviews the diff, validates test outputs, checks structure compliance (`npm run validate:structure`), and evaluates Quality Gates.
+8. **Integration & Completion:** Branch is merged into `master`, task is moved to `tasks/completed/`, and `REGISTRY.json` is updated.
 
 ---
 
 ## 6. Integration Quality Gates
 
-All integrations to `master` must pass 4 sequential gates:
+All integrations to `master` must pass sequential gates:
 - **Gate 1: Type Integrity:** `npm run typecheck` (0 errors across Node and Web).
 - **Gate 2: Automated Testing:** `npm test` (100% passing test suites, zero regressions).
-- **Gate 3: Git Safety:** Clean rebase onto `master`, zero conflict markers, zero cross-domain ownership violations.
-- **Gate 4: Architectural Review:** Lead Architect signoff on Ponytail simplicity, security, and clean UX.
+- **Gate 3: Repository Structure Integrity:** `npm run validate:structure` (clean root, zero unapproved files, intact documentation hierarchy).
+- **Gate 4: Git Safety:** Clean rebase onto `master`, zero conflict markers, zero cross-domain ownership violations.
+- **Gate 5: Architectural Review:** Lead Architect signoff on Ponytail simplicity, security, and clean UX (`npm run validate:coordination`).
 
 ---
 

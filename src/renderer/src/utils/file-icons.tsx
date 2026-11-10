@@ -27,8 +27,9 @@ import {
   Package
 } from 'lucide-react';
 import { Devicon } from './devicon-svgs';
+import { useWorkspaceStore } from '../stores/workspace.store';
 
-export type FileIconTheme = 'material' | 'minimal';
+export type FileIconTheme = 'vscode' | 'material' | 'minimal';
 
 interface FileIconProps {
   name: string;
@@ -36,16 +37,42 @@ interface FileIconProps {
   isExpanded?: boolean;
   theme?: FileIconTheme;
   className?: string;
+  customIcons?: Record<string, string>;
 }
 
 export const FileIcon: React.FC<FileIconProps> = ({
   name,
   isDirectory,
   isExpanded = false,
-  theme = 'material',
-  className = 'w-3.5 h-3.5 flex-shrink-0'
+  theme = 'vscode',
+  className = 'w-3.5 h-3.5 flex-shrink-0',
+  customIcons
 }) => {
   const lowerName = name.toLowerCase();
+  const storeCustomIcons = useWorkspaceStore((state) => state.project?.settings?.customFileIcons);
+  const activeCustomIcons = customIcons || storeCustomIcons;
+
+  // Custom user-defined file icon override (by extension or exact name)
+  if (!isDirectory && activeCustomIcons) {
+    const ext = lowerName.includes('.') ? lowerName.split('.').pop() || '' : '';
+    const customIcon =
+      activeCustomIcons[ext] ||
+      activeCustomIcons[`.${ext}`] ||
+      activeCustomIcons[lowerName];
+
+    if (customIcon) {
+      return (
+        <img
+          src={customIcon}
+          alt={ext || name}
+          className={`${className} object-contain rounded-[2px]`}
+          onError={(e) => {
+            (e.target as HTMLElement).style.display = 'none';
+          }}
+        />
+      );
+    }
+  }
 
   // 1. MINIMAL MONOCHROME THEME
   if (theme === 'minimal') {

@@ -24,7 +24,8 @@ import {
   Workflow,
   CheckSquare,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Blocks
 } from 'lucide-react';
 import { useWorkspaceStore, TerminalSessionItem } from '../stores/workspace.store';
 import type { CLIProvider } from '../../../shared/cli';
@@ -32,12 +33,13 @@ import { OfficialLogoRenderer } from './OfficialLogos';
 import { FileIcon } from '../utils/file-icons';
 import { CodeEditor } from './CodeEditor';
 import { EmbeddedBrowser } from './EmbeddedBrowser';
+import { PluginsWorkspace } from './plugins/PluginsWorkspace';
 import { NativeTerminal, type NativeTerminalProps } from './NativeTerminal';
 export type { NativeTerminalProps };
 
 export interface UnifiedTabItem {
   id: string;
-  type: 'terminal' | 'file' | 'browser' | 'graph';
+  type: 'terminal' | 'file' | 'browser' | 'graph' | 'plugins';
   title: string;
   terminalId?: string;
   filePath?: string;
@@ -402,7 +404,7 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
         renderIcon: () => <Settings className="w-4 h-4 text-[#A4A8AF] flex-shrink-0" />,
         action: () => {
           setIsPlusMenuOpen(false);
-          openSettingsToTab('general');
+          openSettingsToTab('security');
         }
       }
     ],
@@ -533,7 +535,7 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="h-9 bg-[#0e1015] border-b border-white/[0.08] flex items-center justify-between px-2.5 select-none z-20 flex-shrink-0 relative"
+      className="h-9 bg-[#0e1015] border-b border-white/[0.08] flex items-center justify-between px-2.5 select-none z-20 flex-shrink-0 relative terminal-pane-header"
     >
       {/* Left Tabs Strip + Plus button */}
       <div className="flex items-center flex-1 min-w-0 h-full gap-1">
@@ -617,6 +619,8 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
                   />
                 ) : isBrowser ? (
                   <Globe className="w-3.5 h-3.5 text-[#A4A8AF] flex-shrink-0" />
+                ) : tab.type === 'plugins' ? (
+                  <Blocks className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
                 ) : (
                   <TerminalIcon className="w-3.5 h-3.5 text-[#A4A8AF] flex-shrink-0" />
                 )}
@@ -1219,6 +1223,13 @@ export const TerminalWorkspace: React.FC = () => {
           title: t.title,
           url: t.url
         });
+      } else if (t.type === 'plugins') {
+        seenIds.add(t.id);
+        list.push({
+          id: t.id,
+          type: 'plugins' as any,
+          title: t.title
+        });
       }
     }
 
@@ -1303,23 +1314,26 @@ export const TerminalWorkspace: React.FC = () => {
   };
 
   const handleCloseTab = (tab: UnifiedTabItem) => {
-    if (tab.type === 'terminal' && tab.terminalId) {
-      window.api?.terminalKill?.({ terminalId: tab.terminalId });
-      removeTerminalSession(tab.terminalId);
-    } else {
-      closeTab(tab.id);
-    }
-
     if (pane2TabIds.includes(tab.id)) {
+      const closingIndex = pane2Tabs.findIndex((t) => t.id === tab.id);
       const nextPane2 = pane2TabIds.filter((id) => id !== tab.id);
       setPane2TabIds(nextPane2);
       if (nextPane2.length === 0) {
         setSplitDirection(null);
         setSecondaryTabId(null);
       } else if (secondaryTabId === tab.id) {
-        setSecondaryTabId(nextPane2[0]);
+        const nextIndex = closingIndex > 0 ? closingIndex - 1 : 0;
+        const targetId = nextPane2[nextIndex] || nextPane2[0];
+        setSecondaryTabId(targetId);
+        const targetTab = pane2Tabs.find((t) => t.id === targetId);
+        if (targetTab?.type === 'terminal' && targetTab.terminalId) {
+          setActiveTerminalId(targetTab.terminalId);
+        } else if (targetTab?.type === 'file' && targetTab.filePath) {
+          setActiveFile(targetTab.filePath);
+        }
       }
     } else {
+      const closingIndex = pane1Tabs.findIndex((t) => t.id === tab.id);
       const nextPane1 = pane1Tabs.filter((t) => t.id !== tab.id);
       if (nextPane1.length === 0) {
         if (pane2TabIds.length > 0) {
@@ -1331,9 +1345,23 @@ export const TerminalWorkspace: React.FC = () => {
           setArcLauncherOpen(true);
         }
       } else if (primaryTabId === tab.id) {
-        setPrimaryTabId(nextPane1[0].id);
-        setActiveTabId(nextPane1[0].id);
+        const nextIndex = closingIndex > 0 ? closingIndex - 1 : 0;
+        const targetTab = nextPane1[nextIndex] || nextPane1[0];
+        setPrimaryTabId(targetTab.id);
+        setActiveTabId(targetTab.id);
+        if (targetTab.type === 'terminal' && targetTab.terminalId) {
+          setActiveTerminalId(targetTab.terminalId);
+        } else if (targetTab.type === 'file' && targetTab.filePath) {
+          setActiveFile(targetTab.filePath);
+        }
       }
+    }
+
+    if (tab.type === 'terminal' && tab.terminalId) {
+      window.api?.terminalKill?.({ terminalId: tab.terminalId });
+      removeTerminalSession(tab.terminalId);
+    } else {
+      closeTab(tab.id);
     }
   };
 
@@ -1391,25 +1419,41 @@ export const TerminalWorkspace: React.FC = () => {
 
       // Cleanly remove tab from local window without killing the backend PTY session
       if (tab.type === 'terminal' && tab.terminalId) {
-        useWorkspaceStore.setState((s) => ({
-          terminalSessions: s.terminalSessions.filter((ts) => ts.id !== tab.terminalId),
-          openTabs: s.openTabs.filter((t) => !(t.type === 'terminal' && (t.terminalId === tab.terminalId || t.id === tab.id))),
-          activeTerminalId: s.activeTerminalId === tab.terminalId ? (s.terminalSessions.filter((ts) => ts.id !== tab.terminalId)[0]?.id || null) : s.activeTerminalId
-        }));
+        useWorkspaceStore.setState((s) => {
+          const sessionIndex = s.terminalSessions.findIndex((ts) => ts.id === tab.terminalId);
+          const remaining = s.terminalSessions.filter((ts) => ts.id !== tab.terminalId);
+          const nextSessionIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
+          const nextActive = s.activeTerminalId === tab.terminalId ? (remaining[nextSessionIndex]?.id || null) : s.activeTerminalId;
+          return {
+            terminalSessions: remaining,
+            openTabs: s.openTabs.filter((t) => !(t.type === 'terminal' && (t.terminalId === tab.terminalId || t.id === tab.id))),
+            activeTerminalId: nextActive
+          };
+        });
       } else {
         closeTab(tab.id);
       }
 
       if (pane2TabIds.includes(tab.id)) {
+        const closingIndex = pane2Tabs.findIndex((t) => t.id === tab.id);
         const nextPane2 = pane2TabIds.filter((id) => id !== tab.id);
         setPane2TabIds(nextPane2);
         if (nextPane2.length === 0) {
           setSplitDirection(null);
           setSecondaryTabId(null);
         } else if (secondaryTabId === tab.id) {
-          setSecondaryTabId(nextPane2[0]);
+          const nextIndex = closingIndex > 0 ? closingIndex - 1 : 0;
+          const targetId = nextPane2[nextIndex] || nextPane2[0];
+          setSecondaryTabId(targetId);
+          const targetTab = pane2Tabs.find((t) => t.id === targetId);
+          if (targetTab?.type === 'terminal' && targetTab.terminalId) {
+            setActiveTerminalId(targetTab.terminalId);
+          } else if (targetTab?.type === 'file' && targetTab.filePath) {
+            setActiveFile(targetTab.filePath);
+          }
         }
       } else {
+        const closingIndex = pane1Tabs.findIndex((t) => t.id === tab.id);
         const nextPane1 = pane1Tabs.filter((t) => t.id !== tab.id);
         if (nextPane1.length === 0) {
           if (pane2TabIds.length > 0) {
@@ -1421,8 +1465,15 @@ export const TerminalWorkspace: React.FC = () => {
             setArcLauncherOpen(true);
           }
         } else if (primaryTabId === tab.id) {
-          setPrimaryTabId(nextPane1[0].id);
-          setActiveTabId(nextPane1[0].id);
+          const nextIndex = closingIndex > 0 ? closingIndex - 1 : 0;
+          const targetTab = nextPane1[nextIndex] || nextPane1[0];
+          setPrimaryTabId(targetTab.id);
+          setActiveTabId(targetTab.id);
+          if (targetTab.type === 'terminal' && targetTab.terminalId) {
+            setActiveTerminalId(targetTab.terminalId);
+          } else if (targetTab.type === 'file' && targetTab.filePath) {
+            setActiveFile(targetTab.filePath);
+          }
         }
       }
     }
@@ -1590,7 +1641,7 @@ export const TerminalWorkspace: React.FC = () => {
   const renderPaneContent = (tabs: UnifiedTabItem[], activeTab: UnifiedTabItem | null, isPrimary: boolean) => {
     if (tabs.length === 0 || !activeTab) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-[#0d0e12]">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-transparent">
           <TerminalIcon className="w-8 h-8 text-[#717784] mb-2" />
           <p className="text-xs text-[#ECEDEF] font-medium">No active tab</p>
         </div>
@@ -1598,7 +1649,7 @@ export const TerminalWorkspace: React.FC = () => {
     }
 
     return (
-      <div className="flex-1 min-h-0 relative overflow-hidden bg-[#21242d]">
+      <div className="flex-1 min-h-0 relative overflow-hidden bg-transparent">
         {tabs.map((tab) => {
           const isTabActive = activeTab?.id === tab.id;
 
@@ -1610,7 +1661,7 @@ export const TerminalWorkspace: React.FC = () => {
             if (!session) {
               if (!isTabActive) return null;
               return (
-                <div key={tab.id} className="w-full h-full flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-[#0d0e12]">
+                <div key={tab.id} className="w-full h-full flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-transparent">
                   <TerminalIcon className="w-8 h-8 text-[#717784] mb-2" />
                   <p className="text-xs text-[#ECEDEF] font-medium">Terminal session closed</p>
                 </div>
@@ -1650,6 +1701,14 @@ export const TerminalWorkspace: React.FC = () => {
             );
           }
 
+          if (tab.type === 'plugins') {
+            return (
+              <div key={tab.id} className="w-full h-full min-h-0 overflow-hidden">
+                <PluginsWorkspace />
+              </div>
+            );
+          }
+
           return null;
         })}
       </div>
@@ -1658,7 +1717,7 @@ export const TerminalWorkspace: React.FC = () => {
 
   if (unifiedTabs.length === 0) {
     return (
-      <div className="h-full w-full bg-[#0d0e12] flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+      <div className="h-full w-full bg-transparent flex flex-col items-center justify-center p-6 text-center select-none font-sans glass-workspace-surface">
         <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#A4A8AF] mb-4 shadow-sm">
           <TerminalIcon className="w-6 h-6" />
         </div>
@@ -1687,7 +1746,7 @@ export const TerminalWorkspace: React.FC = () => {
   const isSplitActive = Boolean(splitDirection && pane2Tabs.length > 0 && pane1Tabs.length > 0);
 
   return (
-    <div className="h-full w-full bg-[#0d0e12] select-none overflow-hidden relative flex flex-col">
+    <div className="h-full w-full bg-transparent select-none overflow-hidden relative flex flex-col">
       {/* Floating Guidance Banner when dragging a tab */}
       {draggedTab && (
         <div
@@ -1726,7 +1785,7 @@ export const TerminalWorkspace: React.FC = () => {
                   ? { height: `${splitRatio * 100}%`, flexShrink: 0 }
                   : { width: `${splitRatio * 100}%`, flexShrink: 0 }
               }
-              className="flex flex-col min-h-0 min-w-0 overflow-hidden relative"
+              className="flex flex-col min-h-0 min-w-0 overflow-hidden relative glass-workspace-surface"
             >
               {dropTarget?.isPrimary === true && (
                 <DockDropZoneOverlay zone={dropTarget.zone} />
@@ -1798,7 +1857,7 @@ export const TerminalWorkspace: React.FC = () => {
                   ? { height: `${(1 - splitRatio) * 100}%`, flexShrink: 0 }
                   : { width: `${(1 - splitRatio) * 100}%`, flexShrink: 0 }
               }
-              className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden relative"
+              className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden relative glass-workspace-surface"
             >
               {dropTarget?.isPrimary === false && (
                 <DockDropZoneOverlay zone={dropTarget.zone} />
@@ -1841,7 +1900,7 @@ export const TerminalWorkspace: React.FC = () => {
           onDragOver={(e) => handlePaneDragOver(e, true)}
           onDragLeave={handlePaneDragLeave}
           onDrop={(e) => handlePaneDrop(e, true)}
-          className="flex-1 flex flex-col min-h-0 overflow-hidden relative"
+          className="flex-1 flex flex-col min-h-0 overflow-hidden relative glass-workspace-surface"
         >
           {dropTarget?.isPrimary === true && (
             <DockDropZoneOverlay zone={dropTarget.zone} />

@@ -192,7 +192,7 @@ export const FilesTab: React.FC = () => {
   return (
     <div className="h-full flex flex-col font-sans select-none">
       {/* Search & Actions Bar */}
-      <div className="p-2 border-b border-white/[0.06] bg-transparent flex items-center gap-1 flex-shrink-0">
+      <div className="p-2 border-b border-white/[0.05] bg-transparent flex items-center gap-1 flex-shrink-0">
         <div className="flex-1 min-w-0">
           <SearchField
             value={fileFilter}

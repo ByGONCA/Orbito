@@ -28,17 +28,38 @@ export const NativeTerminal: React.FC<NativeTerminalProps> = ({ session, isActiv
 
     const isWin = typeof navigator !== 'undefined' ? navigator.userAgent.includes('Windows') : true;
 
-    // Visible dark charcoal/graphite grey theme (#21242d) for clear distinction from outer chrome
-    const term = new Terminal({
-      cursorBlink: true,
-      cursorStyle: 'block',
-      cursorInactiveStyle: 'outline',
-      fontFamily: "'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', monospace",
-      fontSize: 13,
-      lineHeight: 1.35,
-      letterSpacing: 0,
-      theme: {
-        background: '#21242d',
+    const getTerminalTheme = () => {
+      const isLight = typeof document !== 'undefined' && document.documentElement.classList.contains('theme-light');
+      const isSolid = typeof document !== 'undefined' && document.documentElement.classList.contains('theme-solid');
+
+      if (isLight) {
+        return {
+          background: '#F8F9FA',
+          foreground: '#1E2024',
+          cursor: '#2563eb',
+          cursorAccent: '#F8F9FA',
+          selectionBackground: 'rgba(37, 99, 235, 0.20)',
+          black: '#1E2024',
+          red: '#dc2626',
+          green: '#16a34a',
+          yellow: '#ca8a04',
+          blue: '#2563eb',
+          magenta: '#9333ea',
+          cyan: '#0891b2',
+          white: '#64748b',
+          brightBlack: '#475569',
+          brightRed: '#ef4444',
+          brightGreen: '#22c55e',
+          brightYellow: '#eab308',
+          brightBlue: '#3b82f6',
+          brightMagenta: '#a855f7',
+          brightCyan: '#06b6d4',
+          brightWhite: '#0f172a'
+        };
+      }
+
+      return {
+        background: isSolid ? '#21242d' : 'transparent',
         foreground: '#e2e8f0',
         cursor: '#818cf8',
         cursorAccent: '#21242d',
@@ -59,7 +80,18 @@ export const NativeTerminal: React.FC<NativeTerminalProps> = ({ session, isActiv
         brightMagenta: '#c084fc',
         brightCyan: '#22d3ee',
         brightWhite: '#ffffff'
-      },
+      };
+    };
+
+    const term = new Terminal({
+      cursorBlink: true,
+      cursorStyle: 'block',
+      cursorInactiveStyle: 'outline',
+      fontFamily: "'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', monospace",
+      fontSize: 13,
+      lineHeight: 1.35,
+      letterSpacing: 0,
+      theme: getTerminalTheme(),
       allowTransparency: true,
       windowsPty: isWin ? { backend: 'conpty' } : undefined,
       scrollback: 5000
@@ -246,11 +278,19 @@ export const NativeTerminal: React.FC<NativeTerminalProps> = ({ session, isActiv
     };
     window.addEventListener('focus', handleWindowFocus);
 
+    const themeObserver = new MutationObserver(() => {
+      if (termRef.current) {
+        termRef.current.options.theme = getTerminalTheme();
+      }
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
     return () => {
       isDisposed = true;
       if (resizeTimer) clearTimeout(resizeTimer);
       window.removeEventListener(`terminal:reset:${session.id}`, handleResetEvent);
       window.removeEventListener('focus', handleWindowFocus);
+      themeObserver.disconnect();
       resizeObserver.disconnect();
       onDataDisposable.dispose();
       removeDataListener?.();
@@ -294,7 +334,7 @@ export const NativeTerminal: React.FC<NativeTerminalProps> = ({ session, isActiv
     <div
       ref={containerRef}
       onClick={handleContainerClick}
-      className="w-full h-full p-0 m-0 bg-[#21242d] overflow-hidden select-text cursor-text relative"
+      className="w-full h-full p-0 m-0 bg-transparent overflow-hidden select-text cursor-text relative"
       style={{
         outline: 'none'
       }}

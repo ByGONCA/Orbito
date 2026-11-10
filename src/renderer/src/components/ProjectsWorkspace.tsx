@@ -28,6 +28,7 @@ import type { ProjectDescriptor } from '../../../shared/types';
 import { useWorkspaceStore } from '../stores/workspace.store';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
+import orbitLogo from '../assets/Orbit.png';
 import { ProjectCustomizeModal, ProjectIconRenderer } from './ProjectCustomizeModal';
 import { NewProjectModal } from './NewProjectModal';
 import { ProjectSettingsModal } from './ProjectSettingsModal';
@@ -176,7 +177,7 @@ export const ProjectsWorkspace: React.FC = () => {
             {/* Orbito Logo */}
             <div className="w-12 h-12 mx-auto flex items-center justify-center">
               <img
-                src="/Orbit.png"
+                src={orbitLogo}
                 alt="Orbito Logo"
                 className="w-10 h-10 object-contain drop-shadow select-none pointer-events-none"
               />

@@ -540,9 +540,9 @@ export const RightPanel: React.FC = () => {
   ];
 
   return (
-    <aside className="h-full flex flex-col bg-transparent select-none overflow-hidden font-sans text-xs">
+    <aside className="h-full flex flex-col bg-transparent select-none overflow-hidden font-sans text-xs relative z-10">
       {/* 1. Header Tabs Navigation (Icon-Only with Hover Tooltip Box) */}
-      <div className="h-9 border-b border-white/[0.06] bg-transparent px-2 flex items-center justify-between flex-shrink-0">
+      <div className="h-9 border-b border-white/[0.05] bg-transparent px-2 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1 overflow-visible py-1">
           {tabs.map((tab) => {
             const isActive =

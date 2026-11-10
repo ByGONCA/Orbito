@@ -1,6 +1,6 @@
 {
   "system": "Orbito Multi-Agent Development System",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "orchestrator": {
     "name": "lead-architect",
     "displayName": "Lead Architect & Development Orchestrator",
@@ -14,7 +14,10 @@
     },
     "modelDefault": "inherit",
     "workspaceMode": "inherit",
-    "docFile": ".agents/agents/lead-architect.md"
+    "docFile": ".agents/agents/lead-architect.md",
+    "skills": [
+      "find-skills"
+    ]
   },
   "specialists": [
     {
@@ -30,7 +33,37 @@
       },
       "modelDefault": "inherit",
       "workspaceMode": "inherit",
-      "docFile": ".agents/agents/frontend-specialist.md"
+      "docFile": ".agents/agents/frontend-specialist.md",
+      "skills": [
+        "frontend-design",
+        "frontend-design-pro",
+        "liquid-glass-frontend",
+        "glimmer",
+        "youmair-visual-hierarchy",
+        "youmair-dark-mode-design",
+        "web-design-guidelines"
+      ]
+    },
+    {
+      "name": "glass-material-specialist",
+      "displayName": "Glass Material Specialist",
+      "role": "Glass Materials & Physical Surface Engineer",
+      "tier": "primary",
+      "description": "Authority on advanced glass materials, transparency, refraction, SVG displacement filters, chromatic aberration, blur, highlights, layered surfaces, and background composition.",
+      "capabilities": {
+        "EnableMCPTools": true,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/glass-material-specialist.md",
+      "skills": [
+        "liquid-glass",
+        "liquid-glass-frontend",
+        "glimmer",
+        "youmair-glassmorphism"
+      ]
     },
     {
       "name": "backend-specialist",
@@ -79,18 +112,23 @@
     },
     {
       "name": "qa-specialist",
-      "displayName": "QA & Testing Specialist",
-      "role": "Test Automation & Verification Engineer",
+      "displayName": "QA & Visual Testing Specialist",
+      "role": "Test Automation & Visual Verification Engineer",
       "tier": "primary",
-      "description": "Validates code, executes unit and integration tests (Vitest), verifies TypeScript types, checks build stability, and reproduces bugs with reproducible evidence.",
+      "description": "Validates code, executes unit and integration tests (Vitest), verifies TypeScript types, checks build stability, and performs independent screenshot-based visual QA, 6-dimension scoring, and regression checks.",
       "capabilities": {
-        "EnableMCPTools": false,
+        "EnableMCPTools": true,
         "EnableSubagentTools": false,
         "EnableWriteTools": true
       },
       "modelDefault": "inherit",
       "workspaceMode": "inherit",
-      "docFile": ".agents/agents/qa-specialist.md"
+      "docFile": ".agents/agents/qa-specialist.md",
+      "skills": [
+        "visual-verdict",
+        "frontend-visual-qa",
+        "browser-testing-with-devtools"
+      ]
     },
     {
       "name": "performance-specialist",

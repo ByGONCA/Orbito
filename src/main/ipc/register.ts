@@ -5,6 +5,7 @@ import net from 'net';
 import {
   OpenDirectorySchema,
   CreateProjectSchema,
+  CloneProjectSchema,
   ToggleProjectFavoriteSchema,
   ListFilesSchema,
   ReadFileSchema,
@@ -37,6 +38,7 @@ import {
   GenerateWorkflowFromPromptSchema,
   ToggleExtensionSchema,
   InstallExtensionSchema,
+  InstallCatalogPluginSchema,
   UninstallExtensionSchema,
   GetAnalyticsSummarySchema,
   GetProviderCostMetricsSchema,
@@ -66,6 +68,7 @@ import { projectExecutionService } from '../services/project-execution.service';
 import { codeReviewService } from '../services/code-review.service';
 import { WorktreeManager } from '../agents/worktree-manager';
 import { discordRpcService } from '../services/discord/discord-rpc.service';
+import { setWindowMaterial } from '../services/window-material';
 import { detectProjectGitRemote } from '../services/git-remote-resolver';
 import { IntelligenceRouter } from '../services/intelligence-router.service';
 import { PromptAssemblyService } from '../prompt/prompt-assembly.service';
@@ -243,6 +246,15 @@ export function registerIpcHandlers(): void {
     return descriptor;
   });
 
+  ipcMain.handle('workspace:cloneProject', async (_, args) => {
+    const validated = CloneProjectSchema.parse(args);
+    const descriptor = await workspaceService.cloneProject(validated);
+    if (descriptor) {
+      discordRpcService.setActiveProject(descriptor);
+    }
+    return descriptor;
+  });
+
   ipcMain.handle('workspace:selectDirectory', async (_, title?: string) => {
     return await workspaceService.selectDirectoryDialog(title);
   });
@@ -387,6 +399,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('settings:update', (_, args) => {
     const validated = UpdateSettingsSchema.parse(args);
     const updated = databaseService.updateSettings(validated);
+    if (validated.theme) {
+      const win = BrowserWindow.fromWebContents(_.sender);
+      if (win && !win.isDestroyed()) {
+        setWindowMaterial(win, validated.theme === 'solid' ? 'none' : 'acrylic');
+      }
+    }
     if (validated.currentProjectId) {
       const p = databaseService.getProject(validated.currentProjectId);
       discordRpcService.setActiveProject(p || null);
@@ -454,6 +472,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('secret:get', (_, args) => {
     const validated = GetSecretSchema.parse(args);
     return safeStorageService.getSecret(validated.key);
+  });
+
+  ipcMain.handle('secret:has', (_, args) => {
+    const validated = GetSecretSchema.parse(args);
+    return safeStorageService.hasSecret(validated.key);
   });
 
   // 4. Memories
@@ -892,6 +915,10 @@ export function registerIpcHandlers(): void {
     return extensionRegistry.listExtensions();
   });
 
+  ipcMain.handle('extensions:catalog', async () => {
+    return extensionRegistry.getDiscoverCatalog();
+  });
+
   ipcMain.handle('extensions:toggle', async (_, args) => {
     const validated = ToggleExtensionSchema.parse(args);
     const success = await extensionRegistry.toggleExtension(validated.extensionId, validated.enabled);
@@ -901,6 +928,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('extensions:install', async (_, args) => {
     const validated = InstallExtensionSchema.parse(args);
     return await extensionRegistry.installFromDirectory(validated.directoryPath);
+  });
+
+  ipcMain.handle('extensions:install-catalog', async (_, args) => {
+    const validated = InstallCatalogPluginSchema.parse(args);
+    return await extensionRegistry.installFromCatalog(validated.pluginId);
   });
 
   ipcMain.handle('extensions:uninstall', async (_, args) => {
@@ -1009,6 +1041,10 @@ export function registerIpcHandlers(): void {
       win.maximize();
       return true;
     }
+  });
+
+  ipcMain.handle('window:refreshMaterial', () => {
+    return true;
   });
 
   ipcMain.handle('window:close', (event) => {

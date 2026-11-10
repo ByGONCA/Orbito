@@ -110,10 +110,10 @@ Empirical measurements across five representative developer workflows demonstrat
 
 ## 6. Deliverable Documentation Artifacts
 
-- [TOKEN_OPTIMIZATION.md](file:///C:/Users/gonca/Documents/coding/Projects/Orc/TOKEN_OPTIMIZATION.md) — Comprehensive architecture and token reduction mechanisms.
-- [INTELLIGENCE_ENGINE.md](file:///C:/Users/gonca/Documents/coding/Projects/Orc/INTELLIGENCE_ENGINE.md) — Cognitive routing, capability matching, and progressive skill loading.
-- [PROMPT_ASSEMBLY.md](file:///C:/Users/gonca/Documents/coding/Projects/Orc/PROMPT_ASSEMBLY.md) — Canonical 8-section specification and budget enforcement algorithms.
-- [OPTIMIZATION_BENCHMARKS.md](file:///C:/Users/gonca/Documents/coding/Projects/Orc/OPTIMIZATION_BENCHMARKS.md) — Empirical quality and token savings benchmarks.
-- [ROADMAP.md](file:///C:/Users/gonca/Documents/coding/Projects/Orc/docs/ROADMAP.md) — Updated with Phase 8 scope.
-- [ARCHITECTURE.md](file:///C:/Users/gonca/Documents/coding/Projects/Orc/docs/ARCHITECTURE.md) — Updated with Section 12 architecture.
-- [PRD.md](file:///C:/Users/gonca/Documents/coding/Projects/Orc/docs/PRD.md) — Updated with Section 4.4 specifications.
+- [TOKEN_OPTIMIZATION.md](../architecture/TOKEN_OPTIMIZATION.md) — Comprehensive architecture and token reduction mechanisms.
+- [INTELLIGENCE_ENGINE.md](../architecture/INTELLIGENCE_ENGINE.md) — Cognitive routing, capability matching, and progressive skill loading.
+- [PROMPT_ASSEMBLY.md](../architecture/PROMPT_ASSEMBLY.md) — Canonical 8-section specification and budget enforcement algorithms.
+- [OPTIMIZATION_BENCHMARKS.md](./OPTIMIZATION_BENCHMARKS.md) — Empirical quality and token savings benchmarks.
+- [ROADMAP.md](../reference/ROADMAP.md) — Updated with Phase 8 scope.
+- [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) — Updated with Section 12 architecture.
+- [PRD.md](../reference/PRD.md) — Updated with Section 4.4 specifications.

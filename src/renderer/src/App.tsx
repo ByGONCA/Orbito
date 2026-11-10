@@ -173,9 +173,8 @@ export const App: React.FC = () => {
     try {
       const settings = await window.api.getSettings?.();
       if (settings) {
-        if (settings.theme) {
-          const validTheme = settings.theme === 'solid' ? 'solid' : 'glass';
-          setTheme(validTheme);
+        if (settings.theme && ['glass', 'solid', 'light'].includes(settings.theme)) {
+          setTheme(settings.theme as 'glass' | 'solid' | 'light');
         } else {
           setTheme('glass');
         }
@@ -209,14 +208,12 @@ export const App: React.FC = () => {
     } catch (err: any) {
       addLog(`Settings init notice: ${err.message}`, 'warn');
     }
-    await new Promise((r) => setTimeout(r, 150));
 
     // 3. Skills & CLI Extensions
     onProgress(65, 'Loading skills and extensions...', 'Inspecting available CLI agents and tools', 'skills');
     if (window.api.listSkills) {
       await window.api.listSkills().catch(() => []);
     }
-    await new Promise((r) => setTimeout(r, 150));
 
     // 4. Workspace & Recent Projects
     onProgress(85, 'Restoring workspace context...', 'Checking repository state and active tabs', 'workspace');
@@ -246,7 +243,6 @@ export const App: React.FC = () => {
     } catch (wsErr: any) {
       addLog(`Workspace restore notice: ${wsErr.message}`, 'warn');
     }
-    await new Promise((r) => setTimeout(r, 150));
   };
 
   const handleBypassWorkspace = () => {
@@ -320,15 +316,15 @@ export const App: React.FC = () => {
       )}
 
       <div
-        className={`flex flex-col h-screen w-screen overflow-hidden bg-[#101113] text-foreground select-none font-sans relative ${
+        className={`flex flex-col h-screen w-screen overflow-hidden app-canvas-root text-foreground select-none font-sans relative ${
           !isAppReady ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'
         }`}
       >
         {/* Subtle, soft neutral ambient gradient (no bright/blue saturation) */}
         <div
-          className="absolute inset-0 pointer-events-none z-0"
+          className="absolute inset-0 pointer-events-none z-0 app-canvas-ambient"
           style={{
-            background: 'radial-gradient(1000px 600px at 50% 0%, rgba(255, 255, 255, 0.02) 0%, transparent 70%)'
+            background: 'radial-gradient(1200px 700px at 50% 0%, rgba(255, 255, 255, 0.012) 0%, transparent 70%)'
           }}
         />
 
@@ -339,20 +335,17 @@ export const App: React.FC = () => {
         <div className="flex-1 flex overflow-hidden relative z-10 min-h-0">
           {/* Left Sidebar */}
           {isLeftSidebarOpen && (
-            <>
-              <div
-                style={{ width: `${leftSidebarWidth}px` }}
-                className="flex-shrink-0 h-full overflow-hidden border-r border-white/[0.07] frosted-sidebar"
-              >
-                <LeftSidebar />
-              </div>
-
-              {/* Left Resize Drag Handle */}
+            <div
+              style={{ width: `${leftSidebarWidth}px` }}
+              className="flex-shrink-0 h-full overflow-hidden frosted-sidebar relative"
+            >
+              <LeftSidebar />
+              {/* Left Resize Drag Handle (Overlay on edge, zero layout gap) */}
               <div
                 onMouseDown={handleLeftMouseDown}
-                className="w-1 h-full cursor-col-resize hover:bg-white/20 transition-colors z-20 flex-shrink-0"
+                className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-white/20 transition-colors z-30"
               />
-            </>
+            </div>
           )}
 
           {/* Center Main Dynamic Workspace */}
@@ -364,20 +357,17 @@ export const App: React.FC = () => {
 
           {/* Right Panel: Technical Project & Session Explorer */}
           {isRightPanelOpen && (
-            <>
-              {/* Right Resize Drag Handle */}
+            <div
+              style={{ width: `${rightPanelWidth}px` }}
+              className="flex-shrink-0 h-full overflow-hidden frosted-explorer relative"
+            >
+              <RightPanel />
+              {/* Right Resize Drag Handle (Overlay on edge, zero layout gap) */}
               <div
                 onMouseDown={handleRightMouseDown}
-                className="w-1 h-full cursor-col-resize hover:bg-white/20 transition-colors z-20 flex-shrink-0"
+                className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-white/20 transition-colors z-30"
               />
-
-              <div
-                style={{ width: `${rightPanelWidth}px` }}
-                className="flex-shrink-0 h-full overflow-hidden border-l border-white/[0.07] frosted-sidebar"
-              >
-                <RightPanel />
-              </div>
-            </>
+            </div>
           )}
         </div>
 
