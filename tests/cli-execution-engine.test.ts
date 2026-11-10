@@ -53,7 +53,11 @@ describe('ExecutionEngine Integration Tests (Controlled Subprocesses)', () => {
   let engine: ExecutionEngine;
 
   beforeEach(() => {
-    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    try {
+      if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    } catch {
+      // Ignore initial cleanup lock
+    }
     fs.mkdirSync(TEST_DIR, { recursive: true });
 
     databaseService.initialize();
@@ -66,7 +70,11 @@ describe('ExecutionEngine Integration Tests (Controlled Subprocesses)', () => {
 
   afterEach(() => {
     databaseService.close();
-    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    try {
+      if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    } catch {
+      // Ignore residual Windows process unlock latency
+    }
   });
 
   it('spawns child process, streams stdout and stderr, and exits with code 0', async () => {

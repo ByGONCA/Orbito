@@ -6,7 +6,8 @@ import type {
   SystemResourceMetrics,
   ProjectGraphData,
   CreateProjectOptions,
-  ProjectSettings
+  ProjectSettings,
+  GitProviderSourceId
 } from '../../../shared/types';
 import type { IndexStats } from '../../../shared/context';
 import type { SkillMetadata, SkillExecutionRecord } from '../../../shared/skills';
@@ -232,6 +233,7 @@ export interface WorkspaceState {
   setProject: (project: ProjectDescriptor | null) => void;
   createProject: (options: CreateProjectOptions) => Promise<ProjectDescriptor>;
   cloneProject: (options: { url: string; parentDirectory: string; customName?: string }) => Promise<ProjectDescriptor>;
+  cloneRemoteRepository: (options: { provider: GitProviderSourceId; cloneUrl: string; parentDirectory: string; customName?: string }) => Promise<ProjectDescriptor>;
   toggleProjectFavorite: (projectId: string) => Promise<boolean>;
   saveProjectSettings: (projectId: string, settings: ProjectSettings) => Promise<boolean>;
   removeStaleProject: (projectId: string) => Promise<void>;
@@ -889,6 +891,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return desc;
     } catch (err: any) {
       get().addLog(`Failed to clone project: ${err.message}`, 'error');
+      throw err;
+    }
+  },
+
+  cloneRemoteRepository: async (options) => {
+    try {
+      const desc = await window.api.cloneRemoteRepository(options);
+      get().setProject(desc);
+      try {
+        const fileList = await window.api.listFiles({ projectPath: desc.path });
+        set({ files: fileList });
+        get().loadProjectGraph(desc.path);
+      } catch {}
+      const recents = await window.api.getRecentProjects();
+      set({ recentProjects: recents });
+      get().addLog(`Cloned remote repository successfully: ${desc.name}`, 'info');
+      return desc;
+    } catch (err: any) {
+      get().addLog(`Failed to clone remote repository: ${err.message}`, 'error');
       throw err;
     }
   },

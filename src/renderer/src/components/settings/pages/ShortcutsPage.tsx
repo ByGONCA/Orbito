@@ -70,20 +70,17 @@ export const ShortcutsPage: React.FC = () => {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-foreground tracking-tight">
-            Keyboard Shortcuts
+            Shortcuts
           </h2>
-          <p className="text-xs text-foreground-muted mt-1">
-            Customize key combinations for rapid workspace navigation and commands.
-          </p>
         </div>
 
         <button
           type="button"
           onClick={handleResetAll}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.98] ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer rounded-md ${
             resetFeedback
-              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-              : 'border-border/70 bg-surface-elevated/70 hover:bg-surface-hover text-foreground-secondary hover:text-foreground'
+              ? 'bg-emerald-500/10 text-emerald-400'
+              : 'text-foreground-muted hover:text-foreground hover:bg-white/[0.04]'
           }`}
           title="Reset all shortcuts to defaults"
         >
@@ -102,11 +99,11 @@ export const ShortcutsPage: React.FC = () => {
       </div>
 
       {recordingId && (
-        <div className="py-2.5 px-3.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300 flex items-center justify-between">
+        <div className="py-2.5 px-3.5 bg-amber-500/10 rounded-lg text-xs text-amber-300 flex items-center justify-between">
           <span>Recording shortcut... Press your desired key combination.</span>
           <button
             onClick={() => setRecordingId(null)}
-            className="px-2 py-0.5 rounded text-[11px] bg-white/10 hover:bg-white/20 text-white cursor-pointer font-mono"
+            className="px-2 py-0.5 rounded text-[11px] text-amber-300/80 hover:text-amber-200 hover:bg-amber-500/20 cursor-pointer font-mono transition-colors"
           >
             Cancel (Esc)
           </button>
@@ -125,11 +122,11 @@ export const ShortcutsPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search shortcuts by command or key..."
-              className="w-full bg-surface border border-border/70 focus:border-accent/40 rounded-lg pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-foreground-muted focus:outline-none transition-colors font-mono"
+              className="w-full bg-white/[0.03] hover:bg-white/[0.05] focus:bg-white/[0.06] rounded-md pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-foreground-muted/60 focus:outline-none transition-colors font-mono border-0"
             />
           </div>
 
-          <div className="divide-y divide-border/40">
+          <div className="space-y-0.5 pt-1">
             {filteredShortcuts.map((sc) => {
               const isRecording = recordingId === sc.id;
               const isCustom = sc.currentCombo !== sc.defaultCombo;
@@ -137,8 +134,8 @@ export const ShortcutsPage: React.FC = () => {
               return (
                 <div
                   key={sc.id}
-                  className={`flex items-center justify-between py-3 px-1 transition-colors rounded-lg ${
-                    isRecording ? 'bg-amber-500/10' : 'hover:bg-surface-hover/30'
+                  className={`flex items-center justify-between py-2.5 px-2.5 transition-colors rounded-md ${
+                    isRecording ? 'bg-amber-500/10' : 'hover:bg-white/[0.03]'
                   }`}
                 >
                   <div className="space-y-0.5 max-w-[65%]">
@@ -150,13 +147,13 @@ export const ShortcutsPage: React.FC = () => {
 
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {isRecording ? (
-                      <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-amber-500 text-black font-semibold animate-pulse">
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-amber-500 text-black font-semibold animate-pulse">
                         Press keys...
                       </span>
                     ) : (
                       <button
                         onClick={() => setRecordingId(sc.id)}
-                        className="font-mono text-xs text-foreground hover:text-foreground bg-surface-elevated hover:bg-surface-hover border border-border px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                        className="font-mono text-xs text-foreground-secondary hover:text-foreground hover:bg-white/[0.05] px-2 py-1 rounded transition-colors cursor-pointer tracking-wide"
                         title="Click to record new key combo"
                       >
                         {sc.currentCombo || 'None'}

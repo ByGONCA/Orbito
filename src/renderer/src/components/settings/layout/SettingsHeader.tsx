@@ -59,7 +59,7 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
 
   return (
     <div
-      className="h-11 w-full flex items-center justify-between px-3 border-b border-border bg-surface/90 backdrop-blur-md flex-shrink-0 relative z-30"
+      className="h-11 w-full flex items-center justify-between px-3 bg-surface/90 backdrop-blur-md flex-shrink-0 relative z-30 border-0"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left: Back Button & Title */}
@@ -69,7 +69,7 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
       >
         <button
           onClick={onClose}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated hover:bg-surface-hover text-xs text-foreground transition-colors cursor-pointer border border-border"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.08] text-xs text-foreground transition-colors cursor-pointer border-0"
           title="Back to Workspace (Esc)"
           aria-label="Back to Workspace"
         >
@@ -77,7 +77,7 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
           <span className="font-medium text-[12px]">Back</span>
         </button>
 
-        <div className="w-[1px] h-3.5 bg-border mx-1" />
+        <div className="w-[1px] h-3.5 bg-white/10 mx-1" />
 
         <div className="flex items-center gap-2 text-xs font-medium text-foreground">
           <span>Settings</span>
@@ -103,7 +103,7 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
           }}
           onFocus={() => setIsDropdownOpen(true)}
           placeholder="Search all settings..."
-          className="w-full bg-surface-elevated border border-border focus:border-accent text-xs text-foreground rounded-md pl-8 pr-7 py-1 placeholder:text-foreground-muted focus:outline-none transition-colors"
+          className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-white/[0.08] text-xs text-foreground rounded-md pl-8 pr-7 py-1 placeholder:text-foreground-muted focus:outline-none transition-colors border-0"
         />
         {searchQuery && (
           <button
@@ -121,7 +121,7 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
 
         {/* Instant Search Results Dropdown */}
         {isDropdownOpen && searchQuery.trim() && (
-          <div className="absolute top-full left-0 right-0 mt-1 max-h-80 overflow-y-auto bg-surface border border-border rounded-lg shadow-2xl py-1 divide-y divide-border z-50">
+          <div className="absolute top-full left-0 right-0 mt-1 max-h-80 overflow-y-auto bg-surface rounded-lg shadow-2xl py-1 space-y-0.5 z-50 border-0">
             {searchResults.length === 0 ? (
               <div className="px-3 py-3 text-xs text-foreground-muted text-center font-mono">
                 No matching settings found

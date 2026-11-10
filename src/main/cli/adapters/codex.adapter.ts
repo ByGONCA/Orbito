@@ -28,8 +28,8 @@ export class CodexAdapter implements ICLIAdapter {
   public async detect(customPath?: string): Promise<CLIInstallationStatus> {
     let resolvedPath: string | null = null;
 
-    if (customPath && fs.existsSync(customPath)) {
-      resolvedPath = path.resolve(customPath);
+    if (customPath) {
+      resolvedPath = fs.existsSync(customPath) ? path.resolve(customPath) : null;
     } else {
       resolvedPath = (await findExecutableOnPath('codex')) || (await findExecutableOnPath('openai'));
     }

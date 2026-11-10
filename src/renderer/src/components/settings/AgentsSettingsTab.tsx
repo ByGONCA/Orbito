@@ -1,38 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   RefreshCw,
   ExternalLink,
   ChevronDown,
   ChevronUp,
   Check,
-  Terminal,
-  Shield,
-  HelpCircle,
-  Play,
-  Settings2,
-  FolderOpen
+  Download,
+  Search,
+  Shield
 } from 'lucide-react';
 import { useWorkspaceStore } from '../../stores/workspace.store';
-import type { CLIProvider, CLIInstallationStatus } from '../../../../shared/cli';
+import type { CLIProvider } from '../../../../shared/cli';
 import { OfficialLogoRenderer } from '../OfficialLogos';
 import { CustomSelect, type SelectOption } from '../ui/Select';
+import { AgentInstallModal, type AgentItemToInstall } from './AgentInstallModal';
 
 const PERMISSION_OPTIONS: SelectOption<'full_access' | 'supervised' | 'read_only'>[] = [
-  {
-    value: 'full_access',
-    label: 'Full access',
-    description: 'Execute commands, modify files, and run code without manual approval.'
-  },
-  {
-    value: 'supervised',
-    label: 'Supervised',
-    description: 'Ask for user confirmation before executing potentially destructive actions.'
-  },
-  {
-    value: 'read_only',
-    label: 'Read-only',
-    description: 'Inspect code and answer queries without modifying workspace files.'
-  }
+  { value: 'full_access', label: 'Full access' },
+  { value: 'supervised', label: 'Supervised' },
+  { value: 'read_only', label: 'Read-only' }
 ];
 
 interface AgentItem {
@@ -47,20 +33,7 @@ interface AgentItem {
   installCommand?: string;
 }
 
-const DEFAULT_HOST_AGENTS: { id: string; name: string; provider: CLIProvider }[] = [
-  { id: 'auto', name: 'Auto', provider: 'antigravity' },
-  { id: 'codex', name: 'Codex', provider: 'codex' },
-  { id: 'copilot', name: 'GitHub Copilot', provider: 'copilot' },
-  { id: 'opencode', name: 'OpenCode', provider: 'opencode' },
-  { id: 'gemini', name: 'Gemini', provider: 'gemini' },
-  { id: 'antigravity', name: 'Antigravity', provider: 'antigravity' },
-  { id: 'codebuff', name: 'Freebuff', provider: 'codebuff' },
-  { id: 'kimi', name: 'Kimi', provider: 'kimi' },
-  { id: 'qwen', name: 'Qwen Code', provider: 'qwen' }
-];
-
 const ALL_AGENTS: AgentItem[] = [
-  // Default Installed Set (matching screenshot)
   {
     id: 'codex',
     name: 'Codex',
@@ -105,7 +78,7 @@ const ALL_AGENTS: AgentItem[] = [
     command: 'agy --dangerously-skip-permissions',
     hasChatMode: true,
     defaultInstalled: true,
-    installCommand: 'curl -fsSL https://antigravity.google/install.sh | bash'
+    installCommand: 'npm install -g @google/antigravity'
   },
   {
     id: 'codebuff',
@@ -134,8 +107,6 @@ const ALL_AGENTS: AgentItem[] = [
     defaultInstalled: true,
     installCommand: 'pip install qwen-code'
   },
-
-  // Available to install list
   {
     id: 'claude',
     name: 'Claude',
@@ -191,7 +162,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'ante',
     command: 'ante',
     hasChatMode: false,
-    installCommand: 'curl -fsSL https://ante.ai/install.sh | bash'
+    installCommand: 'npm install -g ante-cli'
   },
   {
     id: 'auggie',
@@ -223,7 +194,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'crush',
     command: 'crush',
     hasChatMode: false,
-    installCommand: 'curl -fsSL https://crush.dev/install.sh | bash'
+    installCommand: 'npm install -g crush-cli'
   },
   {
     id: 'cursor',
@@ -231,7 +202,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'cursor',
     command: 'cursor --agent',
     hasChatMode: true,
-    installCommand: 'curl -fsSL https://cursor.com/install.sh | bash'
+    installCommand: 'npm install -g cursor-cli'
   },
   {
     id: 'devin',
@@ -279,7 +250,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'kiro',
     command: 'kiro',
     hasChatMode: false,
-    installCommand: 'curl -fsSL https://kiro.dev/install.sh | bash'
+    installCommand: 'npm install -g kiro-cli'
   },
   {
     id: 'vibe',
@@ -303,7 +274,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'pi',
     command: 'pi',
     hasChatMode: false,
-    installCommand: 'curl -fsSL https://inflection.ai/pi-install | bash'
+    installCommand: 'pip install pi-agent'
   },
   {
     id: 'roocode',
@@ -327,7 +298,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'trae',
     command: 'trae --agent',
     hasChatMode: true,
-    installCommand: 'curl -fsSL https://trae.ai/install.sh | bash'
+    installCommand: 'npm install -g trae-agent'
   },
   {
     id: 'zed',
@@ -335,7 +306,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'zed',
     command: 'zed --agent',
     hasChatMode: false,
-    installCommand: 'curl -fsSL https://zed.dev/install.sh | bash'
+    installCommand: 'npm install -g zed-agent'
   },
   {
     id: 'aider',
@@ -351,7 +322,7 @@ const ALL_AGENTS: AgentItem[] = [
     provider: 'amp',
     command: 'amp',
     hasChatMode: false,
-    installCommand: 'curl -fsSL https://ampcode.com/install.sh | bash'
+    installCommand: 'npm install -g amp-cli'
   },
   {
     id: 'codebuddy',
@@ -365,8 +336,6 @@ const ALL_AGENTS: AgentItem[] = [
 
 export const AgentsSettingsTab: React.FC = () => {
   const {
-    activeProvider,
-    setActiveProvider,
     agentPermissions,
     setAgentPermissions,
     agentModes,
@@ -383,9 +352,11 @@ export const AgentsSettingsTab: React.FC = () => {
     addLog
   } = useWorkspaceStore();
 
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [testStatus, setTestStatus] = useState<Record<string, string>>({});
+  const [installingAgent, setInstallingAgent] = useState<AgentItemToInstall | null>(null);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -431,457 +402,275 @@ export const AgentsSettingsTab: React.FC = () => {
     }
   };
 
-  // Determine Installed vs Available
-  const installedAgents = ALL_AGENTS.filter((a) => {
-    if (cliStatuses?.[a.provider]?.isInstalled) return true;
-    return Boolean(a.defaultInstalled);
-  });
+  const isAgentInstalled = (agent: AgentItem): boolean => {
+    if (cliStatuses?.[agent.provider]?.isInstalled) return true;
+    return Boolean(agent.defaultInstalled);
+  };
 
-  const availableAgents = ALL_AGENTS.filter((a) => !installedAgents.some((ia) => ia.id === a.id));
+  const filteredAgents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return ALL_AGENTS;
+    return ALL_AGENTS.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.provider.toLowerCase().includes(q) ||
+        a.command.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
 
   return (
-    <div className="space-y-6 text-[#ECEDEF] font-sans pb-12 animate-in fade-in duration-150">
-      {/* 1. HOST DEFAULTS HEADER */}
-      <div className="space-y-2">
-        <p className="text-xs text-[#8E929B] font-normal select-none">
-          Defaults for new agents on the selected host.
-        </p>
-
-        {/* Host default pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {DEFAULT_HOST_AGENTS.map((item) => {
-            const isSelected = activeProvider === item.provider;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setActiveProvider(item.provider);
-                  addLog(`Default AI host agent set to [${item.name}]`, 'info');
-                }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer select-none border ${
-                  isSelected
-                    ? 'bg-white/[0.09] text-white border-white/20 shadow-xs'
-                    : 'bg-white/[0.03] text-[#A4A8AF] hover:text-white hover:bg-white/[0.06] border-white/[0.06]'
-                }`}
-              >
-                {item.id !== 'auto' && (
-                  <OfficialLogoRenderer
-                    provider={item.provider}
-                    title={item.name}
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                  />
-                )}
-                <span>{item.name}</span>
-                {isSelected && <Check className="w-3 h-3 text-white ml-0.5" />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. PERMISSIONS SELECTOR */}
-      <div className="pt-2 border-t border-white/[0.06] space-y-1">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-[#ECEDEF] font-medium">Permissions</span>
-          <HelpCircle className="w-3.5 h-3.5 text-[#717784]" />
-          <CustomSelect<'full_access' | 'supervised' | 'read_only'>
-            value={agentPermissions}
-            onChange={(val) => setAgentPermissions(val)}
-            options={PERMISSION_OPTIONS}
-            menuClassName="w-80"
+    <div className="space-y-4 text-foreground font-sans pb-12 animate-in fade-in duration-150">
+      {/* Top Bar: Search on the LEFT, Permissions on the RIGHT */}
+      <div className="flex items-center justify-between gap-4">
+        {/* Left: Search input */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-3.5 h-3.5 text-foreground-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search agents and models..."
+            className="w-full bg-white/[0.03] hover:bg-white/[0.05] focus:bg-white/[0.06] rounded-md pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-foreground-muted/60 focus:outline-none transition-colors font-mono border-0"
           />
         </div>
-        <p className="text-[11px] text-[#717784]">
-          What every agent may do without asking. You can set one agent differently below.
-        </p>
-      </div>
 
-      {/* 3. INSTALLED SECTION */}
-      <div className="pt-4 border-t border-white/[0.06] space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#ECEDEF]">Installed</span>
-            <span className="text-[10px] text-[#8E929B] font-mono">
-              {installedAgents.length} detected
-            </span>
-          </div>
-
+        {/* Right: Permissions selector */}
+        <div className="flex items-center gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-[#8E929B] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title="Scan installed CLI agents"
+            className="p-1.5 rounded-md text-foreground-muted hover:text-foreground hover:bg-white/[0.04] transition-colors cursor-pointer"
+            title="Scan installed agents"
           >
-            <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="text-[11px]">Refresh</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
-        </div>
 
-        {/* Installed agents list */}
-        <div className="space-y-1">
-          {installedAgents.map((agent) => {
-            const isDefault = activeProvider === agent.provider;
-            const isEnabled = agentEnabled[agent.id] !== false;
-            const currentMode = agentModes[agent.id] || 'cli';
-            const isExpanded = expandedAgentId === agent.id;
-
-            return (
-              <div
-                key={agent.id}
-                className="group border border-transparent hover:border-white/[0.06] rounded-lg transition-colors p-2 hover:bg-white/[0.02]"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  {/* Left: Logo + Name + Command subtitle */}
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <OfficialLogoRenderer
-                      provider={agent.provider}
-                      title={agent.name}
-                      className="w-5 h-5 flex-shrink-0"
-                    />
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-white truncate">
-                          {agent.name}
-                        </span>
-                        {agent.hasOwnSettings && (
-                          <span className="text-[10px] text-[#A4A8AF] bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]">
-                            Use OpenCode's own settings
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-[#717784] font-mono truncate">
-                        {agent.command}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Controls & Toggles */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Mode Toggle: [Chat] [CLI] */}
-                    {agent.hasChatMode && (
-                      <div className="flex items-center bg-white/[0.04] p-0.5 rounded-md border border-white/[0.06]">
-                        <button
-                          type="button"
-                          onClick={() => setAgentMode(agent.id, 'chat')}
-                          className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                            currentMode === 'chat'
-                              ? 'bg-white/[0.12] text-white shadow-xs'
-                              : 'text-[#8E929B] hover:text-white'
-                          }`}
-                        >
-                          Chat
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAgentMode(agent.id, 'cli');
-                            handleLaunchCLI(agent);
-                          }}
-                          className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                            currentMode === 'cli'
-                              ? 'bg-white/[0.12] text-white shadow-xs'
-                              : 'text-[#8E929B] hover:text-white'
-                          }`}
-                        >
-                          CLI
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Enabled / Disabled Toggle */}
-                    <div className="flex items-center bg-white/[0.04] p-0.5 rounded-md border border-white/[0.06]">
-                      <button
-                        type="button"
-                        onClick={() => setAgentEnabled(agent.id, true)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                          isEnabled
-                            ? 'bg-white/[0.12] text-white shadow-xs'
-                            : 'text-[#8E929B] hover:text-white'
-                        }`}
-                      >
-                        Enabled
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAgentEnabled(agent.id, false)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                          !isEnabled
-                            ? 'bg-white/[0.12] text-white shadow-xs'
-                            : 'text-[#8E929B] hover:text-white'
-                        }`}
-                      >
-                        Disabled
-                      </button>
-                    </div>
-
-                    {/* Default Selector Button */}
-                    <button
-                      type="button"
-                      onClick={() => setActiveProvider(agent.provider)}
-                      className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                        isDefault
-                          ? 'text-white bg-white/[0.08] border border-white/20'
-                          : 'text-[#8E929B] hover:text-white hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      {isDefault && <Check className="w-2.5 h-2.5 text-white" />}
-                      <span>Default</span>
-                    </button>
-
-                    {/* Launch Terminal / External Action */}
-                    <button
-                      type="button"
-                      onClick={() => handleLaunchCLI(agent)}
-                      className="p-1 rounded text-[#8E929B] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-                      title={`Launch ${agent.name} CLI Terminal`}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Expand Chevron */}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedAgentId(isExpanded ? null : agent.id)}
-                      className="p-1 rounded text-[#8E929B] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded Details Panel */}
-                {isExpanded && (
-                  <div className="mt-2.5 pt-2.5 border-t border-white/[0.06] pl-8 space-y-2 text-xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[11px] text-[#8E929B] block mb-1">
-                          Custom Executable Path
-                        </label>
-                        <input
-                          type="text"
-                          value={customPaths[agent.provider] || ''}
-                          onChange={(e) => setCustomPath(agent.provider, e.target.value)}
-                          placeholder="Detected automatically on PATH"
-                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded px-2.5 py-1 text-xs font-mono text-white placeholder:text-[#555] focus:outline-none focus:border-white/20"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] text-[#8E929B] block mb-1">
-                          Execution Command
-                        </label>
-                        <div className="font-mono text-[11px] text-[#A4A8AF] bg-white/[0.02] border border-white/[0.06] rounded px-2.5 py-1">
-                          {agent.command}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="text-[11px] text-[#8E929B]">
-                        {testStatus[agent.id] && (
-                          <span className="font-mono text-emerald-400">
-                            {testStatus[agent.id]}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleTestConnection(agent)}
-                          className="px-2.5 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] text-[11px] text-white transition-colors cursor-pointer"
-                        >
-                          Check Authentication
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleLaunchCLI(agent)}
-                          className="px-2.5 py-1 rounded bg-white text-black hover:bg-white/90 text-[11px] font-medium transition-colors cursor-pointer"
-                        >
-                          Launch in Terminal
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          <div className="flex items-center gap-2">
+            <Shield className="w-3.5 h-3.5 text-foreground-muted" />
+            <span className="text-xs text-foreground-secondary font-medium">Permissions</span>
+            <CustomSelect<'full_access' | 'supervised' | 'read_only'>
+              value={agentPermissions}
+              onChange={(val) => setAgentPermissions(val)}
+              options={PERMISSION_OPTIONS}
+              menuClassName="w-48"
+            />
+          </div>
         </div>
       </div>
 
-      {/* 4. AVAILABLE TO INSTALL SECTION */}
-      <div className="pt-4 border-t border-white/[0.06] space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#ECEDEF]">Available to install</span>
-            <span className="text-[10px] text-[#8E929B] font-mono">
-              {availableAgents.length} agents
-            </span>
-          </div>
-        </div>
+      {/* Unified Agents List */}
+      <div className="space-y-0.5 pt-1">
+        {filteredAgents.map((agent) => {
+          const installed = isAgentInstalled(agent);
+          const isEnabled = agentEnabled[agent.id] !== false;
+          const currentMode = agentModes[agent.id] || 'cli';
+          const isExpanded = expandedAgentId === agent.id;
 
-        {/* Available agents list */}
-        <div className="space-y-1">
-          {availableAgents.map((agent) => {
-            const isEnabled = agentEnabled[agent.id] !== false;
-            const currentMode = agentModes[agent.id] || 'cli';
-            const isExpanded = expandedAgentId === agent.id;
+          return (
+            <div
+              key={agent.id}
+              className="group rounded-md transition-colors px-2.5 py-2 hover:bg-white/[0.03]"
+            >
+              <div className="flex items-center justify-between gap-3">
+                {/* Left: Logo + Name + Command */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <OfficialLogoRenderer
+                    provider={agent.provider}
+                    title={agent.name}
+                    className="w-5 h-5 flex-shrink-0"
+                  />
 
-            return (
-              <div
-                key={agent.id}
-                className="group border border-transparent hover:border-white/[0.06] rounded-lg transition-colors p-2 hover:bg-white/[0.02]"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  {/* Left: Logo + Name + Command subtitle */}
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <OfficialLogoRenderer
-                      provider={agent.provider}
-                      title={agent.name}
-                      className="w-5 h-5 flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
-                    />
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-[#ECEDEF] truncate">
-                          {agent.name}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-foreground truncate">
+                        {agent.name}
+                      </span>
+                      {agent.hasOwnSettings && (
+                        <span className="text-[10px] text-foreground-muted font-mono">
+                          (Custom Config)
                         </span>
-                        {agent.hasOwnSettings && (
-                          <span className="text-[10px] text-[#A4A8AF] bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]">
-                            Use OpenCode 2's own settings
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-[#717784] font-mono truncate">
+                      )}
+                    </div>
+                    <div className="text-[11px] text-foreground-muted font-mono truncate">
+                      {agent.command}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Status Symbol + Controls */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Status Indicator Symbol */}
+                  {installed ? (
+                    <span
+                      title="Installed"
+                      className="flex items-center justify-center w-6 h-6 rounded-md text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setInstallingAgent(agent)}
+                      title={`Install ${agent.name}`}
+                      className="flex items-center justify-center w-6 h-6 rounded-md text-foreground-muted hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
+                  {/* Mode Toggle: [Chat] [CLI] */}
+                  {agent.hasChatMode && (
+                    <div className="flex items-center p-0.5 rounded-md bg-white/[0.04]">
+                      <button
+                        type="button"
+                        onClick={() => setAgentMode(agent.id, 'chat')}
+                        className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                          currentMode === 'chat'
+                            ? 'bg-white/[0.12] text-white shadow-xs'
+                            : 'text-foreground-muted hover:text-white'
+                        }`}
+                      >
+                        Chat
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAgentMode(agent.id, 'cli');
+                          handleLaunchCLI(agent);
+                        }}
+                        className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                          currentMode === 'cli'
+                            ? 'bg-white/[0.12] text-white shadow-xs'
+                            : 'text-foreground-muted hover:text-white'
+                        }`}
+                      >
+                        CLI
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Enabled / Disabled Toggle */}
+                  <div className="flex items-center p-0.5 rounded-md bg-white/[0.04]">
+                    <button
+                      type="button"
+                      onClick={() => setAgentEnabled(agent.id, true)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                        isEnabled
+                          ? 'bg-white/[0.12] text-white shadow-xs'
+                          : 'text-foreground-muted hover:text-white'
+                      }`}
+                    >
+                      On
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAgentEnabled(agent.id, false)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                        !isEnabled
+                          ? 'bg-white/[0.12] text-white shadow-xs'
+                          : 'text-foreground-muted hover:text-white'
+                      }`}
+                    >
+                      Off
+                    </button>
+                  </div>
+
+                  {/* Launch Terminal Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleLaunchCLI(agent)}
+                    className="p-1 rounded text-foreground-muted hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                    title={`Launch ${agent.name} CLI Terminal`}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Expand Chevron */}
+                  <button
+                    type="button"
+                    onClick={() => setExpandedAgentId(isExpanded ? null : agent.id)}
+                    className="p-1 rounded text-foreground-muted hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                    title="Details"
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Expanded Details Panel */}
+              {isExpanded && (
+                <div className="mt-2.5 pt-2 pl-8 space-y-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] text-foreground-muted block mb-1">
+                        Custom Executable Path
+                      </label>
+                      <input
+                        type="text"
+                        value={customPaths[agent.provider] || ''}
+                        onChange={(e) => setCustomPath(agent.provider, e.target.value)}
+                        placeholder="Detected automatically on PATH"
+                        className="w-full bg-white/[0.04] rounded px-2.5 py-1 text-xs font-mono text-white placeholder:text-foreground-muted/50 focus:outline-none border-0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-foreground-muted block mb-1">
+                        Execution Command
+                      </label>
+                      <div className="font-mono text-[11px] text-foreground-secondary bg-white/[0.02] rounded px-2.5 py-1">
                         {agent.command}
                       </div>
                     </div>
                   </div>
 
-                  {/* Right: Controls & Toggles */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Mode Toggle: [Chat] [CLI] */}
-                    {agent.hasChatMode && (
-                      <div className="flex items-center bg-white/[0.04] p-0.5 rounded-md border border-white/[0.06]">
-                        <button
-                          type="button"
-                          onClick={() => setAgentMode(agent.id, 'chat')}
-                          className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                            currentMode === 'chat'
-                              ? 'bg-white/[0.12] text-white shadow-xs'
-                              : 'text-[#8E929B] hover:text-white'
-                          }`}
-                        >
-                          Chat
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAgentMode(agent.id, 'cli');
-                            handleLaunchCLI(agent);
-                          }}
-                          className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                            currentMode === 'cli'
-                              ? 'bg-white/[0.12] text-white shadow-xs'
-                              : 'text-[#8E929B] hover:text-white'
-                          }`}
-                        >
-                          CLI
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Enabled / Disabled Toggle */}
-                    <div className="flex items-center bg-white/[0.04] p-0.5 rounded-md border border-white/[0.06]">
-                      <button
-                        type="button"
-                        onClick={() => setAgentEnabled(agent.id, true)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                          isEnabled
-                            ? 'bg-white/[0.12] text-white shadow-xs'
-                            : 'text-[#8E929B] hover:text-white'
-                        }`}
-                      >
-                        Enabled
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAgentEnabled(agent.id, false)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                          !isEnabled
-                            ? 'bg-white/[0.12] text-white shadow-xs'
-                            : 'text-[#8E929B] hover:text-white'
-                        }`}
-                      >
-                        Disabled
-                      </button>
-                    </div>
-
-                    {/* Launch / Install action */}
-                    <button
-                      type="button"
-                      onClick={() => handleLaunchCLI(agent)}
-                      className="p-1 rounded text-[#8E929B] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-                      title={`Launch ${agent.name} CLI Terminal`}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Expand Chevron */}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedAgentId(isExpanded ? null : agent.id)}
-                      className="p-1 rounded text-[#8E929B] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronDown className="w-3.5 h-3.5" />
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="text-[11px] text-foreground-muted">
+                      {testStatus[agent.id] && (
+                        <span className="font-mono text-emerald-400">
+                          {testStatus[agent.id]}
+                        </span>
                       )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded Details Panel */}
-                {isExpanded && (
-                  <div className="mt-2.5 pt-2.5 border-t border-white/[0.06] pl-8 space-y-2 text-xs">
-                    <div>
-                      <label className="text-[11px] text-[#8E929B] block mb-1">
-                        Installation Command
-                      </label>
-                      <div className="font-mono text-[11px] text-emerald-400 bg-white/[0.02] border border-white/[0.06] rounded px-2.5 py-1.5 select-all">
-                        {agent.installCommand || `npm install -g ${agent.id}`}
-                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-[#717784]">
-                        Run the command above in terminal or PowerShell to install.
-                      </span>
-
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTestConnection(agent)}
+                        className="px-2.5 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] text-[11px] text-white transition-colors cursor-pointer"
+                      >
+                        Check Authentication
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleLaunchCLI(agent)}
                         className="px-2.5 py-1 rounded bg-white text-black hover:bg-white/90 text-[11px] font-medium transition-colors cursor-pointer"
                       >
-                        Launch Terminal
+                        Launch in Terminal
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {/* Mini Terminal Install Modal */}
+      <AgentInstallModal
+        agent={installingAgent}
+        isOpen={Boolean(installingAgent)}
+        onClose={() => setInstallingAgent(null)}
+        onInstalled={() => {
+          handleRefresh();
+        }}
+      />
     </div>
   );
 };

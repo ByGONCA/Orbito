@@ -54,11 +54,8 @@ export const OrchestrationPage: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-150">
       <div>
         <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-          Multi-Agent Orchestration
+          Orchestration
         </h2>
-        <p className="text-xs text-[#A4A8AF] mt-1">
-          Inspect execution architecture, parallel worktree scheduling, and human-in-the-loop approvals.
-        </p>
       </div>
 
       {/* Section 1: Architecture Pipeline */}
@@ -114,14 +111,14 @@ export const OrchestrationPage: React.FC = () => {
             approvals.map((req) => (
               <div
                 key={req.id}
-                className="py-3 px-3.5 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-4"
+                className="py-3 px-3.5 rounded-lg bg-white/[0.02] border-0 flex items-start justify-between gap-4"
               >
                 <div className="space-y-1 min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-[#ECEDEF]">
                       {req.title}
                     </span>
-                    <span className="text-[10px] font-mono text-amber-400 uppercase px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/20">
+                    <span className="text-[10px] font-mono text-amber-400 uppercase px-1.5 py-0.5 rounded bg-amber-400/10 border-0">
                       {req.type}
                     </span>
                   </div>
@@ -129,7 +126,7 @@ export const OrchestrationPage: React.FC = () => {
                     {req.description}
                   </p>
                   {req.command && (
-                    <div className="font-mono text-[11px] text-[#A4A8AF] bg-black/40 px-2 py-1 rounded border border-white/[0.04] mt-1.5 flex items-center gap-1.5">
+                    <div className="font-mono text-[11px] text-[#A4A8AF] bg-black/40 px-2 py-1 rounded border-0 mt-1.5 flex items-center gap-1.5">
                       <Terminal className="w-3 h-3 text-[#747982]" />
                       <span className="truncate">{req.command}</span>
                     </div>

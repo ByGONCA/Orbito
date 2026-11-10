@@ -167,11 +167,8 @@ export const ProvidersPage: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-150">
       <div>
         <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-          AI Providers & Model Accounts
+          Providers
         </h2>
-        <p className="text-xs text-[#A4A8AF] mt-1">
-          Manage API authentication, encryption status, and local inference models.
-        </p>
       </div>
 
       {/* Section 1: Cloud Providers */}
@@ -247,7 +244,7 @@ export const ProvidersPage: React.FC = () => {
                       value={draftKey}
                       onChange={(e) => setDraftKey(e.target.value)}
                       placeholder={`Enter new ${provider.name} API key...`}
-                      className="flex-1 bg-white/[0.04] border border-white/[0.1] rounded-md px-3 py-1.5 text-xs text-[#ECEDEF] placeholder:text-[#747982] focus:outline-none focus:border-white/30 font-mono"
+                      className="flex-1 bg-white/[0.04] border-0 rounded-md px-3 py-1.5 text-xs text-[#ECEDEF] placeholder:text-[#747982] focus:outline-none font-mono"
                       autoFocus
                     />
                     <Button
@@ -298,7 +295,7 @@ export const ProvidersPage: React.FC = () => {
                 value={ollamaUrl}
                 onChange={(e) => setOllamaUrl(e.target.value)}
                 placeholder="http://127.0.0.1:11434"
-                className="w-56 bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none focus:border-white/30"
+                className="w-56 bg-white/[0.04] border-0 rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none"
               />
               <Button
                 variant="secondary"
@@ -324,16 +321,16 @@ export const ProvidersPage: React.FC = () => {
               value={ollamaModel}
               onChange={(e) => setOllamaModel(e.target.value)}
               placeholder="e.g. llama3:8b, mistral, deepseek-coder"
-              className="w-56 bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none focus:border-white/30"
+              className="w-56 bg-white/[0.04] border-0 rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none"
             />
           </SettingRow>
 
           {ollamaStatus !== 'idle' && (
             <div
-              className={`text-xs font-mono py-2 px-3 rounded-md border ${
+              className={`text-xs font-mono py-2 px-3 rounded-md border-0 ${
                 ollamaStatus === 'connected'
-                  ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-                  : 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+                  ? 'bg-emerald-500/10 text-emerald-300'
+                  : 'bg-rose-500/10 text-rose-300'
               }`}
             >
               {ollamaStatus === 'connected'

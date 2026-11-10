@@ -39,6 +39,7 @@ Token and brevity optimizations must NEVER compromise:
 - **Icon-Only Toolbar & Header Controls (Strict Rule):** View toggles (such as Code vs Notion View, Unified vs Split diffs), action shortcuts (Save, Copy, Open in Editor), and panel toolbar buttons must be strictly ICON-ONLY with hover tooltips (`title` and `aria-label`). Redundant text labels on toolbar buttons are strictly forbidden.
 - **Projects & Workspaces:** Do not surround project headers, working tree statuses, or environments with card borders. Let elements float naturally on the dark background.
 - **Loading Screens:** Keep loading and empty states open, clean, and borderless without a heavy modal card enclosing them.
+- **Strict Invariant — ZERO WHITE BORDERS:** NEVER add visible white, light gray, or glowing borders (`border`, `border-border`, `border-white/*`, `border-accent/*`, `ring-1`, etc.) anywhere in the application. Cards, buttons, lists, theme pickers, preview boxes, and container wrappers must be completely borderless (`border-0`), floating naturally with subtle surface background contrast (`bg-white/[0.02]` to `bg-white/[0.08]`) and clean typography. Dividing lines (`border-t`, `border-b`, `divide-y`) are strictly prohibited.
 
 ## 5. Multi-Agent Development System (Lead Architect & Specialists)
 Antigravity operates as a coordinated multi-agent software engineering team.

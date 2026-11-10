@@ -84,11 +84,8 @@ export const IntegrationsPage: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-150">
       <div>
         <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-          Integrations & Connected Services
+          Integrations
         </h2>
-        <p className="text-xs text-[#A4A8AF] mt-1">
-          Broadcast active workspace status to Discord via local IPC RPC daemon.
-        </p>
       </div>
 
       {/* Section 1: Discord RPC */}
@@ -152,7 +149,7 @@ export const IntegrationsPage: React.FC = () => {
             <span className="text-[11px] font-mono uppercase tracking-wider text-[#747982] block mb-2">
               Discord Profile Activity Preview
             </span>
-            <div className="max-w-md rounded-xl bg-[#1e1f22] p-4 text-[#dbdee1] font-sans border border-white/[0.06] space-y-3">
+            <div className="max-w-md rounded-xl bg-[#1e1f22] p-4 text-[#dbdee1] font-sans border-0 space-y-3">
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#949ba4]">
                 <span>PLAYING A GAME</span>
                 <span className="text-[9px] font-mono text-[#949ba4] bg-white/[0.05] px-1 py-0.5 rounded">
@@ -161,7 +158,7 @@ export const IntegrationsPage: React.FC = () => {
               </div>
 
               <div className="flex gap-3.5 items-start">
-                <div className="relative w-12 h-12 rounded-xl bg-[#111214] border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+                <div className="relative w-12 h-12 rounded-xl bg-[#111214] border-0 flex items-center justify-center flex-shrink-0">
                   <img src={orbitLogo} alt="Orbito" className="w-8 h-8 object-contain rounded-lg" />
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#1e1f22] flex items-center justify-center overflow-hidden bg-[#00A8FF]">
                     <div className="flex items-end gap-0.5 h-2">
@@ -190,7 +187,7 @@ export const IntegrationsPage: React.FC = () => {
           </div>
 
           {/* Privacy & Security */}
-          <div className="pt-4 border-t border-white/[0.04] space-y-1.5 text-xs text-[#747982] leading-relaxed">
+          <div className="pt-4 space-y-1.5 text-xs text-[#747982] leading-relaxed">
             <span className="text-xs font-semibold text-[#ECEDEF] block">
               Privacy Guarantees
             </span>
@@ -203,7 +200,7 @@ export const IntegrationsPage: React.FC = () => {
           </div>
 
           {/* Custom Client ID */}
-          <div className="pt-4 border-t border-white/[0.04] space-y-2">
+          <div className="pt-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-[#ECEDEF]">
                 Custom Application Client ID (Optional)
@@ -218,7 +215,7 @@ export const IntegrationsPage: React.FC = () => {
                 value={customClientId}
                 onChange={(e) => setCustomClientId(e.target.value)}
                 placeholder="1568419446719127684"
-                className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none focus:border-white/30"
+                className="flex-1 bg-white/[0.04] border-0 rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none"
               />
               <Button
                 variant="secondary"

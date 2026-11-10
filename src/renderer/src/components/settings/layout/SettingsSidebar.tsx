@@ -15,7 +15,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onSelectSection
 }) => {
   return (
-    <aside className="w-56 flex-shrink-0 border-r border-border bg-surface-elevated/40 backdrop-blur-sm p-3 flex flex-col justify-between overflow-y-auto">
+    <aside className="w-56 flex-shrink-0 bg-surface-elevated/40 backdrop-blur-sm p-3 flex flex-col justify-between overflow-y-auto border-0">
       <div className="space-y-6">
         {SETTINGS_CATEGORIES_GROUPED.map((group) => (
           <div key={group.category} className="space-y-1">
@@ -52,7 +52,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
         ))}
       </div>
 
-      <div className="pt-4 border-t border-border px-2 text-[11px] font-mono text-foreground-muted">
+      <div className="pt-4 px-2 text-[11px] font-mono text-foreground-muted">
         Orbito Desktop v0.1.0
       </div>
     </aside>

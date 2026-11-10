@@ -17,7 +17,7 @@ export const SettingSection: React.FC<SettingSectionProps> = ({
 }) => {
   return (
     <section id={id} className="space-y-4 pt-2">
-      <div className="flex items-start justify-between gap-4 pb-2 border-b border-border">
+      <div className="flex items-start justify-between gap-4 pb-1">
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground-secondary font-mono">
             {title}

@@ -38,11 +38,8 @@ export const AboutPage: React.FC = () => {
         />
         <div>
           <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-            About Orbito
+            About
           </h2>
-          <p className="text-xs text-[#A4A8AF] mt-0.5">
-            Unified AI Coding Workspace with Local & Cloud Agent Orchestration.
-          </p>
         </div>
       </div>
 

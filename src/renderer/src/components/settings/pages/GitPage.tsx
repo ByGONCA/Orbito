@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FolderGit2,
   RefreshCw,
   GitBranch,
-  FolderMinus
+  FolderMinus,
+  Globe2,
+  Link2,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { SettingSection } from '../common/SettingSection';
 import { SettingRow } from '../common/SettingRow';
 import { Button } from '../../ui/Button';
 import { useWorkspaceStore } from '../../../stores/workspace.store';
+import type { GitProviderStatus } from '../../../../../shared/types';
 
 const DEFAULT_EXCLUSIONS = [
   'node_modules',
@@ -29,6 +34,37 @@ export const GitPage: React.FC = () => {
     addLog
   } = useWorkspaceStore();
 
+  const [providers, setProviders] = useState<GitProviderStatus[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
+
+  const fetchProviders = async () => {
+    setIsLoadingProviders(true);
+    try {
+      if (window.api?.getGitProvidersStatus) {
+        const list = await window.api.getGitProvidersStatus();
+        setProviders(list);
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setIsLoadingProviders(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProviders();
+  }, []);
+
+  const handleDisconnect = async (providerId: string) => {
+    try {
+      await window.api.disconnectGitProvider({ provider: providerId as any });
+      await fetchProviders();
+      addLog(`Disconnected provider ${providerId}.`, 'info');
+    } catch (err: any) {
+      addLog(`Failed to disconnect provider: ${err.message}`, 'error');
+    }
+  };
+
   const handleRefresh = () => {
     if (project) {
       loadGitStatus(project.path);
@@ -42,11 +78,8 @@ export const GitPage: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-150">
       <div>
         <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-          Git & Version Control
+          Git
         </h2>
-        <p className="text-xs text-[#A4A8AF] mt-1">
-          Active repository details, branch tracking, and codebase indexing exclusions.
-        </p>
       </div>
 
       {/* Section 1: Active Repository */}
@@ -129,6 +162,70 @@ export const GitPage: React.FC = () => {
               </span>
             ))}
           </div>
+        </div>
+      </SettingSection>
+
+      {/* Section 3: Remote Git Providers */}
+      <SettingSection
+        title="Remote Git Providers & Integrations"
+        description="Authenticated repository sources for cloning and multi-agent coordination."
+        action={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchProviders}
+            disabled={isLoadingProviders}
+            title="Refresh providers"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoadingProviders ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </Button>
+        }
+      >
+        <div className="space-y-2 pt-1">
+          {providers.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between py-2 text-xs border-0"
+            >
+              <div>
+                <div className="font-medium text-[#ECEDEF] flex items-center gap-2">
+                  <span>{p.name}</span>
+                  {p.username && (
+                    <span className="text-[11px] font-mono text-[#747982]">
+                      (@{p.username})
+                    </span>
+                  )}
+                </div>
+                {p.serverUrl && (
+                  <div className="text-[11px] font-mono text-[#747982]">
+                    {p.serverUrl}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {p.isConfigured ? (
+                  <>
+                    <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Connected
+                    </span>
+                    <button
+                      onClick={() => handleDisconnect(p.id)}
+                      className="text-[11px] text-[#747982] hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      Disconnect
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-[11px] text-[#E5A93C] font-medium">
+                    Setup Required
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </SettingSection>
     </div>

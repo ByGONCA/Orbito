@@ -49,9 +49,9 @@ const THEME_OPTIONS: ThemeOption[] = [
 const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ variant }) => {
   if (variant === 'light') {
     return (
-      <div className="w-full h-28 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-xs mt-3">
+      <div className="w-full h-28 rounded-xl bg-[#F8FAFC] overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-xs mt-3 border-0">
         {/* Top bar */}
-        <div className="h-5 bg-white border-b border-[#E2E8F0] px-2 flex items-center justify-between flex-shrink-0">
+        <div className="h-5 bg-white px-2 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               <div className="w-1.5 h-1.5 rounded-full bg-[#CBD5E1]" />
@@ -59,7 +59,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
               <div className="w-1.5 h-1.5 rounded-full bg-[#CBD5E1]" />
             </div>
             <div className="flex items-center gap-1 ml-1 text-[7px]">
-              <span className="px-1.5 py-0.5 rounded text-[#2563EB] bg-[#EFF6FF] border border-[#BFDBFE] flex items-center gap-0.5 font-medium">
+              <span className="px-1.5 py-0.5 rounded text-[#2563EB] bg-[#EFF6FF] flex items-center gap-0.5 font-medium">
                 <Sparkles className="w-2 h-2 text-[#2563EB]" />
                 <span>Agents</span>
               </span>
@@ -76,7 +76,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
         {/* Body */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Rail */}
-          <div className="w-6 bg-[#F1F5F9] border-r border-[#E2E8F0] py-1.5 flex flex-col items-center gap-1.5 flex-shrink-0">
+          <div className="w-6 bg-[#F1F5F9] py-1.5 flex flex-col items-center gap-1.5 flex-shrink-0">
             <div className="w-3.5 h-3.5 rounded bg-[#2563EB]/15 text-[#2563EB] flex items-center justify-center">
               <Bot className="w-2.5 h-2.5" />
             </div>
@@ -103,28 +103,28 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
                   <div className="text-[6px] text-[#64748B] leading-tight">Autonomous workspace intelligence</div>
                 </div>
               </div>
-              <div className="text-[6px] font-mono px-1 py-0.5 rounded bg-[#F1F5F9] text-[#334155] border border-[#E2E8F0]">
+              <div className="text-[6px] font-mono px-1 py-0.5 rounded bg-[#F1F5F9] text-[#334155]">
                 Gemini 3.8
               </div>
             </div>
 
             {/* Specialist Agents Cards */}
             <div className="grid grid-cols-3 gap-1 py-0.5">
-              <div className="p-1 rounded bg-[#F8FAFC] border border-[#BFDBFE] flex flex-col gap-0.5">
+              <div className="p-1 rounded bg-[#F8FAFC] flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[6.5px] font-medium text-[#2563EB]">Lead Architect</span>
                   <span className="w-1 h-1 rounded-full bg-[#2563EB]" />
                 </div>
                 <span className="text-[5.5px] text-[#64748B] truncate">Planning tasks</span>
               </div>
-              <div className="p-1 rounded bg-[#F8FAFC] border border-[#E2E8F0] flex flex-col gap-0.5">
+              <div className="p-1 rounded bg-[#F8FAFC] flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[6.5px] font-medium text-[#0F172A]">Frontend Agent</span>
                   <span className="w-1 h-1 rounded-full bg-[#10B981]" />
                 </div>
                 <span className="text-[5.5px] text-[#64748B] truncate">Active execution</span>
               </div>
-              <div className="p-1 rounded bg-[#F8FAFC] border border-[#E2E8F0] flex flex-col gap-0.5">
+              <div className="p-1 rounded bg-[#F8FAFC] flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[6.5px] font-medium text-[#0F172A]">QA Specialist</span>
                   <span className="w-1 h-1 rounded-full bg-[#F59E0B]" />
@@ -134,7 +134,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
             </div>
 
             {/* Status Footer */}
-            <div className="h-3 -mx-2 -mb-2 px-2 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between text-[6px] text-[#64748B]">
+            <div className="h-3 -mx-2 -mb-2 px-2 bg-[#F8FAFC] flex items-center justify-between text-[6px] text-[#64748B]">
               <div className="flex items-center gap-1">
                 <span className="text-[#2563EB]">✦</span>
                 <span>3 Agents Active</span>
@@ -151,9 +151,9 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
 
   if (variant === 'solid') {
     return (
-      <div className="w-full h-28 rounded-xl border border-[#252830] bg-[#101216] overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-xs mt-3">
+      <div className="w-full h-28 rounded-xl bg-[#101216] overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-xs mt-3 border-0">
         {/* Top bar */}
-        <div className="h-5 bg-[#16191F] border-b border-[#252830] px-2 flex items-center justify-between flex-shrink-0">
+        <div className="h-5 bg-[#16191F] px-2 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               <div className="w-1.5 h-1.5 rounded-full bg-[#2A2D33]" />
@@ -161,7 +161,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
               <div className="w-1.5 h-1.5 rounded-full bg-[#2A2D33]" />
             </div>
             <div className="flex items-center gap-1 ml-1 text-[7px]">
-              <span className="px-1.5 py-0.5 rounded text-blue-400 bg-blue-500/10 border border-blue-500/30 flex items-center gap-0.5 font-medium">
+              <span className="px-1.5 py-0.5 rounded text-blue-400 bg-blue-500/10 flex items-center gap-0.5 font-medium">
                 <Sparkles className="w-2 h-2 text-blue-400" />
                 <span>Agents</span>
               </span>
@@ -178,7 +178,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
         {/* Body */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Rail */}
-          <div className="w-6 bg-[#13151A] border-r border-[#252830] py-1.5 flex flex-col items-center gap-1.5 flex-shrink-0">
+          <div className="w-6 bg-[#13151A] py-1.5 flex flex-col items-center gap-1.5 flex-shrink-0">
             <div className="w-3.5 h-3.5 rounded bg-blue-500/15 text-blue-400 flex items-center justify-center">
               <Bot className="w-2.5 h-2.5" />
             </div>
@@ -205,28 +205,28 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
                   <div className="text-[6px] text-[#747982] leading-tight">Autonomous workspace intelligence</div>
                 </div>
               </div>
-              <div className="text-[6px] font-mono px-1 py-0.5 rounded bg-[#1F232B] text-[#A4A8AF] border border-[#2B303C]">
+              <div className="text-[6px] font-mono px-1 py-0.5 rounded bg-[#1F232B] text-[#A4A8AF]">
                 Gemini 3.8
               </div>
             </div>
 
             {/* Specialist Agents Cards */}
             <div className="grid grid-cols-3 gap-1 py-0.5">
-              <div className="p-1 rounded bg-[#13151A] border border-blue-500/30 flex flex-col gap-0.5">
+              <div className="p-1 rounded bg-[#13151A] flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[6.5px] font-medium text-blue-400">Lead Architect</span>
                   <span className="w-1 h-1 rounded-full bg-blue-400" />
                 </div>
                 <span className="text-[5.5px] text-[#747982] truncate">Planning tasks</span>
               </div>
-              <div className="p-1 rounded bg-[#13151A] border border-[#252830] flex flex-col gap-0.5">
+              <div className="p-1 rounded bg-[#13151A] flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[6.5px] font-medium text-[#ECEDEF]">Frontend Agent</span>
                   <span className="w-1 h-1 rounded-full bg-emerald-400" />
                 </div>
                 <span className="text-[5.5px] text-[#747982] truncate">Active execution</span>
               </div>
-              <div className="p-1 rounded bg-[#13151A] border border-[#252830] flex flex-col gap-0.5">
+              <div className="p-1 rounded bg-[#13151A] flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[6.5px] font-medium text-[#ECEDEF]">QA Specialist</span>
                   <span className="w-1 h-1 rounded-full bg-amber-400" />
@@ -236,7 +236,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
             </div>
 
             {/* Status Footer */}
-            <div className="h-3 -mx-2 -mb-2 px-2 bg-[#14161B] border-t border-[#252830] flex items-center justify-between text-[6px] text-[#747982]">
+            <div className="h-3 -mx-2 -mb-2 px-2 bg-[#14161B] flex items-center justify-between text-[6px] text-[#747982]">
               <div className="flex items-center gap-1">
                 <span className="text-blue-400">✦</span>
                 <span>3 Agents Active</span>
@@ -253,12 +253,12 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
 
   // Glassmorphism (variant === 'glass')
   return (
-    <div className="w-full h-28 rounded-xl border border-white/[0.08] bg-[#0c0d12]/80 backdrop-blur-md overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-md relative mt-3">
+    <div className="w-full h-28 rounded-xl bg-[#0c0d12]/80 backdrop-blur-md overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-md relative mt-3 border-0">
       {/* Specular top highlight */}
-      <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
 
       {/* Top bar */}
-      <div className="h-5 bg-white/[0.02] border-b border-white/[0.06] px-2 flex items-center justify-between flex-shrink-0">
+      <div className="h-5 bg-white/[0.02] px-2 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
@@ -266,7 +266,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
             <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
           </div>
           <div className="flex items-center gap-1 ml-1 text-[7px]">
-            <span className="px-1.5 py-0.5 rounded text-cyan-300 bg-cyan-500/15 border border-cyan-500/30 flex items-center gap-0.5 font-medium">
+            <span className="px-1.5 py-0.5 rounded text-cyan-300 bg-cyan-500/15 flex items-center gap-0.5 font-medium">
               <Sparkles className="w-2 h-2 text-cyan-300" />
               <span>Agents</span>
             </span>
@@ -283,7 +283,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Rail */}
-        <div className="w-6 bg-white/[0.015] border-r border-white/[0.05] py-1.5 flex flex-col items-center gap-1.5 flex-shrink-0">
+        <div className="w-6 bg-white/[0.015] py-1.5 flex flex-col items-center gap-1.5 flex-shrink-0">
           <div className="w-3.5 h-3.5 rounded bg-cyan-500/20 text-cyan-300 flex items-center justify-center">
             <Bot className="w-2.5 h-2.5" />
           </div>
@@ -310,28 +310,28 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
                 <div className="text-[6px] text-[#747982] leading-tight">Autonomous workspace intelligence</div>
               </div>
             </div>
-            <div className="text-[6px] font-mono px-1 py-0.5 rounded bg-white/[0.05] text-[#A4A8AF] border border-white/[0.08]">
+            <div className="text-[6px] font-mono px-1 py-0.5 rounded bg-white/[0.05] text-[#A4A8AF]">
               Gemini 3.8
             </div>
           </div>
 
-          {/* Specialist Agents Cards */}
+            {/* Specialist Agents Cards */}
           <div className="grid grid-cols-3 gap-1 py-0.5">
-            <div className="p-1 rounded bg-white/[0.04] border border-cyan-500/30 flex flex-col gap-0.5">
+            <div className="p-1 rounded bg-white/[0.04] flex flex-col gap-0.5">
               <div className="flex items-center justify-between">
                 <span className="text-[6.5px] font-medium text-cyan-300">Lead Architect</span>
                 <span className="w-1 h-1 rounded-full bg-cyan-400" />
               </div>
               <span className="text-[5.5px] text-[#747982] truncate">Planning tasks</span>
             </div>
-            <div className="p-1 rounded bg-white/[0.02] border border-white/[0.05] flex flex-col gap-0.5">
+            <div className="p-1 rounded bg-white/[0.02] flex flex-col gap-0.5">
               <div className="flex items-center justify-between">
                 <span className="text-[6.5px] font-medium text-[#ECEDEF]">Frontend Agent</span>
                 <span className="w-1 h-1 rounded-full bg-emerald-400" />
               </div>
               <span className="text-[5.5px] text-[#747982] truncate">Active execution</span>
             </div>
-            <div className="p-1 rounded bg-white/[0.02] border border-white/[0.05] flex flex-col gap-0.5">
+            <div className="p-1 rounded bg-white/[0.02] flex flex-col gap-0.5">
               <div className="flex items-center justify-between">
                 <span className="text-[6.5px] font-medium text-[#ECEDEF]">QA Specialist</span>
                 <span className="w-1 h-1 rounded-full bg-amber-400" />
@@ -341,7 +341,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
           </div>
 
           {/* Status Footer */}
-          <div className="h-3 -mx-2 -mb-2 px-2 bg-white/[0.02] border-t border-white/[0.05] flex items-center justify-between text-[6px] text-[#747982]">
+          <div className="h-3 -mx-2 -mb-2 px-2 bg-white/[0.02] flex items-center justify-between text-[6px] text-[#747982]">
             <div className="flex items-center gap-1">
               <span className="text-cyan-400">✦</span>
               <span>3 Agents Active</span>
@@ -363,8 +363,8 @@ interface GitStatusPreviewProps {
 
 const GitStatusPreview: React.FC<GitStatusPreviewProps> = ({ showColors, theme }) => {
   return (
-    <div className="mt-3.5 p-3 rounded-xl border border-border/70 bg-surface/30 flex flex-col gap-2.5">
-      <div className="flex items-center justify-between text-[11px] font-mono text-foreground-muted pb-1 border-b border-border/40">
+    <div className="mt-3.5 p-3.5 rounded-xl bg-white/[0.02] flex flex-col gap-3 border-0">
+      <div className="flex items-center justify-between text-[11px] font-mono text-foreground-muted pb-1">
         <span className="flex items-center gap-1.5">
           <FolderOpen className="w-3.5 h-3.5 text-accent" />
           <span className="font-sans font-medium text-foreground">Explorer Preview</span>
@@ -373,8 +373,8 @@ const GitStatusPreview: React.FC<GitStatusPreviewProps> = ({ showColors, theme }
         <span
           className={`text-[10px] px-2 py-0.5 rounded font-mono ${
             showColors
-              ? 'text-emerald-500 bg-emerald-500/10 border border-emerald-500/20'
-              : 'text-foreground-muted bg-surface-elevated/60 border border-border/40'
+              ? 'text-emerald-400 bg-emerald-500/10'
+              : 'text-foreground-muted bg-white/[0.04]'
           }`}
         >
           {showColors ? 'Status Highlights Active' : 'Monochrome (Highlights Off)'}
@@ -397,7 +397,7 @@ const GitStatusPreview: React.FC<GitStatusPreviewProps> = ({ showColors, theme }
         </div>
 
         {/* Modified file: Orchestrator.ts */}
-        <div className="flex items-center justify-between pl-8 py-0.5 rounded hover:bg-surface-hover/30">
+        <div className="flex items-center justify-between pl-8 py-0.5 rounded hover:bg-white/[0.03]">
           <div className="flex items-center gap-1.5 min-w-0">
             <FileIcon name="Orchestrator.ts" isDirectory={false} theme={theme} />
             <span
@@ -419,7 +419,7 @@ const GitStatusPreview: React.FC<GitStatusPreviewProps> = ({ showColors, theme }
         </div>
 
         {/* Untracked/New file: AgentWorkflow.tsx */}
-        <div className="flex items-center justify-between pl-8 py-0.5 rounded hover:bg-surface-hover/30">
+        <div className="flex items-center justify-between pl-8 py-0.5 rounded hover:bg-white/[0.03]">
           <div className="flex items-center gap-1.5 min-w-0">
             <FileIcon name="AgentWorkflow.tsx" isDirectory={false} theme={theme} />
             <span
@@ -441,7 +441,7 @@ const GitStatusPreview: React.FC<GitStatusPreviewProps> = ({ showColors, theme }
         </div>
 
         {/* Unchanged clean file: workspace.store.ts */}
-        <div className="flex items-center justify-between pl-8 py-0.5 rounded hover:bg-surface-hover/30">
+        <div className="flex items-center justify-between pl-8 py-0.5 rounded hover:bg-white/[0.03]">
           <div className="flex items-center gap-1.5 min-w-0">
             <FileIcon name="workspace.store.ts" isDirectory={false} theme={theme} />
             <span className="truncate text-foreground-secondary">workspace.store.ts</span>
@@ -449,7 +449,7 @@ const GitStatusPreview: React.FC<GitStatusPreviewProps> = ({ showColors, theme }
         </div>
       </div>
 
-      <div className="flex items-center gap-4 pt-1.5 border-t border-border/40 text-[10px] text-foreground-muted">
+      <div className="flex items-center gap-4 pt-2 text-[10px] text-foreground-muted">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
           <span>Modified (M) — Amber</span>
@@ -520,18 +520,12 @@ export const AppearancePage: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-150">
       <div>
         <h2 className="text-xl font-semibold text-foreground tracking-tight">
-          Appearance & Styling
+          Appearance
         </h2>
-        <p className="text-xs text-foreground-muted mt-1">
-          Window material styling, file explorer icon themes, and Git status indicators.
-        </p>
       </div>
 
-      {/* Section 1: Application Theme (Primary & Prominent) */}
-      <SettingSection
-        title="Application Theme"
-        description="Choose the visual atmosphere and surface physics for all application windows."
-      >
+      {/* Section 1: Application Theme */}
+      <SettingSection title="Application Theme">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
           {THEME_OPTIONS.map((opt) => {
             const isSelected = activeTheme === opt.id;
@@ -542,10 +536,10 @@ export const AppearancePage: React.FC = () => {
                 key={opt.id}
                 type="button"
                 onClick={() => handleThemeChange(opt.id)}
-                className={`p-3.5 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between ${
+                className={`p-3.5 rounded-xl text-left transition-all duration-150 cursor-pointer flex flex-col justify-between border-0 ${
                   isSelected
-                    ? 'border-accent/40 bg-surface-elevated shadow-sm ring-1 ring-accent/30'
-                    : 'border-border/70 hover:border-border hover:bg-surface-hover/40 bg-surface/30'
+                    ? 'bg-white/[0.08] shadow-sm'
+                    : 'bg-white/[0.02] hover:bg-white/[0.05]'
                 }`}
               >
                 <div>
@@ -566,7 +560,7 @@ export const AppearancePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Faithful Miniature Application AI Workspace Preview */}
+                {/* Miniature Application AI Workspace Preview */}
                 <ThemeMiniPreview variant={opt.id} />
               </button>
             );
@@ -574,11 +568,8 @@ export const AppearancePage: React.FC = () => {
         </div>
       </SettingSection>
 
-      {/* Section 2: File & Folder Icons (Secondary & Compact) */}
-      <SettingSection
-        title="File & Folder Icons"
-        description="Select the icon set used in the codebase tree explorer."
-      >
+      {/* Section 2: File & Folder Icons */}
+      <SettingSection title="File & Folder Icons">
         <div className="space-y-1.5 pt-1">
           {iconOptions.map((opt) => {
             const isSelected = activeIconTheme === opt.id;
@@ -587,19 +578,19 @@ export const AppearancePage: React.FC = () => {
               <div
                 key={opt.id}
                 onClick={() => handleIconThemeChange(opt.id)}
-                className={`flex items-center justify-between gap-4 py-2.5 px-3 rounded-lg border transition-all cursor-pointer ${
+                className={`flex items-center justify-between gap-4 py-2.5 px-3 rounded-lg transition-all cursor-pointer border-0 ${
                   isSelected
-                    ? 'border-accent/30 bg-surface-elevated/70'
-                    : 'border-transparent hover:border-border/40 hover:bg-surface-hover/40 bg-transparent'
+                    ? 'bg-white/[0.08]'
+                    : 'hover:bg-white/[0.03] bg-transparent'
                 }`}
               >
                 {/* Left: Radio & Metadata */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div
-                    className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
                       isSelected
-                        ? 'border-accent bg-accent'
-                        : 'border-border-strong bg-transparent'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-white/[0.1]'
                     }`}
                   >
                     {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />}
@@ -615,13 +606,13 @@ export const AppearancePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Right: Inline Micro Icon Preview */}
-                <div className="flex items-center gap-3 px-2 py-1 rounded bg-surface border border-border/40 font-mono text-[11px] flex-shrink-0">
+                {/* Right: Inline Micro Icon Preview (No white borders) */}
+                <div className="flex items-center gap-3 px-2.5 py-1 rounded-md bg-white/[0.04] font-mono text-[11px] flex-shrink-0 border-0">
                   <div className="flex items-center gap-1.5">
                     <FileIcon name="src" isDirectory theme={opt.id} isExpanded />
                     <span className="text-foreground">src</span>
                   </div>
-                  <div className="w-px h-3 bg-border/60" />
+                  <div className="w-px h-3 bg-white/10" />
                   <div className="flex items-center gap-1.5">
                     <FileIcon name="App.tsx" isDirectory={false} theme={opt.id} />
                     <span className="text-foreground-secondary">App.tsx</span>
@@ -633,11 +624,8 @@ export const AppearancePage: React.FC = () => {
         </div>
       </SettingSection>
 
-      {/* Section 3: Git File Indicators (Tertiary & Anti-Boxy) */}
-      <SettingSection
-        title="Git File Indicators"
-        description="Display color-coded status badges and indicators in the file tree."
-      >
+      {/* Section 3: Git File Indicators */}
+      <SettingSection title="Git File Indicators">
         <SettingRow
           title="Color-Coded File Status"
           description="Highlight modified files in amber and untracked files in green in the explorer."
@@ -649,7 +637,7 @@ export const AppearancePage: React.FC = () => {
           />
         </SettingRow>
 
-        {/* Live Visual Preview of Color-Coded Status */}
+        {/* Live Visual Preview of Color-Coded Status (No white borders) */}
         <GitStatusPreview showColors={showGitFileColors} theme={activeIconTheme} />
       </SettingSection>
     </div>

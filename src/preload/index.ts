@@ -29,6 +29,13 @@ const api: IElectronAPI = {
   getGitStatus: (projectPath) => ipcRenderer.invoke('workspace:getGitStatus', projectPath),
   getProjectGraph: (params) => ipcRenderer.invoke('workspace:getProjectGraph', params),
 
+  // Git Providers & Remote Repositories
+  getGitProvidersStatus: () => ipcRenderer.invoke('git:getProvidersStatus'),
+  saveGitProviderConfig: (params) => ipcRenderer.invoke('git:saveProviderConfig', params),
+  disconnectGitProvider: (params) => ipcRenderer.invoke('git:disconnectProvider', params),
+  fetchRemoteRepositories: (params) => ipcRenderer.invoke('git:fetchRepositories', params),
+  cloneRemoteRepository: (params) => ipcRenderer.invoke('git:cloneRemote', params),
+
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (params) => ipcRenderer.invoke('settings:update', params),
   getAppLayout: () => ipcRenderer.invoke('workspace:getAppLayout'),

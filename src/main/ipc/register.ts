@@ -62,8 +62,13 @@ import {
   ListReviewCommentsSchema,
   ResolveReviewCommentSchema,
   RunAICodeReviewSchema,
-  GetProjectGitDetailsSchema
+  GetProjectGitDetailsSchema,
+  SaveGitProviderConfigSchema,
+  DisconnectGitProviderSchema,
+  FetchRemoteReposSchema,
+  CloneRemoteRepoSchema
 } from '../../shared/ipc';
+import { gitProvidersService } from '../services/git-providers.service';
 import { projectExecutionService } from '../services/project-execution.service';
 import { codeReviewService } from '../services/code-review.service';
 import { WorktreeManager } from '../agents/worktree-manager';
@@ -249,6 +254,38 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('workspace:cloneProject', async (_, args) => {
     const validated = CloneProjectSchema.parse(args);
     const descriptor = await workspaceService.cloneProject(validated);
+    if (descriptor) {
+      discordRpcService.setActiveProject(descriptor);
+    }
+    return descriptor;
+  });
+
+  // ==========================================
+  // Git Providers & Remote Repositories
+  // ==========================================
+
+  ipcMain.handle('git:getProvidersStatus', async () => {
+    return await gitProvidersService.getProvidersStatus();
+  });
+
+  ipcMain.handle('git:saveProviderConfig', async (_, args) => {
+    const validated = SaveGitProviderConfigSchema.parse(args);
+    return await gitProvidersService.saveProviderConfig(validated);
+  });
+
+  ipcMain.handle('git:disconnectProvider', async (_, args) => {
+    const validated = DisconnectGitProviderSchema.parse(args);
+    return await gitProvidersService.disconnectProvider(validated.provider);
+  });
+
+  ipcMain.handle('git:fetchRepositories', async (_, args) => {
+    const validated = FetchRemoteReposSchema.parse(args);
+    return await gitProvidersService.fetchRemoteRepositories(validated);
+  });
+
+  ipcMain.handle('git:cloneRemote', async (_, args) => {
+    const validated = CloneRemoteRepoSchema.parse(args);
+    const descriptor = await gitProvidersService.cloneRemoteRepository(validated);
     if (descriptor) {
       discordRpcService.setActiveProject(descriptor);
     }

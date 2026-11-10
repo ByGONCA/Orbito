@@ -96,8 +96,8 @@ export class BaseCLIAdapter implements ICLIAdapter {
 
     let resolvedPath: string | null = null;
 
-    if (customPath && fs.existsSync(customPath)) {
-      resolvedPath = path.resolve(customPath);
+    if (customPath) {
+      resolvedPath = fs.existsSync(customPath) ? path.resolve(customPath) : null;
     } else {
       for (const exeName of this.executableNames) {
         const found = await findExecutableOnPath(exeName);

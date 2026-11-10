@@ -72,11 +72,8 @@ export const SecurityPage: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-150">
       <div>
         <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-          Security & Sandboxing
+          Security
         </h2>
-        <p className="text-xs text-[#A4A8AF] mt-1">
-          Operating system safeStorage encryption, Air-Gap isolation guard, and process sandboxing.
-        </p>
       </div>
 
       {/* Section 1: OS Keychain Encryption */}
@@ -100,7 +97,7 @@ export const SecurityPage: React.FC = () => {
           </SettingRow>
 
           {/* Keyring tester */}
-          <div className="pt-2 border-t border-white/[0.04] space-y-2">
+          <div className="pt-2 space-y-2">
             <span className="text-xs font-medium text-[#ECEDEF] block">
               Verify OS SafeStorage Encryption
             </span>
@@ -110,14 +107,14 @@ export const SecurityPage: React.FC = () => {
                 value={testKey}
                 onChange={(e) => setTestKey(e.target.value)}
                 placeholder="Key name..."
-                className="w-40 bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none focus:border-white/30"
+                className="w-40 bg-white/[0.04] border-0 rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none"
               />
               <input
                 type="password"
                 value={testValue}
                 onChange={(e) => setTestValue(e.target.value)}
                 placeholder="Secret value to encrypt..."
-                className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none focus:border-white/30"
+                className="flex-1 bg-white/[0.04] border-0 rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none"
               />
               <Button
                 variant="secondary"

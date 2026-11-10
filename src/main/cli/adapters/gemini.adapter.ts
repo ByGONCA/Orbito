@@ -29,8 +29,8 @@ export class GeminiAdapter implements ICLIAdapter {
   public async detect(customPath?: string): Promise<CLIInstallationStatus> {
     let resolvedPath: string | null = null;
 
-    if (customPath && fs.existsSync(customPath)) {
-      resolvedPath = path.resolve(customPath);
+    if (customPath) {
+      resolvedPath = fs.existsSync(customPath) ? path.resolve(customPath) : null;
     } else {
       resolvedPath = (await findExecutableOnPath('gemini')) || (await findExecutableOnPath('google-genai'));
     }

@@ -29,11 +29,8 @@ export const PluginsPage: React.FC<PluginsPageProps> = ({ onCloseSettings }) => 
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-            Plugins & Extension Runtime
+            Plugins
           </h2>
-          <p className="text-xs text-[#A4A8AF] mt-1">
-            Extension Host architecture, process limits, and local extensions repository.
-          </p>
         </div>
 
         <Button

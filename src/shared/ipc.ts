@@ -11,7 +11,9 @@ import type {
   PermissionLevel,
   UIMode,
   ProjectGraphData,
-  DiscordStatusResponse
+  DiscordStatusResponse,
+  GitProviderStatus,
+  RemoteGitRepo
 } from './types';
 import type {
   CLIInstallationStatus,
@@ -116,6 +118,40 @@ export const CreateProjectSchema = z.object({
 
 export const CloneProjectSchema = z.object({
   url: z.string().min(1),
+  parentDirectory: z.string().min(1),
+  customName: z.string().optional()
+});
+
+export const GitProviderSourceIdSchema = z.enum([
+  'github',
+  'azure-devops',
+  'bitbucket',
+  'cursor',
+  'forgejo',
+  'gitcafe',
+  'gitlab'
+]);
+
+export const SaveGitProviderConfigSchema = z.object({
+  provider: GitProviderSourceIdSchema,
+  token: z.string().min(1),
+  serverUrl: z.string().optional(),
+  username: z.string().optional(),
+  organization: z.string().optional()
+});
+
+export const DisconnectGitProviderSchema = z.object({
+  provider: GitProviderSourceIdSchema
+});
+
+export const FetchRemoteReposSchema = z.object({
+  provider: GitProviderSourceIdSchema,
+  search: z.string().optional()
+});
+
+export const CloneRemoteRepoSchema = z.object({
+  provider: GitProviderSourceIdSchema,
+  cloneUrl: z.string().min(1),
   parentDirectory: z.string().min(1),
   customName: z.string().optional()
 });
@@ -502,6 +538,13 @@ export interface IElectronAPI {
   removeWorktree: (params: { projectPath: string; worktreePath: string; branchName?: string }) => Promise<boolean>;
   getGitStatus: (projectPath: string) => Promise<any>;
   getProjectGraph: (params: { projectPath: string }) => Promise<ProjectGraphData>;
+  
+  // Git Providers & Remote Repositories
+  getGitProvidersStatus: () => Promise<GitProviderStatus[]>;
+  saveGitProviderConfig: (params: z.input<typeof SaveGitProviderConfigSchema>) => Promise<{ success: boolean; user?: string; error?: string }>;
+  disconnectGitProvider: (params: z.input<typeof DisconnectGitProviderSchema>) => Promise<{ success: boolean }>;
+  fetchRemoteRepositories: (params: z.input<typeof FetchRemoteReposSchema>) => Promise<{ success: boolean; repos: RemoteGitRepo[]; error?: string }>;
+  cloneRemoteRepository: (params: z.input<typeof CloneRemoteRepoSchema>) => Promise<ProjectDescriptor>;
   
   // Settings & App Configuration
   getSettings: () => Promise<WorkspaceConfig>;

@@ -67,11 +67,8 @@ export const MemoryPage: React.FC = () => {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-            Agent Persistent Memory
+            Memory
           </h2>
-          <p className="text-xs text-[#A4A8AF] mt-1">
-            Cross-session memory records stored in local SQLite across hierarchy tiers.
-          </p>
         </div>
         <div className="text-xs font-mono text-[#747982]">
           {memories.length} records stored
@@ -99,10 +96,10 @@ export const MemoryPage: React.FC = () => {
               <button
                 key={tier}
                 onClick={() => setSelectedTier(tier)}
-                className={`px-2.5 py-1 rounded text-xs font-mono capitalize transition-colors cursor-pointer border ${
+                className={`px-2.5 py-1 rounded text-xs font-mono capitalize transition-colors cursor-pointer border-0 ${
                   selectedTier === tier
-                    ? 'bg-white/[0.12] text-white border-white/20'
-                    : 'bg-white/[0.03] text-[#747982] hover:text-[#ECEDEF] border-transparent'
+                    ? 'bg-white/[0.12] text-white'
+                    : 'bg-white/[0.03] text-[#747982] hover:text-[#ECEDEF]'
                 }`}
               >
                 {tier}
@@ -117,7 +114,7 @@ export const MemoryPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by entity key or memory content..."
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-md pl-9 pr-3 py-1.5 text-xs text-[#ECEDEF] placeholder:text-[#747982] focus:outline-none focus:border-white/30 font-mono"
+              className="w-full bg-white/[0.03] border-0 rounded-md pl-9 pr-3 py-1.5 text-xs text-[#ECEDEF] placeholder:text-[#747982] focus:outline-none font-mono"
             />
           </div>
 

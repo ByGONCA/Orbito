@@ -61,11 +61,8 @@ export const GeneralPage: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-150">
       <div>
         <h2 className="text-xl font-semibold text-[#ECEDEF] tracking-tight">
-          General Settings
+          General
         </h2>
-        <p className="text-xs text-[#A4A8AF] mt-1">
-          System power execution blockers, workspace indexing, and runtime behavior.
-        </p>
       </div>
 
       {/* Section 1: Power & Sleep */}

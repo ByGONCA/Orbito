@@ -33,7 +33,7 @@ export const SettingInput: React.FC<SettingInputProps> = ({
         placeholder={placeholder}
         disabled={disabled}
         readOnly={readOnly}
-        className={`w-full bg-surface-elevated border border-border rounded-md px-3 py-1.5 text-xs text-foreground placeholder:text-foreground-muted focus:outline-none focus:border-accent font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`w-full bg-white/[0.04] hover:bg-white/[0.05] focus:bg-white/[0.06] border-0 rounded-md px-3 py-1.5 text-xs text-foreground placeholder:text-foreground-muted focus:outline-none font-mono transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
           actions ? 'pr-20' : ''
         }`}
       />

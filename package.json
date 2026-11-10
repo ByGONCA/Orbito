@@ -15,7 +15,7 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -o better-sqlite3",
     "test": "node scripts/run-electron-tests.js run",
     "test:host": "vitest run",
     "validate:coordination": "node scripts/validate-coordination.js",

@@ -20,6 +20,48 @@ export interface ProjectTemplateInfo {
   icon: string;
 }
 
+export type GitProviderSourceId =
+  | 'github'
+  | 'azure-devops'
+  | 'bitbucket'
+  | 'cursor'
+  | 'forgejo'
+  | 'gitcafe'
+  | 'gitlab';
+
+export interface GitProviderConfig {
+  provider: GitProviderSourceId;
+  token?: string;
+  serverUrl?: string;
+  username?: string;
+  organization?: string;
+}
+
+export interface GitProviderStatus {
+  id: GitProviderSourceId;
+  name: string;
+  isConfigured: boolean;
+  username?: string;
+  serverUrl?: string;
+  repoCount?: number;
+}
+
+export interface RemoteGitRepo {
+  id: string;
+  name: string;
+  fullName: string;
+  description?: string;
+  cloneUrl: string;
+  sshUrl?: string;
+  isPrivate: boolean;
+  defaultBranch: string;
+  updatedAt: string;
+  language?: string;
+  owner: string;
+  provider: GitProviderSourceId;
+  stars?: number;
+}
+
 export interface CreateProjectOptions {
   name: string;
   parentDirectory: string;
