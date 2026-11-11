@@ -3,11 +3,11 @@
   "agent_id": "frontend",
   "worktree": "orbito-frontend",
   "branch": "agent/frontend-ui",
-  "status": "IDLE",
-  "current_task": null,
+  "status": "READY",
+  "current_task": "ORB-FRONT-001",
   "progress": 0,
   "blockers": [],
-  "last_activity": "2026-11-07T19:58:00Z",
+  "last_activity": "2026-11-07T22:37:00Z",
   "last_handoff": null,
   "modified_files": []
 }
