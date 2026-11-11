@@ -66,11 +66,11 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
   const isBrowser = tabData.type === 'browser';
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#0d0e12] select-none overflow-hidden font-sans text-white">
+    <div className="flex flex-col h-screen w-screen bg-[#0a0b0d] select-none overflow-hidden font-sans text-white">
       {/* 1. Frameless Window Titlebar */}
       <div
         onDoubleClick={handleMaximize}
-        className="h-9 flex items-center justify-between px-3 bg-[#121418] border-b border-white/[0.08] select-none flex-shrink-0 z-30"
+        className="h-9 flex items-center justify-between px-3 bg-[#0c0d10]/90 border-b border-white/[0.045] select-none flex-shrink-0 z-30"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         {/* Left: Tab Title & Icon */}
@@ -101,7 +101,7 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
           <span className="text-xs font-mono font-medium text-[#ECEDEF] truncate">
             {tabData.title}
           </span>
-          <span className="text-[10px] text-[#717784] font-mono px-1.5 py-0.5 rounded bg-white/[0.04]">
+          <span className="text-[10px] text-[#717784] font-mono tracking-wide">
             Detached Window
           </span>
         </div>
@@ -118,6 +118,7 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
             onClick={handleMinimize}
             className="w-8 h-7 flex items-center justify-center rounded-sm text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.08] transition-colors cursor-pointer"
             title="Minimize"
+            aria-label="Minimize"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
@@ -125,6 +126,7 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
             onClick={handleMaximize}
             className="w-8 h-7 flex items-center justify-center rounded-sm text-[#A4A8AF] hover:text-[#ECEDEF] hover:bg-white/[0.08] transition-colors cursor-pointer"
             title={isMaximized ? 'Restore Down' : 'Maximize'}
+            aria-label={isMaximized ? 'Restore Down' : 'Maximize'}
           >
             {isMaximized ? (
               <Copy className="w-3 h-3 rotate-180" />
@@ -136,6 +138,7 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
             onClick={handleClose}
             className="w-8 h-7 flex items-center justify-center rounded-sm text-[#A4A8AF] hover:text-white hover:bg-[#E81123] transition-colors cursor-pointer"
             title="Close"
+            aria-label="Close"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -143,7 +146,7 @@ export const DetachedTabWindow: React.FC<DetachedTabWindowProps> = ({ tabData })
       </div>
 
       {/* 2. Full Workspace Body for this single tab */}
-      <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative flex flex-col bg-[#0d0e12]">
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative flex flex-col bg-[#0a0b0d]">
         {isTerminal && session ? (
           <TerminalSurface
             session={session}

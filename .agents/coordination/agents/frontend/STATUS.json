@@ -3,11 +3,15 @@
   "agent_id": "frontend",
   "worktree": "orbito-frontend",
   "branch": "agent/frontend-ui",
-  "status": "IDLE",
-  "current_task": null,
-  "progress": 0,
+  "status": "WAITING",
+  "current_task": "ORB-FRONT-001",
+  "progress": 100,
   "blockers": [],
-  "last_activity": "2026-11-07T19:58:00Z",
-  "last_handoff": null,
-  "modified_files": []
+  "last_activity": "2026-11-07T23:02:00Z",
+  "last_handoff": "2026-11-07T23:02:00Z",
+  "modified_files": [
+    "src/renderer/src/components/TerminalWorkspace.tsx",
+    "src/renderer/src/components/DetachedTabWindow.tsx",
+    "src/renderer/src/stores/keyboard-shortcuts.store.ts"
+  ]
 }

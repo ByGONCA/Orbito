@@ -325,7 +325,7 @@ export const LeftSidebar: React.FC = () => {
       <div className="px-2.5 pb-2 bg-transparent">
         <button
           onClick={() => setCommandPaletteOpen(true)}
-          className="w-full flex items-center justify-between px-3 py-1.5 bg-white/[0.04] rounded-lg text-[#A4A8AF] hover:text-white text-xs transition-all border border-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.06] cursor-pointer shadow-xs"
+          className="w-full flex items-center justify-between px-3 py-1.5 bg-white/[0.03] rounded-lg text-[#A4A8AF] hover:text-white text-xs transition-all border border-white/[0.045] hover:border-white/[0.1] hover:bg-white/[0.05] cursor-pointer shadow-xs"
         >
           <div className="flex items-center gap-2 truncate">
             <Search className="w-3.5 h-3.5 text-[#747982] flex-shrink-0" />

@@ -174,7 +174,7 @@ export const App: React.FC = () => {
       const settings = await window.api.getSettings?.();
       if (settings) {
         if (settings.theme) {
-          const validTheme = settings.theme === 'solid' ? 'solid' : 'glass';
+          const validTheme = settings.theme === 'solid' ? 'solid' : settings.theme === 'light' ? 'light' : 'glass';
           setTheme(validTheme);
         } else {
           setTheme('glass');
@@ -320,18 +320,10 @@ export const App: React.FC = () => {
       )}
 
       <div
-        className={`flex flex-col h-screen w-screen overflow-hidden bg-[#101113] text-foreground select-none font-sans relative ${
+        className={`flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground select-none font-sans relative ${
           !isAppReady ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'
         }`}
       >
-        {/* Subtle, soft neutral ambient gradient (no bright/blue saturation) */}
-        <div
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'radial-gradient(1000px 600px at 50% 0%, rgba(255, 255, 255, 0.02) 0%, transparent 70%)'
-          }}
-        />
-
         {/* 1. GLOBAL WINDOW TITLEBAR (100% Full Width, Frameless Top Chrome) */}
         <TopTabBar />
 
@@ -342,7 +334,7 @@ export const App: React.FC = () => {
             <>
               <div
                 style={{ width: `${leftSidebarWidth}px` }}
-                className="flex-shrink-0 h-full overflow-hidden border-r border-white/[0.07] frosted-sidebar"
+                className="flex-shrink-0 h-full overflow-hidden border-r border-white/[0.045] frosted-sidebar"
               >
                 <LeftSidebar />
               </div>
@@ -373,7 +365,7 @@ export const App: React.FC = () => {
 
               <div
                 style={{ width: `${rightPanelWidth}px` }}
-                className="flex-shrink-0 h-full overflow-hidden border-l border-white/[0.07] frosted-sidebar"
+                className="flex-shrink-0 h-full overflow-hidden border-l border-white/[0.045] frosted-sidebar"
               >
                 <RightPanel />
               </div>

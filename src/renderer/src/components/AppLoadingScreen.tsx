@@ -9,6 +9,7 @@ import {
   Square,
   X
 } from 'lucide-react';
+import orbitLogo from '../assets/Orbit.png';
 
 export interface AppLoadingScreenProps {
   onComplete: () => void;
@@ -138,7 +139,7 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
   const handleClose = () => window.api?.closeWindow?.();
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#101113] text-[#ECEDEF] select-none font-sans overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background text-[#ECEDEF] select-none font-sans overflow-hidden animate-in fade-in duration-200">
       {/* 1. Minimal Window Title Bar (drag region + window controls) */}
       <div
         className="h-10 w-full flex items-center justify-between px-3 bg-transparent flex-shrink-0"
@@ -179,20 +180,11 @@ export const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({
 
       {/* 2. Main Centered Splash / Clean Typography (No Cards, No Boxiness) */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-        {/* Soft subtle ambient glow */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(600px 400px at 50% 48%, rgba(255, 255, 255, 0.025) 0%, transparent 70%)'
-          }}
-        />
-
         <div className="relative z-10 flex flex-col items-center text-center space-y-4 max-w-sm">
-          {/* Logo with subtle ambient blur */}
+          {/* Logo with clean neutral presentation */}
           <div className="relative flex items-center justify-center mb-1">
-            <div className="absolute w-20 h-20 rounded-full bg-white/[0.03] blur-xl animate-pulse pointer-events-none" />
             <img
-              src="/Orbit.png"
+              src={orbitLogo}
               alt="Orbito Logo"
               className="w-14 h-14 object-contain select-none pointer-events-none drop-shadow-md"
             />

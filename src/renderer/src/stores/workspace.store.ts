@@ -1906,8 +1906,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   toggleSettings: (open) => set((s) => ({ isSettingsOpen: open !== undefined ? open : !s.isSettingsOpen })),
   setTheme: (theme) => {
     if (typeof document !== 'undefined') {
-      document.documentElement.classList.remove('theme-solid', 'theme-glass');
-      document.documentElement.classList.add(theme === 'solid' ? 'theme-solid' : 'theme-glass');
+      document.documentElement.classList.remove('theme-solid', 'theme-glass', 'theme-light');
+      if (theme === 'solid') {
+        document.documentElement.classList.add('theme-solid');
+      } else if (theme === 'light') {
+        document.documentElement.classList.add('theme-light');
+      } else {
+        document.documentElement.classList.add('theme-glass');
+      }
     }
     set({ theme });
   },

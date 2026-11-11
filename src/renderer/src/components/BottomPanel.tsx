@@ -102,7 +102,7 @@ export const BottomPanel: React.FC = () => {
   return (
     <div
       style={{ height: `${bottomPanelHeight}px` }}
-      className="border-t border-white/[0.07] bg-[#121418]/95 backdrop-blur-xl flex flex-col font-mono text-xs select-none relative z-20 flex-shrink-0"
+      className="border-t border-white/[0.045] bg-[#0c0d10]/95 backdrop-blur-xl flex flex-col font-mono text-xs select-none relative z-20 flex-shrink-0"
     >
       {/* Invisible global overlay during resize to capture mouse movements smoothly */}
       {isResizing && (
@@ -120,7 +120,7 @@ export const BottomPanel: React.FC = () => {
       </div>
 
       {/* 2. Top Header with Panel Tabs */}
-      <div className="h-8 border-b border-white/[0.06] bg-transparent px-2.5 flex items-center justify-between text-[11px] flex-shrink-0">
+      <div className="h-8 border-b border-white/[0.045] bg-transparent px-2.5 flex items-center justify-between text-[11px] flex-shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setBottomPanelTab('terminal')}

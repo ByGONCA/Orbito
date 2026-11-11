@@ -42,7 +42,7 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: `Orbito${isDev ? ' [DEV]' : ''}`,
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
-    backgroundColor: '#101113',
+    backgroundColor: '#0a0b0d',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: true,

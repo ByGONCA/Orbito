@@ -10,6 +10,7 @@ import {
   Info,
   Sparkles,
   Moon,
+  Sun,
   Check,
   Search,
   Minus,
@@ -237,7 +238,7 @@ export const SettingsModal: React.FC = () => {
     }
   };
 
-  const handleThemeChange = async (newTheme: 'glass' | 'solid') => {
+  const handleThemeChange = async (newTheme: 'glass' | 'solid' | 'light') => {
     setTheme(newTheme);
     await window.api.updateSettings({ theme: newTheme });
     addLog(`Switched theme to [${newTheme.toUpperCase()}]`, 'info');
@@ -288,7 +289,9 @@ export const SettingsModal: React.FC = () => {
     }
   };
 
-  const isGlass = theme !== 'solid';
+  const isGlass = theme === 'glass';
+  const isSolid = theme === 'solid';
+  const isLight = theme === 'light';
 
   if (!isSettingsOpen) return null;
 
@@ -697,11 +700,11 @@ export const SettingsModal: React.FC = () => {
                     </p>
                   </div>
                   <Badge variant="accent" size="sm">
-                    {isGlass ? 'Glassmorphism Ativo' : 'Solid Dark Ativo'}
+                    {isGlass ? 'Glassmorphism Ativo' : isSolid ? 'Solid Dark Ativo' : 'Light Ativo'}
                   </Badge>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
                   {/* Glass Option Card */}
                   <div
                     onClick={() => handleThemeChange('glass')}
@@ -714,7 +717,7 @@ export const SettingsModal: React.FC = () => {
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold text-[#ECEDEF] flex items-center gap-2 text-xs">
                         <Sparkles className="w-4 h-4 text-[#ECEDEF]" />
-                        <span>Glassmorphism (Recomendado)</span>
+                        <span>Glassmorphism</span>
                       </span>
                       {isGlass && <Check className="w-4 h-4 text-[#ECEDEF]" />}
                     </div>
@@ -727,7 +730,7 @@ export const SettingsModal: React.FC = () => {
                       <div className="w-full h-1.5 rounded-full bg-white/10" />
                     </div>
                     <p className="text-[11px] text-[#A4A8AF]">
-                      Superfícies neutras de carvão com desfoque de fundo (backdrop blur) e bordas subtis translúcidas.
+                      Superfícies neutras translúcidas com desfoque e separadores subtis de 1px.
                     </p>
                   </div>
 
@@ -735,7 +738,7 @@ export const SettingsModal: React.FC = () => {
                   <div
                     onClick={() => handleThemeChange('solid')}
                     className={`p-4 rounded-xl border cursor-pointer transition-all relative overflow-hidden ${
-                      !isGlass
+                      isSolid
                         ? 'border-white/40 bg-white/[0.08] shadow-lg ring-1 ring-white/20'
                         : 'border-white/[0.08] hover:border-white/20 bg-white/[0.02]'
                     }`}
@@ -745,7 +748,7 @@ export const SettingsModal: React.FC = () => {
                         <Moon className="w-4 h-4 text-[#ECEDEF]" />
                         <span>Solid Dark</span>
                       </span>
-                      {!isGlass && <Check className="w-4 h-4 text-[#ECEDEF]" />}
+                      {isSolid && <Check className="w-4 h-4 text-[#ECEDEF]" />}
                     </div>
 
                     <div className="h-14 rounded-lg bg-[#141619] border border-white/[0.08] p-2 flex flex-col justify-between mb-2">
@@ -756,7 +759,36 @@ export const SettingsModal: React.FC = () => {
                       <div className="w-full h-1.5 rounded-full bg-white/[0.05]" />
                     </div>
                     <p className="text-[11px] text-[#A4A8AF]">
-                      Painéis escuros opacos clássicos, sem transparência, com contraste focado na legibilidade.
+                      Painéis escuros opacos clássicos, sem transparência, foco em contraste sólido.
+                    </p>
+                  </div>
+
+                  {/* Light Option Card */}
+                  <div
+                    onClick={() => handleThemeChange('light')}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all relative overflow-hidden ${
+                      isLight
+                        ? 'border-white/40 bg-white/[0.08] shadow-lg ring-1 ring-white/20'
+                        : 'border-white/[0.08] hover:border-white/20 bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-[#ECEDEF] flex items-center gap-2 text-xs">
+                        <Sun className="w-4 h-4 text-[#ECEDEF]" />
+                        <span>Light</span>
+                      </span>
+                      {isLight && <Check className="w-4 h-4 text-[#ECEDEF]" />}
+                    </div>
+
+                    <div className="h-14 rounded-lg bg-neutral-100 border border-neutral-300 p-2 flex flex-col justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-neutral-800" />
+                        <span className="w-12 h-1.5 rounded-full bg-neutral-400" />
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-neutral-300" />
+                    </div>
+                    <p className="text-[11px] text-[#A4A8AF]">
+                      Superfícies claras, alto contraste para ambientes bem iluminados.
                     </p>
                   </div>
                 </div>

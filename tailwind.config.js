@@ -93,7 +93,7 @@ module.exports = {
         subtle: '0 1px 2px 0 rgba(0, 0, 0, 0.35)',
         panel: '0 4px 16px 0 rgba(0, 0, 0, 0.45)',
         dropdown: '0 8px 24px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -1px rgba(0, 0, 0, 0.35)',
-        glow: '0 0 15px -3px rgba(214, 168, 95, 0.25)'
+        glow: '0 0 16px -2px rgba(255, 255, 255, 0.06)'
       },
       fontFamily: {
         sans: [

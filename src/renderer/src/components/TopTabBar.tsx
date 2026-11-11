@@ -25,6 +25,7 @@ import {
 import { useWorkspaceStore } from '../stores/workspace.store';
 import { FileIcon } from '../utils/file-icons';
 import { OfficialLogoRenderer } from './OfficialLogos';
+import orbitLogo from '../assets/Orbit.png';
 
 export const TopTabBar: React.FC = () => {
   const {
@@ -113,7 +114,7 @@ export const TopTabBar: React.FC = () => {
   return (
     <div
       onDoubleClick={handleMaximize}
-      className="flex flex-col flex-shrink-0 z-30 border-b border-white/[0.07] bg-[#121418]/90 backdrop-blur-xl select-none font-sans"
+      className="flex flex-col flex-shrink-0 z-30 border-b border-white/[0.045] bg-[#0c0d10]/85 backdrop-blur-xl select-none font-sans"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* 1. Main Header Strip Row */}
@@ -132,7 +133,7 @@ export const TopTabBar: React.FC = () => {
             title="Orbito"
           >
             <img
-              src="/Orbit.png"
+              src={orbitLogo}
               alt="Orbito"
               className="w-5 h-5 object-contain select-none pointer-events-none"
               style={{ imageRendering: 'auto' }}
@@ -187,7 +188,7 @@ export const TopTabBar: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="h-px bg-white/[0.06] my-1" />
+                <div className="h-px bg-white/[0.045] my-1" />
 
                 {/* View */}
                 <div className="px-1 py-0.5">
@@ -234,7 +235,7 @@ export const TopTabBar: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="h-px bg-white/[0.06] my-1" />
+                <div className="h-px bg-white/[0.045] my-1" />
 
                 {/* Settings & Exit */}
                 <div className="px-1 py-0.5">
@@ -318,7 +319,7 @@ export const TopTabBar: React.FC = () => {
           </button>
 
           {/* Window Controls Divider */}
-          <div className="h-3.5 w-px bg-white/10 mx-1 flex-shrink-0" />
+          <div className="h-3.5 w-px bg-white/[0.06] mx-1 flex-shrink-0" />
 
           {/* Integrated Frameless Window Controls (— □ ✕) */}
           <div className="flex items-center gap-0.5">

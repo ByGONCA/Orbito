@@ -3,10 +3,6 @@ import {
   Terminal as TerminalIcon,
   Plus,
   X,
-  ChevronDown,
-  MoreHorizontal,
-  Columns,
-  Rows,
   Trash2,
   Check,
   SplitSquareHorizontal,
@@ -163,8 +159,6 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
   }, [cliStatuses]);
 
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
-  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -182,8 +176,6 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
   useEffect(() => {
     const handleClickOutside = () => {
       setIsPlusMenuOpen(false);
-      setIsCommandMenuOpen(false);
-      setIsMoreMenuOpen(false);
     };
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
@@ -533,7 +525,7 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="h-9 bg-[#0e1015] border-b border-white/[0.08] flex items-center justify-between px-2.5 select-none z-20 flex-shrink-0 relative"
+      className="h-9 bg-[#0b0c0f]/80 backdrop-blur-md border-b border-white/[0.045] flex items-center justify-between px-2.5 select-none z-20 flex-shrink-0 relative"
     >
       {/* Left Tabs Strip + Plus button */}
       <div className="flex items-center flex-1 min-w-0 h-full gap-1">
@@ -587,8 +579,8 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
                 onClick={() => onSelectTab(tab)}
                 className={`group relative flex items-center gap-2 px-3 h-7 rounded-md text-xs cursor-pointer transition-all max-w-[210px] flex-shrink-0 ${
                   isActive
-                    ? 'bg-[#1e2129] text-white font-medium shadow-xs'
-                    : 'bg-transparent hover:bg-white/[0.05] text-[#A4A8AF] hover:text-[#ECEDEF]'
+                    ? 'bg-[#14161b] text-white font-medium shadow-xs border-b border-accent/30'
+                    : 'bg-transparent hover:bg-white/[0.03] text-[#A4A8AF] hover:text-[#ECEDEF]'
                 }`}
                 title={tab.filePath || sess?.workingDirectory || displayTitle}
               >
@@ -636,8 +628,9 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
                       e.stopPropagation();
                       onDetachTab(tab);
                     }}
-                    className="p-0.5 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-white/20 text-[#747982] hover:text-purple-300 transition-opacity cursor-pointer"
+                    className="p-0.5 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-white/20 text-[#747982] hover:text-[#ECEDEF] transition-opacity cursor-pointer"
                     title="Detach into new window"
+                    aria-label="Detach tab into new window"
                   >
                     <ExternalLink className="w-2.5 h-2.5" />
                   </button>
@@ -651,6 +644,7 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
                     }}
                     className="p-0.5 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-white/20 text-[#747982] hover:text-white transition-opacity cursor-pointer"
                     title="Close tab"
+                    aria-label="Close tab"
                   >
                     <X className="w-2.5 h-2.5" />
                   </button>
@@ -667,13 +661,12 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               setIsPlusMenuOpen((prev) => !prev);
-              setIsCommandMenuOpen(false);
-              setIsMoreMenuOpen(false);
             }}
             className={`p-1 hover:bg-white/[0.08] rounded-md text-[#A4A8AF] hover:text-[#ECEDEF] transition-colors cursor-pointer ${
               isPlusMenuOpen ? 'bg-white/[0.1] text-white' : ''
             }`}
-            title="New Terminal, Agent, or File"
+            title="New Terminal, Agent, or File (Ctrl+T)"
+            aria-label="New Terminal, Agent, or File"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -682,10 +675,10 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
           {isPlusMenuOpen && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="absolute left-0 top-full mt-1.5 w-[330px] bg-[#14161b] border border-white/[0.1] rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col font-sans select-none text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
+              className="absolute left-0 top-full mt-1.5 w-[330px] bg-[#121418]/95 backdrop-blur-xl border border-white/[0.06] rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col font-sans select-none text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
             >
               {/* Search Bar */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.08] bg-transparent">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.045] bg-transparent">
                 <Search className="w-3.5 h-3.5 text-[#747982] flex-shrink-0" />
                 <input
                   ref={searchInputRef}
@@ -697,6 +690,7 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
                   }}
                   onKeyDown={handleSearchKeyDown}
                   placeholder="Search open tabs, files, commands, agents..."
+                  aria-label="Search open tabs, files, commands, agents"
                   className="flex-1 bg-transparent text-[#ECEDEF] placeholder-[#747982] text-xs focus:outline-none font-sans caret-white"
                 />
                 {search && (
@@ -708,6 +702,8 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
                       searchInputRef.current?.focus();
                     }}
                     className="text-[#747982] hover:text-white cursor-pointer"
+                    title="Clear search"
+                    aria-label="Clear search"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -829,15 +825,16 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Clear terminal, Split actions, Command dropdown, More Menu */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      {/* Right Controls: strictly icon-only toolbar with tooltips and aria-labels */}
+      <div className="flex items-center gap-0.5 flex-shrink-0">
         {/* Clear Output (for active terminal) */}
         {isTerminalActive && onClearOutput && (
           <button
             type="button"
             onClick={onClearOutput}
-            className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-md hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
             title="Clear Output"
+            aria-label="Clear Output"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -847,8 +844,9 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
         <button
           type="button"
           onClick={onSplitHorizontal}
-          className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
+          className="p-1.5 rounded-md hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
           title="Split Down (Horizontal)"
+          aria-label="Split Down (Horizontal)"
         >
           <SplitSquareHorizontal className="w-3.5 h-3.5" />
         </button>
@@ -857,8 +855,9 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
         <button
           type="button"
           onClick={onSplitVertical}
-          className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
+          className="p-1.5 rounded-md hover:bg-white/[0.08] text-[#717784] hover:text-white transition-colors cursor-pointer"
           title="Split Right (Vertical)"
+          aria-label="Split Right (Vertical)"
         >
           <SplitSquareVertical className="w-3.5 h-3.5" />
         </button>
@@ -868,10 +867,11 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
           <button
             type="button"
             onClick={onToggleMaximize}
-            className={`p-1.5 rounded hover:bg-white/[0.08] transition-colors cursor-pointer ${
+            className={`p-1.5 rounded-md hover:bg-white/[0.08] transition-colors cursor-pointer ${
               isMaximized ? 'text-accent bg-white/[0.06]' : 'text-[#717784] hover:text-white'
             }`}
-            title={isMaximized ? 'Restaurar Tamanho da Janela' : 'Maximizar Janela do Terminal'}
+            title={isMaximized ? 'Restore Pane' : 'Maximize Pane'}
+            aria-label={isMaximized ? 'Restore Pane' : 'Maximize Pane'}
           >
             {isMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
@@ -882,160 +882,13 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
           <button
             type="button"
             onClick={onCloseSplit}
-            className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-rose-400 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md hover:bg-white/[0.08] text-[#717784] hover:text-rose-400 transition-colors cursor-pointer"
             title="Close Split View"
+            aria-label="Close Split View"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         )}
-        {/* Command / Shell Selector */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsCommandMenuOpen(!isCommandMenuOpen);
-              setIsMoreMenuOpen(false);
-            }}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-mono text-[#A4A8AF] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title="Select shell or run command"
-          >
-            <span className="text-[10px] text-[#717784] font-bold">&gt;_</span>
-            <span>Command</span>
-            <ChevronDown className="w-3 h-3 text-[#717784]" />
-          </button>
-
-          {isCommandMenuOpen && (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="absolute right-0 top-full mt-1 w-48 bg-[#14161b] border border-white/[0.1] rounded-lg shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
-            >
-              <div className="px-2.5 py-1 text-[10px] text-[#717784] uppercase font-mono tracking-wider font-semibold">
-                Shells
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCommandMenuOpen(false);
-                  onNewSession('powershell');
-                }}
-                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#ECEDEF] transition-colors cursor-pointer"
-              >
-                <span>PowerShell</span>
-                {activeSession?.provider === 'powershell' && <Check className="w-3 h-3 text-emerald-400" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCommandMenuOpen(false);
-                  onNewSession('cmd');
-                }}
-                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#ECEDEF] transition-colors cursor-pointer"
-              >
-                <span>Command Prompt (cmd)</span>
-                {activeSession?.provider === 'cmd' && <Check className="w-3 h-3 text-emerald-400" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCommandMenuOpen(false);
-                  onNewSession('bash');
-                }}
-                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#ECEDEF] transition-colors cursor-pointer"
-              >
-                <span>Git Bash / WSL</span>
-                {activeSession?.provider === 'bash' && <Check className="w-3 h-3 text-emerald-400" />}
-              </button>
-              <div className="h-px bg-white/[0.06] my-1" />
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCommandMenuOpen(false);
-                  onNewSession();
-                }}
-                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center justify-between text-[#A4A8AF] hover:text-white transition-colors cursor-pointer text-[11px]"
-              >
-                <span>All Terminals &amp; AI Agents...</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ... More Options Menu */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsMoreMenuOpen(!isMoreMenuOpen);
-              setIsCommandMenuOpen(false);
-            }}
-            className="p-1 rounded text-[#717784] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title="Terminal options"
-          >
-            <MoreHorizontal className="w-3.5 h-3.5" />
-          </button>
-
-          {isMoreMenuOpen && (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="absolute right-0 top-full mt-1 w-44 bg-[#14161b] border border-white/[0.1] rounded-lg shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100"
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMoreMenuOpen(false);
-                  onSplitHorizontal();
-                }}
-                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
-              >
-                <Rows className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                <span>Split Down (Horizontal)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMoreMenuOpen(false);
-                  onSplitVertical();
-                }}
-                className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
-              >
-                <Columns className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                <span>Split Right (Vertical)</span>
-              </button>
-
-              {isSplit && onCloseSplit && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMoreMenuOpen(false);
-                    onCloseSplit();
-                  }}
-                  className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-rose-400 transition-colors cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Close Split</span>
-                </button>
-              )}
-
-              <div className="h-px bg-white/[0.06] my-1" />
-
-              {isTerminalActive && onClearOutput && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMoreMenuOpen(false);
-                    onClearOutput();
-                  }}
-                  className="w-full text-left px-2.5 py-1.5 hover:bg-white/[0.06] flex items-center gap-2 text-[#ECEDEF] transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-[#A4A8AF]" />
-                  <span>Clear Output (Ctrl+L)</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -1553,7 +1406,7 @@ export const TerminalWorkspace: React.FC = () => {
   const renderPaneContent = (tabs: UnifiedTabItem[], activeTab: UnifiedTabItem | null, isPrimary: boolean) => {
     if (tabs.length === 0 || !activeTab) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-[#0d0e12]">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-[#0a0b0d]">
           <TerminalIcon className="w-8 h-8 text-[#717784] mb-2" />
           <p className="text-xs text-[#ECEDEF] font-medium">No active tab</p>
         </div>
@@ -1561,7 +1414,7 @@ export const TerminalWorkspace: React.FC = () => {
     }
 
     return (
-      <div className="flex-1 min-h-0 relative overflow-hidden bg-[#21242d]">
+      <div className="flex-1 min-h-0 relative overflow-hidden bg-[#0a0b0d]">
         {tabs.map((tab) => {
           const isTabActive = activeTab?.id === tab.id;
 
@@ -1573,7 +1426,7 @@ export const TerminalWorkspace: React.FC = () => {
             if (!session) {
               if (!isTabActive) return null;
               return (
-                <div key={tab.id} className="w-full h-full flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-[#0d0e12]">
+                <div key={tab.id} className="w-full h-full flex flex-col items-center justify-center p-6 text-center select-none font-sans bg-[#0a0b0d]">
                   <TerminalIcon className="w-8 h-8 text-[#717784] mb-2" />
                   <p className="text-xs text-[#ECEDEF] font-medium">Terminal session closed</p>
                 </div>
@@ -1621,28 +1474,40 @@ export const TerminalWorkspace: React.FC = () => {
 
   if (unifiedTabs.length === 0) {
     return (
-      <div className="h-full w-full bg-[#0d0e12] flex flex-col items-center justify-center p-6 text-center select-none font-sans">
-        <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#A4A8AF] mb-4 shadow-sm">
-          <TerminalIcon className="w-6 h-6" />
+      <div className="h-full w-full bg-[#0a0b0d] flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+        <div className="w-12 h-12 flex items-center justify-center text-[#717784] mb-3">
+          <TerminalIcon className="w-8 h-8 stroke-[1.5]" />
         </div>
         <h3 className="text-sm font-semibold text-[#ECEDEF] mb-1">
           No Active Tabs
         </h3>
-        <p className="text-xs text-[#717784] max-w-sm mb-5 leading-relaxed">
+        <p className="text-xs text-[#717784] max-w-sm mb-6 leading-relaxed">
           Launch a terminal shell, autonomous AI agent, or open a file in{' '}
           <span className="text-[#ECEDEF] font-medium font-mono">{project?.name || 'this workspace'}</span>.
         </p>
-        <button
-          type="button"
-          onClick={() => setArcLauncherOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-xs font-medium text-white border border-white/[0.1] transition-all cursor-pointer shadow-lg hover:border-white/20"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Select Terminal, Agent, or File...</span>
-          <kbd className="text-[10px] bg-white/[0.1] px-1.5 py-0.5 rounded font-mono ml-1 text-[#A4A8AF]">
-            Ctrl+T
-          </kbd>
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setArcLauncherOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-white/[0.08] hover:bg-white/[0.12] text-xs font-medium text-white transition-colors cursor-pointer"
+            title="Open Launcher (Ctrl+T)"
+            aria-label="Open Launcher"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Open Launcher</span>
+            <span className="text-[10px] font-mono text-[#717784] ml-0.5">Ctrl+T</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleNewSession('powershell')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-white/[0.06] text-xs font-medium text-[#A4A8AF] hover:text-white transition-colors cursor-pointer"
+            title="Launch PowerShell Terminal"
+            aria-label="Launch PowerShell Terminal"
+          >
+            <TerminalIcon className="w-3.5 h-3.5" />
+            <span>PowerShell</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -1731,7 +1596,8 @@ export const TerminalWorkspace: React.FC = () => {
             <div
               onMouseDown={handleSplitterMouseDown}
               onDoubleClick={() => setSplitRatio(0.5)}
-              title="Arrastar para aumentar/diminuir janela &bull; Duplo clique para restaurar 50%"
+              title="Drag to resize panes • Double-click to reset 50/50"
+              aria-label="Drag to resize panes"
               className={
                 splitDirection === 'horizontal'
                   ? 'h-1.5 relative cursor-row-resize bg-white/[0.06] hover:bg-white/20 active:bg-accent/60 transition-colors z-30 flex-shrink-0 flex items-center justify-center group select-none'

@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "task_id": "ORB-FRONT-001",
+  "title": "Orbito Interface Architecture and Workspace UX Stabilization",
+  "assigned_agent": "frontend",
+  "worktree": "orbito-frontend",
+  "branch": "agent/frontend-ui",
+  "priority": "HIGH",
+  "status": "READY",
+  "created_at": "2026-11-07T22:37:00Z",
+  "updated_at": "2026-11-07T22:37:00Z",
+  "objective": "Improve the existing Orbito interface architecture and user experience without disrupting backend contracts, eliminating redundant controls and enforcing strict anti-boxiness.",
+  "context": "The baseline established multi-tab terminal workspaces and developer UI. The frontend specialist must inspect existing components, eliminate duplicated navigation and redundant toolbar buttons, enforce clean typography (no pill backgrounds on counts), and improve contextual empty states.",
+  "scope": {
+    "allowed_files": [
+      "src/renderer/src/components/TerminalWorkspace.tsx",
+      "src/renderer/src/components/NativeTerminal.tsx",
+      "src/renderer/src/components/DetachedTabWindow.tsx",
+      "src/renderer/src/components/common/**",
+      "src/renderer/src/components/workspace/**",
+      "src/renderer/src/views/**",
+      "src/renderer/src/stores/keyboard-shortcuts.store.ts",
+      "src/renderer/src/stores/terminal.store.ts",
+      "src/renderer/src/stores/ui.store.ts",
+      "src/renderer/src/styles/**"
+    ],
+    "forbidden_files": [
+      "src/main/**",
+      "src/preload/**",
+      "src/renderer/src/components/Review*",
+      "src/shared/ipc.ts",
+      "src/shared/types.ts",
+      "package.json",
+      "package-lock.json",
+      ".agents/coordination/REGISTRY.json"
+    ]
+  },
+  "priorities": [
+    "Eliminate redundant interface elements and duplicated functionality",
+    "Improve navigation, workspace composition and visual hierarchy",
+    "Enforce strict Anti-Boxiness (Rule 4 in AGENTS.md): borderless layout, no boxed pill counts",
+    "Icon-only toolbar and header controls with hover tooltips (title and aria-label)",
+    "Improve terminal and project explorer integration and empty states",
+    "Standardize visual components and interaction consistency",
+    "Improve accessibility and keyboard shortcut navigation"
+  ],
+  "dependencies": [],
+  "expected_deliverables": [
+    "Concise UI/UX audit report documenting existing redundancies and planned refinements",
+    "Cleaned workspace composition with borderless layouts and refined typographic hierarchy",
+    "Strictly icon-only toolbars with title/aria-label tooltips across tabs and workspace headers",
+    "Cleaned badge and count displays (no rounded background boxes on numbers)",
+    "Passing test suite and zero typecheck errors",
+    "Completed HANDOFF.md with UI verification evidence"
+  ],
+  "acceptance_criteria": [
+    "Typecheck passes (0 errors across node and web targets)",
+    "Relevant UI and component tests pass without regressions",
+    "Existing functionality remains available (no accidental feature deletion)",
+    "Strict compliance with AGENTS.md Rule 4 (Anti-boxiness, borderless cards, icon-only toolbars, clean typography on counts)",
+    "Zero modifications to main process or unauthorized backend files",
+    "No unauthorized modifications to protected shared contracts (src/shared/**, package.json)",
+    "Handoff submission created at .agents/coordination/agents/frontend/HANDOFF.md with UI verification notes"
+  ],
+  "required_tests": [
+    "npm run typecheck",
+    "npm test"
+  ],
+  "risk_assessment": {
+    "level": "LOW",
+    "mitigation": "Do not redesign everything blindly. Inspect the entire application first and preserve all working functionality. UI changes must not break backend IPC bindings."
+  },
+  "handoff_requirements": {
+    "status_file": ".agents/coordination/agents/frontend/STATUS.json",
+    "handoff_file": ".agents/coordination/agents/frontend/HANDOFF.md",
+    "evidence_required": [
+      "npm run typecheck stdout",
+      "git status --short and diff summary",
+      "UI verification notes detailing eliminated redundancies"
+    ]
+  }
+}

@@ -3,7 +3,7 @@
 ## Worktree Context
 - **Path:** `C:/Users/gonca/orca/workspaces/Orbito/orbito-frontend`
 - **Branch:** `agent/frontend-ui`
-- **Baseline Commit:** `b9fe0dfcda307258717987f5a09a454ad5e73d62`
+- **Baseline Commit:** `1619be9a66d9205096c1ef06ce618f5499852ef9`
 
 ## Ownership Boundaries
 - Primary: React 19 UI, Tailwind CSS styling, Zustand stores, view components, tabs, terminal UI (`src/renderer/**`).
@@ -15,5 +15,13 @@
 - Borderless numbers: Counts and metrics must never have rounded pill backgrounds.
 
 ## Notes & State
-- Worktree synchronized to baseline commit `b9fe0df`.
-- Currently IDLE awaiting task assignment from Lead Architect.
+- Completed task `ORB-FRONT-001` (Interface Architecture and Workspace UX Stabilization).
+- Removed redundant Command dropdown and More options menu in TerminalPaneHeader.
+- Enforced icon-only header toolbars with hover tooltips and `aria-label` across all pane actions.
+- Cleaned badge displays in DetachedTabWindow (removed boxed pill backgrounds).
+- Converted empty states in TerminalWorkspace to borderless, open layout with quick actions.
+- Standardized Portuguese strings to English across tooltips and keyboard shortcut categories.
+- Typecheck: 0 errors across Node and Web targets.
+- Test Suite: 56/56 suites passed (430 tests passing).
+- Coordination validation: 0 errors.
+- Status set to `WAITING`, handoff document submitted.

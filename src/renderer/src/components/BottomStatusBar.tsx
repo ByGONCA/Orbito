@@ -51,7 +51,7 @@ export const BottomStatusBar: React.FC = () => {
 
   return (
     <>
-      <footer className="h-6.5 border-t border-white/[0.06] bg-[#121418]/90 backdrop-blur-xl px-3 flex items-center justify-between text-[10px] font-mono text-[#A4A8AF] select-none z-30">
+      <footer className="h-6.5 border-t border-white/[0.045] bg-[#0c0d10]/90 backdrop-blur-xl px-3 flex items-center justify-between text-[10px] font-mono text-[#A4A8AF] select-none z-30">
         {/* 1. Left: Current Project, Git Branch */}
         <div className="flex items-center gap-2">
           {project ? (
