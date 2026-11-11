@@ -70,7 +70,7 @@ export const ShortcutsPage: React.FC = () => {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-foreground tracking-tight">
-            Shortcuts
+            Keybindings
           </h2>
         </div>
 
@@ -179,3 +179,5 @@ export const ShortcutsPage: React.FC = () => {
     </div>
   );
 };
+
+export const KeybindingsPage = ShortcutsPage;

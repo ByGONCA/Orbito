@@ -254,11 +254,19 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
   // Glassmorphism (variant === 'glass')
   return (
     <div className="w-full h-28 rounded-xl bg-[#0c0d12]/80 backdrop-blur-md overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-md relative mt-3 border-0">
+      {/* Ambient glowing gradient mesh for glass depth */}
+      <div
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          background:
+            'radial-gradient(120px 80px at 20% 20%, rgba(99, 102, 241, 0.25), transparent 70%), radial-gradient(140px 90px at 80% 70%, rgba(6, 182, 212, 0.20), transparent 70%), radial-gradient(100px 60px at 50% 90%, rgba(139, 92, 246, 0.18), transparent 70%)'
+        }}
+      />
       {/* Specular top highlight */}
-      <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white/[0.08] to-transparent pointer-events-none z-10" />
 
       {/* Top bar */}
-      <div className="h-5 bg-white/[0.02] px-2 flex items-center justify-between flex-shrink-0">
+      <div className="h-5 bg-white/[0.02] px-2 flex items-center justify-between flex-shrink-0 relative z-10">
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
@@ -281,7 +289,7 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
       </div>
 
       {/* Body */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative z-10">
         {/* Left Rail */}
         <div className="w-6 bg-white/[0.015] py-1.5 flex flex-col items-center gap-1.5 flex-shrink-0">
           <div className="w-3.5 h-3.5 rounded bg-cyan-500/20 text-cyan-300 flex items-center justify-center">

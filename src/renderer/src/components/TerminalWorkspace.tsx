@@ -94,6 +94,7 @@ interface TerminalPaneHeaderProps {
   onOpenFile: (file: { path: string; name: string }) => void;
   onSplitHorizontal: () => void;
   onSplitVertical: () => void;
+  onSplitBrowser?: () => void;
   onCloseSplit?: () => void;
   isSplit: boolean;
   isMaximized?: boolean;
@@ -117,6 +118,7 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
   onOpenFile,
   onSplitHorizontal,
   onSplitVertical,
+  onSplitBrowser,
   onCloseSplit,
   isSplit,
   isMaximized,
@@ -866,6 +868,18 @@ const TerminalPaneHeader: React.FC<TerminalPaneHeaderProps> = ({
         >
           <SplitSquareVertical className="w-3.5 h-3.5" />
         </button>
+
+        {/* Split Browser beside Terminal (worka.dev / t3.dev) */}
+        {onSplitBrowser && (
+          <button
+            type="button"
+            onClick={onSplitBrowser}
+            className="p-1.5 rounded hover:bg-white/[0.08] text-[#717784] hover:text-blue-400 transition-colors cursor-pointer"
+            title="Open Browser beside Terminal"
+          >
+            <Globe className="w-3.5 h-3.5" />
+          </button>
+        )}
 
         {/* Maximize / Restore Split Window */}
         {isSplit && onToggleMaximize && (
@@ -1630,6 +1644,19 @@ export const TerminalWorkspace: React.FC = () => {
     }
   };
 
+  const handleSplitBrowser = () => {
+    setSplitDirection('vertical');
+    const browserTabId = `browser:${Date.now()}`;
+    useWorkspaceStore.setState((s) => ({
+      openTabs: [
+        ...s.openTabs,
+        { id: browserTabId, type: 'browser', title: 'Google', url: 'https://www.google.com' }
+      ]
+    }));
+    setPane2TabIds((prev) => (prev.includes(browserTabId) ? prev : [...prev, browserTabId]));
+    setSecondaryTabId(browserTabId);
+  };
+
   const handleCloseSplit = () => {
     setPane2TabIds([]);
     setSplitDirection(null);
@@ -1800,6 +1827,7 @@ export const TerminalWorkspace: React.FC = () => {
                 onOpenFile={(f) => handleOpenFile(f, true)}
                 onSplitHorizontal={handleSplitHorizontal}
                 onSplitVertical={handleSplitVertical}
+                onSplitBrowser={handleSplitBrowser}
                 onCloseSplit={handleCloseSplit}
                 isSplit={true}
                 isMaximized={maximizedPane === 'primary'}
@@ -1872,6 +1900,7 @@ export const TerminalWorkspace: React.FC = () => {
                 onOpenFile={(f) => handleOpenFile(f, false)}
                 onSplitHorizontal={handleSplitHorizontal}
                 onSplitVertical={handleSplitVertical}
+                onSplitBrowser={handleSplitBrowser}
                 onCloseSplit={handleCloseSplit}
                 isSplit={true}
                 isMaximized={maximizedPane === 'secondary'}

@@ -50,20 +50,30 @@ export const SettingsModal: React.FC = () => {
   if (!isSettingsOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground select-none font-sans overflow-hidden animate-in fade-in duration-150">
-      <SettingsHeader
-        onClose={() => toggleSettings(false)}
-        onSelectSection={handleSelectSection}
+    <div className="fixed inset-0 z-50 flex flex-col settings-modal-root text-foreground select-none font-sans overflow-hidden animate-in fade-in duration-150">
+      {/* Settings ambient mesh */}
+      <div
+        className="absolute inset-0 pointer-events-none z-0 opacity-75"
+        style={{
+          background:
+            'radial-gradient(36rem 28rem at 25% 25%, rgba(99, 102, 241, 0.12), transparent 60%), radial-gradient(32rem 26rem at 75% 65%, rgba(56, 189, 248, 0.08), transparent 60%)'
+        }}
       />
-      <div className="flex-1 flex overflow-hidden">
-        <SettingsSidebar
-          activeSection={activeSection}
+      <div className="relative z-10 flex flex-col h-full w-full">
+        <SettingsHeader
+          onClose={() => toggleSettings(false)}
           onSelectSection={handleSelectSection}
         />
-        <SettingsContent
-          activeSection={activeSection}
-          onCloseSettings={() => toggleSettings(false)}
-        />
+        <div className="flex-1 flex overflow-hidden">
+          <SettingsSidebar
+            activeSection={activeSection}
+            onSelectSection={handleSelectSection}
+          />
+          <SettingsContent
+            activeSection={activeSection}
+            onCloseSettings={() => toggleSettings(false)}
+          />
+        </div>
       </div>
     </div>
   );

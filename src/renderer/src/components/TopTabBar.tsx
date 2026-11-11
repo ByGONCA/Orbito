@@ -20,9 +20,11 @@ import {
   Settings,
   HelpCircle,
   Search,
-  Globe
+  Globe,
+  Mic
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
+import { useVoiceStore } from '../stores/voice.store';
 import { FileIcon } from '../utils/file-icons';
 import { OfficialLogoRenderer } from './OfficialLogos';
 import orbitLogo from '../assets/Orbit.png';
@@ -51,6 +53,8 @@ export const TopTabBar: React.FC = () => {
     terminalSessions,
     addLog
   } = useWorkspaceStore();
+
+  const { isListening, startListening, stopListening } = useVoiceStore();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeMenuSub, setActiveMenuSub] = useState<string | null>(null);
@@ -307,6 +311,25 @@ export const TopTabBar: React.FC = () => {
             width: isRightPanelOpen ? `${rightPanelWidth}px` : 'auto'
           } as React.CSSProperties}
         >
+          {/* Voice Dictation (Speech-to-Text) Button */}
+          <button
+            onClick={() => {
+              if (isListening) {
+                stopListening();
+              } else {
+                startListening();
+              }
+            }}
+            className={`p-1 rounded-md transition-colors cursor-pointer ${
+              isListening
+                ? 'bg-rose-500/20 text-rose-400 animate-pulse'
+                : 'text-[#A4A8AF] hover:text-white hover:bg-white/[0.08]'
+            }`}
+            title={isListening ? 'Stop Speech Dictation' : 'Start Speech Dictation (Speech-to-Text)'}
+          >
+            <Mic className="w-3.5 h-3.5" />
+          </button>
+
           {/* Right Sidebar Toggle [|] */}
           <button
             onClick={toggleRightPanel}

@@ -1,13 +1,17 @@
 import React from 'react';
 import {
+  Sliders,
+  Palette,
+  Keyboard,
+  Mic,
+  Crop,
+  Globe,
+  Smartphone,
   Bot,
   Layers,
   Database,
   Blocks,
   Radio,
-  Palette,
-  Keyboard,
-  Sliders,
   Info
 } from 'lucide-react';
 import type { SettingsSectionId } from '../../../../../shared/types';
@@ -23,158 +27,60 @@ export interface SettingItemMetadata {
 export interface SettingsSectionMetadata {
   id: SettingsSectionId;
   label: string;
-  category: 'AI & Intelligence' | 'Workspace' | 'Interface' | 'System';
+  category: 'Interface' | 'Tools & AI' | 'Agents & Engine' | 'System';
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   keywords: string[];
+  badge?: string;
+  disabled?: boolean;
   settings: SettingItemMetadata[];
 }
 
 export interface SettingsCategoryGroup {
-  category: 'AI & Intelligence' | 'Workspace' | 'Interface' | 'System';
+  category: 'Interface' | 'Tools & AI' | 'Agents & Engine' | 'System';
   sections: SettingsSectionMetadata[];
 }
 
 export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
-  // Category: AI & Intelligence
+  // Category 1: Interface
   {
-    id: 'agents',
-    label: 'Agents',
-    category: 'AI & Intelligence',
-    description: 'Execution runtimes, CLI detection, custom executable paths, and per-agent permissions.',
-    icon: Bot,
-    keywords: ['agent', 'cli', 'codex', 'copilot', 'gemini', 'opencode', 'antigravity', 'claude', 'aider', 'qwen', 'kimi', 'terminal', 'permissions'],
+    id: 'general',
+    label: 'General',
+    category: 'Interface',
+    description: 'Application background preferences, system keep-awake power blocker, and workspace defaults.',
+    icon: Sliders,
+    keywords: ['general', 'power', 'keep awake', 'auto index', 'system', 'startup'],
     settings: [
       {
-        id: 'agents-default-host',
-        sectionId: 'agents',
-        label: 'Default Host Agent',
-        description: 'Choose the primary execution engine used when launching new terminal sessions.',
-        keywords: ['default agent', 'host agent', 'active provider', 'primary agent']
+        id: 'general-keep-awake',
+        sectionId: 'general',
+        label: 'System Keep-Awake Daemon',
+        description: 'Prevent OS sleep or suspension while long-running autonomous tasks are active.',
+        keywords: ['keep awake', 'power save blocker', 'sleep']
       },
       {
-        id: 'agents-discovery-scan',
-        sectionId: 'agents',
-        label: 'CLI Binary Discovery',
-        description: 'Scan system PATH and custom directories to detect installed coding agent binaries.',
-        keywords: ['detect', 'scan', 'cli path', 'installed agents', 'find binaries']
-      },
-      {
-        id: 'agents-permissions',
-        sectionId: 'agents',
-        label: 'Agent Permission Boundaries',
-        description: 'Configure approval requirements (Full Access, Supervised, or Read-Only) per agent runtime.',
-        keywords: ['permissions', 'sandbox', 'supervised', 'approval', 'full access', 'read only']
+        id: 'general-auto-indexing',
+        sectionId: 'general',
+        label: 'Workspace Auto-Indexing',
+        description: 'Automatically analyze repository AST and symbol graphs upon opening a project.',
+        keywords: ['auto index', 'indexing', 'ast', 'graphify']
       }
     ]
   },
-  {
-    id: 'orchestration',
-    label: 'Orchestration',
-    category: 'AI & Intelligence',
-    description: 'Multi-agent coordination DAG architecture and pending approval resolution queue.',
-    icon: Layers,
-    keywords: ['orchestration', 'coordinator', 'multi-agent', 'dag', 'tasks', 'scheduler', 'approvals'],
-    settings: [
-      {
-        id: 'orchestration-architecture',
-        sectionId: 'orchestration',
-        label: 'Multi-Agent Execution Pipeline',
-        description: 'Inspect Coordinator Agent DAG planning and parallel task scheduler architecture.',
-        keywords: ['dag', 'coordinator', 'scheduler', 'worktree execution']
-      },
-      {
-        id: 'orchestration-pending-approvals',
-        sectionId: 'orchestration',
-        label: 'Pending Task Approvals',
-        description: 'Review and approve or reject tasks waiting for human confirmation.',
-        keywords: ['approvals', 'confirm', 'pending tasks', 'decision']
-      }
-    ]
-  },
-  {
-    id: 'memory',
-    label: 'Memory',
-    category: 'AI & Intelligence',
-    description: 'Persistent agent memory records across global, workspace, project, task, and session tiers.',
-    icon: Database,
-    keywords: ['memory', 'context', 'tier', 'global', 'workspace', 'project', 'task', 'session', 'cache', 'sqlite'],
-    settings: [
-      {
-        id: 'memory-records',
-        sectionId: 'memory',
-        label: 'Cross-Session Memory Records',
-        description: 'Inspect, search, and delete persistent memory entries stored in local SQLite.',
-        keywords: ['memories', 'search memory', 'delete memory', 'entity key']
-      },
-      {
-        id: 'memory-tiers',
-        sectionId: 'memory',
-        label: 'Tier Filtering',
-        description: 'Filter memories by scope: Global, Workspace, Project, Task, or Session.',
-        keywords: ['tier filter', 'scope', 'session memory', 'project memory']
-      }
-    ]
-  },
-
-  // Category: Workspace
-  {
-    id: 'plugins',
-    label: 'Plugins',
-    category: 'Workspace',
-    description: 'Extension Host architecture, process limits, local plugin directory, and marketplace hub.',
-    icon: Blocks,
-    keywords: ['plugins', 'extensions', 'host', 'ecosystem', 'marketplace', 'concurrency'],
-    settings: [
-      {
-        id: 'plugins-host-architecture',
-        sectionId: 'plugins',
-        label: 'Extension Host Architecture',
-        description: 'Sandboxed Node.js child processes with 128 MB memory limits and 5-host concurrency cap.',
-        keywords: ['extension host', 'memory limit', 'concurrency limit', 'child process']
-      },
-      {
-        id: 'plugins-local-storage',
-        sectionId: 'plugins',
-        label: 'Local Extensions Directory',
-        description: 'Location where installed plugins and manifests are stored in local workspace data.',
-        keywords: ['plugin path', 'extension directory', 'ai-workspace-data']
-      }
-    ]
-  },
-  {
-    id: 'integrations',
-    label: 'Integrations',
-    category: 'Workspace',
-    description: 'External service connections and Discord Rich Presence live desktop status daemon.',
-    icon: Radio,
-    keywords: ['integrations', 'discord', 'rich presence', 'rpc', 'status', 'client id'],
-    settings: [
-      {
-        id: 'integrations-discord-rpc',
-        sectionId: 'integrations',
-        label: 'Discord Rich Presence',
-        description: 'Broadcast active project name, workspace status, and elapsed time to local Discord.',
-        keywords: ['discord', 'rich presence', 'rpc', 'presence', 'client id']
-      }
-    ]
-  },
-
-  // Category: Interface
   {
     id: 'appearance',
     label: 'Appearance',
     category: 'Interface',
     description: 'Window material styling, file explorer iconography, and Git status indicators.',
     icon: Palette,
-    keywords: ['appearance', 'theme', 'glassmorphism', 'solid', 'icons', 'vscode icons', 'git colors', 'ui'],
+    keywords: ['appearance', 'theme', 'glassmorphism', 'solid', 'icons', 'git colors', 'ui'],
     settings: [
       {
         id: 'appearance-theme-material',
         sectionId: 'appearance',
         label: 'Theme Material Architecture',
         description: 'Switch between dark Glassmorphism translucent surfaces and Solid Dark opaque panels.',
-        keywords: ['theme', 'glass', 'solid', 'dark mode', 'glassmorphism']
+        keywords: ['theme', 'glass', 'solid', 'dark mode']
       },
       {
         id: 'appearance-file-icons',
@@ -193,8 +99,8 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
     ]
   },
   {
-    id: 'shortcuts',
-    label: 'Shortcuts',
+    id: 'keybindings',
+    label: 'Keybindings',
     category: 'Interface',
     description: 'Keyboard shortcuts customization with Discord-style key recording and conflict detection.',
     icon: Keyboard,
@@ -202,36 +108,184 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
     settings: [
       {
         id: 'shortcuts-recorder',
-        sectionId: 'shortcuts',
+        sectionId: 'keybindings',
         label: 'Custom Keybindings',
         description: 'Rebind any workspace action by clicking and pressing the desired key combination.',
-        keywords: ['record key', 'rebind', 'hotkey', 'reset shortcut']
+        keywords: ['record key', 'rebind', 'hotkey']
       }
     ]
   },
 
-  // Category: System
+  // Category 2: Tools & AI
   {
-    id: 'general',
-    label: 'General',
-    category: 'System',
-    description: 'Application background preferences, system keep-awake power blocker, and workspace defaults.',
-    icon: Sliders,
-    keywords: ['general', 'power', 'keep awake', 'auto index', 'system', 'startup'],
+    id: 'voice',
+    label: 'Voice',
+    category: 'Tools & AI',
+    description: 'Microphone input testing, dictation shortcuts, speech-to-text transcription, and project dictionaries.',
+    icon: Mic,
+    keywords: ['voice', 'speech to text', 'stt', 'dictation', 'microphone', 'whisper', 'audio'],
     settings: [
       {
-        id: 'general-keep-awake',
-        sectionId: 'general',
-        label: 'System Keep-Awake Daemon',
-        description: 'Prevent OS sleep or suspension while long-running autonomous tasks are active.',
-        keywords: ['keep awake', 'power save blocker', 'sleep', 'prevent suspension']
+        id: 'voice-microphone',
+        sectionId: 'voice',
+        label: 'Microphone & Input Audio',
+        description: 'Select system audio device, record 10-second test audio and monitor audio level.',
+        keywords: ['mic', 'microphone', 'test audio', 'input device']
       },
       {
-        id: 'general-auto-indexing',
-        sectionId: 'general',
-        label: 'Workspace Auto-Indexing',
-        description: 'Automatically analyze repository AST and symbol graphs upon opening a project.',
-        keywords: ['auto index', 'indexing', 'ast', 'graphify']
+        id: 'voice-transcription',
+        sectionId: 'voice',
+        label: 'Speech-to-Text Transcription',
+        description: 'Configure real-time voice transcription engine and silence filter.',
+        keywords: ['transcribe', 'stt', 'speech recognition', 'whisper']
+      }
+    ]
+  },
+  {
+    id: 'snapshots',
+    label: 'SnapShots',
+    category: 'Tools & AI',
+    description: 'Capture active window states, app text inclusion, capture shortcuts, and sound effects.',
+    icon: Crop,
+    keywords: ['snapshots', 'capture', 'window', 'screenshot', 'whoosh'],
+    settings: [
+      {
+        id: 'snapshots-capture',
+        sectionId: 'snapshots',
+        label: 'Window SnapShots',
+        description: 'Capture active workspace windows and attach them directly to current drafts.',
+        keywords: ['snapshot', 'window capture', 'shortcut']
+      }
+    ]
+  },
+  {
+    id: 'browser',
+    label: 'Browser',
+    category: 'Tools & AI',
+    description: 'Agent browser access, profile isolation, in-app split preview, search engines, and recording fps.',
+    icon: Globe,
+    keywords: ['browser', 'web', 'split terminal', 'profiles', 'duckduckgo', 'google', 'recordings'],
+    settings: [
+      {
+        id: 'browser-agent-access',
+        sectionId: 'browser',
+        label: 'Agent Browser Access',
+        description: 'Allow autonomous agents to interact with shared in-app browser sessions.',
+        keywords: ['agent browser', 'shared browser']
+      },
+      {
+        id: 'browser-profiles',
+        sectionId: 'browser',
+        label: 'Browser Profiles & Cookies',
+        description: 'Separate sessions, logins, and isolated cookies across projects.',
+        keywords: ['profiles', 'cookies', 'incognito']
+      }
+    ]
+  },
+  {
+    id: 'devices',
+    label: 'Devices',
+    category: 'Tools & AI',
+    description: 'Mobile companion pairing, iOS/Android screen mirroring, and hardware emulator tethering.',
+    icon: Smartphone,
+    badge: 'Soon',
+    disabled: true,
+    keywords: ['devices', 'phone', 'mobile', 'android', 'ios', 'emulator'],
+    settings: []
+  },
+
+  // Category 3: Agents & Engine
+  {
+    id: 'providers',
+    label: 'Providers',
+    category: 'Agents & Engine',
+    description: 'Execution runtimes, CLI detection, custom executable paths, and per-agent permissions.',
+    icon: Bot,
+    keywords: ['providers', 'agents', 'cli', 'codex', 'copilot', 'gemini', 'opencode', 'antigravity', 'claude'],
+    settings: [
+      {
+        id: 'agents-default-host',
+        sectionId: 'providers',
+        label: 'Default Host Agent',
+        description: 'Choose the primary execution engine used when launching new terminal sessions.',
+        keywords: ['default agent', 'host agent', 'provider']
+      },
+      {
+        id: 'agents-discovery-scan',
+        sectionId: 'providers',
+        label: 'CLI Binary Discovery',
+        description: 'Scan system PATH and custom directories to detect installed coding agent binaries.',
+        keywords: ['detect', 'scan', 'cli path', 'installed agents']
+      }
+    ]
+  },
+  {
+    id: 'orchestration',
+    label: 'Orchestration',
+    category: 'Agents & Engine',
+    description: 'Multi-agent coordination DAG architecture and pending approval resolution queue.',
+    icon: Layers,
+    keywords: ['orchestration', 'coordinator', 'multi-agent', 'dag', 'tasks', 'scheduler', 'approvals'],
+    settings: [
+      {
+        id: 'orchestration-architecture',
+        sectionId: 'orchestration',
+        label: 'Multi-Agent Execution Pipeline',
+        description: 'Inspect Coordinator Agent DAG planning and parallel task scheduler architecture.',
+        keywords: ['dag', 'coordinator', 'scheduler']
+      }
+    ]
+  },
+  {
+    id: 'memory',
+    label: 'Memory',
+    category: 'Agents & Engine',
+    description: 'Persistent agent memory records across global, workspace, project, task, and session tiers.',
+    icon: Database,
+    keywords: ['memory', 'context', 'tier', 'global', 'workspace', 'project', 'sqlite'],
+    settings: [
+      {
+        id: 'memory-records',
+        sectionId: 'memory',
+        label: 'Cross-Session Memory Records',
+        description: 'Inspect, search, and delete persistent memory entries stored in local SQLite.',
+        keywords: ['memories', 'search memory', 'delete memory']
+      }
+    ]
+  },
+
+  // Category 4: System
+  {
+    id: 'plugins',
+    label: 'Plugins',
+    category: 'System',
+    description: 'Extension host architecture, sandbox memory limits, local plugin directory, and marketplace hub.',
+    icon: Blocks,
+    keywords: ['plugins', 'extensions', 'marketplace', 'concurrency'],
+    settings: [
+      {
+        id: 'plugins-host-architecture',
+        sectionId: 'plugins',
+        label: 'Extension Host Architecture',
+        description: 'Sandboxed Node.js child processes with 128 MB memory limits and 5-host concurrency cap.',
+        keywords: ['extension host', 'memory limit']
+      }
+    ]
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    category: 'System',
+    description: 'External service connections and Discord Rich Presence live desktop status daemon.',
+    icon: Radio,
+    keywords: ['integrations', 'discord', 'rpc', 'status'],
+    settings: [
+      {
+        id: 'integrations-discord-rpc',
+        sectionId: 'integrations',
+        label: 'Discord Rich Presence',
+        description: 'Broadcast active project name, workspace status, and elapsed time to local Discord.',
+        keywords: ['discord', 'rich presence', 'rpc']
       }
     ]
   },
@@ -241,31 +295,31 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
     category: 'System',
     description: 'Orbito desktop version, platform runtime specifications, and dual SQLite WAL persistence status.',
     icon: Info,
-    keywords: ['about', 'version', 'electron', 'node', 'sqlite', 'wal', 'diagnostics', 'license'],
+    keywords: ['about', 'version', 'electron', 'node', 'sqlite', 'specs'],
     settings: [
       {
         id: 'about-version-info',
         sectionId: 'about',
         label: 'System & Runtime Specifications',
         description: 'Orbito 0.1.0 Desktop build, Electron 34, Node 20 runtime, and SQLite WAL diagnostics.',
-        keywords: ['version', 'build', 'electron', 'node', 'sqlite', 'specs']
+        keywords: ['version', 'build', 'electron', 'node', 'sqlite']
       }
     ]
   }
 ];
 
-export const SETTINGS_CATEGORIES: SettingsCategoryGroup[] = [
-  {
-    category: 'AI & Intelligence',
-    sections: SETTINGS_SECTIONS.filter((s) => s.category === 'AI & Intelligence')
-  },
-  {
-    category: 'Workspace',
-    sections: SETTINGS_SECTIONS.filter((s) => s.category === 'Workspace')
-  },
+export const SETTINGS_CATEGORIES_GROUPED: SettingsCategoryGroup[] = [
   {
     category: 'Interface',
     sections: SETTINGS_SECTIONS.filter((s) => s.category === 'Interface')
+  },
+  {
+    category: 'Tools & AI',
+    sections: SETTINGS_SECTIONS.filter((s) => s.category === 'Tools & AI')
+  },
+  {
+    category: 'Agents & Engine',
+    sections: SETTINGS_SECTIONS.filter((s) => s.category === 'Agents & Engine')
   },
   {
     category: 'System',
@@ -273,7 +327,19 @@ export const SETTINGS_CATEGORIES: SettingsCategoryGroup[] = [
   }
 ];
 
-export const SETTINGS_CATEGORIES_GROUPED = SETTINGS_CATEGORIES;
+export function normalizeSettingsSection(rawId?: string | null): SettingsSectionId {
+  if (!rawId) return 'general';
+
+  // Normalize aliases
+  if (rawId === 'shortcuts') return 'keybindings';
+  if (rawId === 'agents') return 'providers';
+  if (rawId === 'ai-providers') return 'providers';
+
+  const valid = SETTINGS_SECTIONS.find((s) => s.id === rawId);
+  if (valid) return valid.id;
+
+  return 'general';
+}
 
 export interface SearchResult {
   sectionId: SettingsSectionId;
@@ -281,113 +347,50 @@ export interface SearchResult {
   settingId?: string;
   settingLabel?: string;
   description: string;
-  category: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
-/**
- * Searches the entire settings manifest and returns matching sections and specific settings.
- */
 export function searchSettingsRegistry(query: string): SearchResult[] {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return [];
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
 
   const results: SearchResult[] = [];
 
   for (const section of SETTINGS_SECTIONS) {
-    const sectionMatch =
-      section.label.toLowerCase().includes(normalized) ||
-      section.id.toLowerCase().includes(normalized) ||
-      section.description.toLowerCase().includes(normalized) ||
-      section.keywords.some((kw) => kw.toLowerCase().includes(normalized));
+    if (section.disabled) continue;
 
-    if (sectionMatch) {
+    const sectionMatched =
+      section.label.toLowerCase().includes(q) ||
+      section.description.toLowerCase().includes(q) ||
+      section.keywords.some((kw) => kw.toLowerCase().includes(q));
+
+    if (sectionMatched) {
       results.push({
         sectionId: section.id,
         sectionLabel: section.label,
         description: section.description,
-        category: section.category,
         icon: section.icon
       });
     }
 
     for (const setting of section.settings) {
-      const settingMatch =
-        setting.label.toLowerCase().includes(normalized) ||
-        setting.description.toLowerCase().includes(normalized) ||
-        setting.keywords.some((kw) => kw.toLowerCase().includes(normalized));
+      const settingMatched =
+        setting.label.toLowerCase().includes(q) ||
+        setting.description.toLowerCase().includes(q) ||
+        setting.keywords.some((kw) => kw.toLowerCase().includes(q));
 
-      if (settingMatch) {
+      if (settingMatched) {
         results.push({
           sectionId: section.id,
           sectionLabel: section.label,
           settingId: setting.id,
           settingLabel: setting.label,
           description: setting.description,
-          category: section.category,
           icon: section.icon
         });
       }
     }
   }
 
-  // De-duplicate results matching both section and setting
-  const seen = new Set<string>();
-  return results.filter((r) => {
-    const key = `${r.sectionId}-${r.settingId || 'root'}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-/**
- * Normalizes legacy tab strings to one of the verified active section IDs.
- */
-export function normalizeSettingsSection(rawId?: string | null): SettingsSectionId {
-  if (!rawId) return 'agents';
-  switch (rawId) {
-    case 'agents':
-    case 'computer-use':
-    case 'automations':
-    case 'providers':
-    case 'ai-providers':
-    case 'security':
-    case 'keyring':
-    case 'git':
-    case 'workspace':
-    case 'general-git':
-    case 'task-sources':
-    case 'session-search':
-    case 'browser':
-    case 'artifacts':
-    case 'share-skills':
-    case 'mobile':
-      return 'agents';
-    case 'orchestration':
-      return 'orchestration';
-    case 'memory':
-      return 'memory';
-    case 'plugins':
-      return 'plugins';
-    case 'integrations':
-    case 'linear':
-    case 'voice':
-    case 'discord':
-      return 'integrations';
-    case 'appearance':
-    case 'chat-ui':
-      return 'appearance';
-    case 'shortcuts':
-    case 'quick-commands':
-      return 'shortcuts';
-    case 'general':
-      return 'general';
-    case 'about':
-    case 'orca-account':
-    case 'stats-usage':
-      return 'about';
-    default:
-      return 'agents';
-  }
+  return results.slice(0, 8);
 }

@@ -15,45 +15,67 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onSelectSection
 }) => {
   return (
-    <aside className="w-56 flex-shrink-0 bg-surface-elevated/40 backdrop-blur-sm p-3 flex flex-col justify-between overflow-y-auto border-0">
-      <div className="space-y-6">
-        {SETTINGS_CATEGORIES_GROUPED.map((group) => (
-          <div key={group.category} className="space-y-1">
-            <h4 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground-muted font-mono">
-              {group.category}
-            </h4>
+    <aside className="w-56 flex-shrink-0 bg-[#08090c] p-3 flex flex-col justify-between overflow-y-auto select-none font-sans text-xs border-r border-white/[0.05]">
+      <div className="space-y-5">
+        {SETTINGS_CATEGORIES_GROUPED.map((group) => {
+          if (group.sections.length === 0) return null;
 
-            <div className="space-y-0.5 pt-1">
-              {group.sections.map((section: SettingsSectionMetadata) => {
-                const Icon = section.icon;
-                const isSelected = activeSection === section.id;
+          return (
+            <div key={group.category} className="space-y-1">
+              <h4 className="px-2.5 text-[11px] font-semibold text-[#717784] tracking-wide uppercase font-mono">
+                {group.category}
+              </h4>
 
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => onSelectSection(section.id)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors text-left cursor-pointer ${
-                      isSelected
-                        ? 'bg-surface-active text-foreground font-semibold'
-                        : 'text-foreground-secondary hover:text-foreground hover:bg-surface-hover'
-                    }`}
-                  >
-                    <Icon
-                      className={`w-4 h-4 transition-colors ${
-                        isSelected ? 'text-foreground' : 'text-foreground-muted'
+              <div className="space-y-0.5 pt-1">
+                {group.sections.map((section: SettingsSectionMetadata) => {
+                  const Icon = section.icon;
+                  const isSelected =
+                    activeSection === section.id ||
+                    (activeSection === 'shortcuts' && section.id === 'keybindings') ||
+                    (activeSection === 'agents' && section.id === 'providers');
+
+                  const isDisabled = Boolean(section.disabled);
+
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => {
+                        if (!isDisabled) {
+                          onSelectSection(section.id);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left border-0 ${
+                        isDisabled
+                          ? 'opacity-50 cursor-not-allowed text-[#717784]'
+                          : isSelected
+                            ? 'bg-white/[0.09] text-white font-medium cursor-default'
+                            : 'text-[#8A8F98] hover:text-[#ECEDEF] hover:bg-white/[0.04] cursor-pointer'
                       }`}
-                    />
-                    <span className="truncate">{section.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+                      title={isDisabled ? `${section.label} (Coming Soon)` : section.label}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`w-4 h-4 flex-shrink-0 transition-colors ${
+                            isSelected ? 'text-white' : 'text-[#717784]'
+                          }`}
+                        />
+                        <span className="truncate">{section.label}</span>
+                      </div>
 
-      <div className="pt-4 px-2 text-[11px] font-mono text-foreground-muted">
-        Orbito Desktop v0.1.0
+                      {section.badge && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-[#A4A8AF] border border-white/[0.06]">
+                          {section.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </aside>
   );

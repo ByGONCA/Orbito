@@ -57,43 +57,48 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
     setIsDropdownOpen(false);
   };
 
+  const handleMaximize = async () => {
+    const max = await window.api?.maximizeWindow?.();
+    setIsMaximized(Boolean(max));
+  };
+
   return (
     <div
-      className="h-11 w-full flex items-center justify-between px-3 bg-surface/90 backdrop-blur-md flex-shrink-0 relative z-30 border-0"
+      onDoubleClick={handleMaximize}
+      className="h-11 w-full flex items-center justify-between px-3 bg-[#0a0b0e] border-b border-white/[0.06] flex-shrink-0 relative z-30 select-none font-sans"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left: Back Button & Title */}
       <div
-        className="flex items-center gap-2.5"
+        className="flex items-center gap-2.5 flex-1 max-w-[240px]"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <button
+          type="button"
           onClick={onClose}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.08] text-xs text-foreground transition-colors cursor-pointer border-0"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.09] text-xs text-[#ECEDEF] hover:text-white transition-colors cursor-pointer border-0"
           title="Back to Workspace (Esc)"
           aria-label="Back to Workspace"
         >
-          <ArrowLeft className="w-3.5 h-3.5 text-foreground-secondary" />
+          <ArrowLeft className="w-3.5 h-3.5 text-[#A4A8AF]" />
           <span className="font-medium text-[12px]">Back</span>
         </button>
 
         <div className="w-[1px] h-3.5 bg-white/10 mx-1" />
 
-        <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+        <div className="flex items-center gap-2 text-xs font-medium text-white">
           <span>Settings</span>
-          <span className="text-[11px] font-mono text-foreground-muted">
-            Esc to exit
-          </span>
+          <span className="text-[11px] font-mono text-[#717784]">Esc</span>
         </div>
       </div>
 
-      {/* Center: Search Registry */}
+      {/* Center: Search Registry (VS Code style centered bar) */}
       <div
         ref={searchContainerRef}
-        className="relative w-80 max-w-sm hidden sm:block"
+        className="relative w-full max-w-md mx-auto hidden sm:block"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
-        <Search className="w-3.5 h-3.5 text-foreground-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-3.5 h-3.5 text-[#717784] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
@@ -103,17 +108,17 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
           }}
           onFocus={() => setIsDropdownOpen(true)}
           placeholder="Search all settings..."
-          className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-white/[0.08] text-xs text-foreground rounded-md pl-8 pr-7 py-1 placeholder:text-foreground-muted focus:outline-none transition-colors border-0"
+          className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-white/[0.08] text-xs text-[#ECEDEF] rounded-lg pl-8 pr-7 py-1.5 placeholder:text-[#555A64] focus:outline-none transition-colors border border-white/[0.06]"
         />
         {searchQuery && (
           <button
+            type="button"
             onClick={() => {
               setSearchQuery('');
               setIsDropdownOpen(false);
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground p-0.5 rounded transition-colors cursor-pointer"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#717784] hover:text-white p-0.5 rounded transition-colors cursor-pointer"
             title="Clear search"
-            aria-label="Clear search"
           >
             <X className="w-3 h-3" />
           </button>
@@ -121,9 +126,9 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
 
         {/* Instant Search Results Dropdown */}
         {isDropdownOpen && searchQuery.trim() && (
-          <div className="absolute top-full left-0 right-0 mt-1 max-h-80 overflow-y-auto bg-surface rounded-lg shadow-2xl py-1 space-y-0.5 z-50 border-0">
+          <div className="absolute top-full left-0 right-0 mt-1 max-h-80 overflow-y-auto bg-[#14161b] rounded-lg shadow-2xl py-1 space-y-0.5 z-50 border border-white/[0.08]">
             {searchResults.length === 0 ? (
-              <div className="px-3 py-3 text-xs text-foreground-muted text-center font-mono">
+              <div className="px-3 py-3 text-xs text-[#717784] text-center font-mono">
                 No matching settings found
               </div>
             ) : (
@@ -132,20 +137,21 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
                 return (
                   <button
                     key={`${result.sectionId}-${result.settingId || idx}`}
+                    type="button"
                     onClick={() => handleResultClick(result)}
-                    className="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors flex items-start gap-2.5 cursor-pointer"
+                    className="w-full text-left px-3 py-2 hover:bg-white/[0.06] transition-colors flex items-start gap-2.5 cursor-pointer border-0"
                   >
-                    <Icon className="w-3.5 h-3.5 text-foreground-secondary mt-0.5 flex-shrink-0" />
+                    <Icon className="w-3.5 h-3.5 text-[#A4A8AF] mt-0.5 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-foreground">
+                        <span className="text-xs font-medium text-white">
                           {result.settingLabel || result.sectionLabel}
                         </span>
-                        <span className="text-[10px] font-mono text-foreground-muted uppercase">
+                        <span className="text-[10px] font-mono text-[#717784] uppercase">
                           {result.sectionLabel}
                         </span>
                       </div>
-                      <p className="text-[11px] text-foreground-muted truncate mt-0.5">
+                      <p className="text-[11px] text-[#717784] truncate mt-0.5">
                         {result.description}
                       </p>
                     </div>
@@ -159,12 +165,13 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
 
       {/* Right: Window Controls */}
       <div
-        className="flex items-center gap-1"
+        className="flex items-center justify-end gap-1 flex-1 max-w-[240px]"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <button
+          type="button"
           onClick={() => window.api?.minimizeWindow?.()}
-          className="p-1.5 hover:bg-surface-hover text-foreground-secondary hover:text-foreground rounded transition-colors cursor-pointer"
+          className="p-1.5 hover:bg-white/[0.08] text-[#8A8F98] hover:text-white rounded transition-colors cursor-pointer border-0"
           title="Minimize"
           aria-label="Minimize Window"
         >
@@ -172,8 +179,9 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
         </button>
 
         <button
-          onClick={() => window.api?.maximizeWindow?.()}
-          className="p-1.5 hover:bg-surface-hover text-foreground-secondary hover:text-foreground rounded transition-colors cursor-pointer"
+          type="button"
+          onClick={handleMaximize}
+          className="p-1.5 hover:bg-white/[0.08] text-[#8A8F98] hover:text-white rounded transition-colors cursor-pointer border-0"
           title={isMaximized ? 'Restore' : 'Maximize'}
           aria-label={isMaximized ? 'Restore Window' : 'Maximize Window'}
         >
@@ -185,8 +193,9 @@ export const SettingsHeader: React.FC<SettingsHeaderProps> = ({
         </button>
 
         <button
+          type="button"
           onClick={onClose}
-          className="p-1.5 hover:bg-rose-500/20 hover:text-rose-400 text-foreground-secondary rounded transition-colors cursor-pointer"
+          className="p-1.5 hover:bg-rose-500/20 hover:text-rose-400 text-[#8A8F98] rounded transition-colors cursor-pointer border-0"
           title="Close Settings (Esc)"
           aria-label="Close Settings"
         >

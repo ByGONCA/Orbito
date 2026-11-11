@@ -18,21 +18,16 @@ export const IntegrationsPage: React.FC = () => {
   const addLog = useWorkspaceStore((state) => state.addLog);
   const [discordStatus, setDiscordStatus] = useState<DiscordStatusResponse | null>(null);
   const [isToggling, setIsToggling] = useState(false);
-  const [customClientId, setCustomClientId] = useState('');
-  const [isSavingClientId, setIsSavingClientId] = useState(false);
-  const [saveNotice, setSaveNotice] = useState(false);
 
   useEffect(() => {
     window.api?.getDiscordStatus?.()
       .then((status) => {
         setDiscordStatus(status);
-        if (status?.clientId) setCustomClientId(status.clientId);
       })
       .catch(() => {});
 
     const unsub = window.api?.onDiscordStatusChange?.((status) => {
       setDiscordStatus(status);
-      if (status?.clientId) setCustomClientId(status.clientId);
     });
     return () => unsub?.();
   }, []);
@@ -48,35 +43,6 @@ export const IntegrationsPage: React.FC = () => {
       addLog(`Failed to update Discord Rich Presence: ${err.message}`, 'error');
     } finally {
       setIsToggling(false);
-    }
-  };
-
-  const handleSaveClientId = async () => {
-    setIsSavingClientId(true);
-    try {
-      const res = await window.api.updateDiscordSettings({ clientId: customClientId.trim() });
-      setDiscordStatus(res);
-      setSaveNotice(true);
-      setTimeout(() => setSaveNotice(false), 2500);
-      addLog('Discord Client ID updated successfully.', 'info');
-    } catch (err: any) {
-      addLog(`Failed to update Discord Client ID: ${err.message}`, 'error');
-    } finally {
-      setIsSavingClientId(false);
-    }
-  };
-
-  const handleResetClientId = async () => {
-    setIsSavingClientId(true);
-    try {
-      const res = await window.api.updateDiscordSettings({ clientId: '' });
-      setDiscordStatus(res);
-      setCustomClientId(res.clientId || '');
-      addLog('Discord Client ID restored to default.', 'info');
-    } catch (err: any) {
-      addLog(`Failed to reset Discord Client ID: ${err.message}`, 'error');
-    } finally {
-      setIsSavingClientId(false);
     }
   };
 
@@ -197,43 +163,6 @@ export const IntegrationsPage: React.FC = () => {
             <p className="text-[11px] text-[#525866]">
               Orbito never shares file contents, code snippets, secrets, system usernames, or API tokens over Discord RPC.
             </p>
-          </div>
-
-          {/* Custom Client ID */}
-          <div className="pt-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[#ECEDEF]">
-                Custom Application Client ID (Optional)
-              </span>
-              {saveNotice && (
-                <span className="text-xs text-emerald-400 font-mono">Saved!</span>
-              )}
-            </div>
-            <div className="flex gap-2 max-w-lg">
-              <input
-                type="text"
-                value={customClientId}
-                onChange={(e) => setCustomClientId(e.target.value)}
-                placeholder="1568419446719127684"
-                className="flex-1 bg-white/[0.04] border-0 rounded-md px-2.5 py-1 text-xs text-[#ECEDEF] font-mono focus:outline-none"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={isSavingClientId}
-                onClick={handleSaveClientId}
-              >
-                Save
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isSavingClientId}
-                onClick={handleResetClientId}
-              >
-                Reset
-              </Button>
-            </div>
           </div>
         </div>
       </SettingSection>

@@ -98,15 +98,33 @@ export interface ProjectDescriptor {
 }
 
 export type SettingsSectionId =
-  | 'agents'
-  | 'orchestration'
-  | 'memory'
+  | 'general'
+  | 'appearance'
+  | 'chat'
+  | 'diffs'
+  | 'keybindings'
+  | 'shortcuts' // backwards compatibility alias
+  | 'voice'
+  | 'snapshots'
+  | 'providers'
+  | 'agents' // backwards compatibility alias
+  | 'threads'
+  | 'browser'
+  | 'devices'
+  | 'scheduled-tasks'
+  | 'projects'
+  | 'source-control'
+  | 'worktrees'
+  | 'environments'
+  | 'sharing'
+  | 'maintenance'
+  | 'labs'
+  | 'about'
+  | 'archive'
   | 'plugins'
   | 'integrations'
-  | 'appearance'
-  | 'shortcuts'
-  | 'general'
-  | 'about';
+  | 'memory'
+  | 'orchestration';
 
 export type WorkspaceTheme = 'glass' | 'solid' | 'light' | 'dark' | 'system';
 

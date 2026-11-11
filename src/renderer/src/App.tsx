@@ -9,6 +9,7 @@ import { BottomPanel } from './components/BottomPanel';
 import { CommandPalette } from './components/CommandPalette';
 import { SettingsModal } from './components/SettingsModal';
 import { ArcLauncherModal } from './components/ArcLauncherModal';
+import { VoiceDictationPill } from './components/voice/VoiceDictationPill';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppLoadingScreen } from './components/AppLoadingScreen';
 import { DetachedTabWindow } from './components/DetachedTabWindow';
@@ -320,13 +321,8 @@ export const App: React.FC = () => {
           !isAppReady ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'
         }`}
       >
-        {/* Subtle, soft neutral ambient gradient (no bright/blue saturation) */}
-        <div
-          className="absolute inset-0 pointer-events-none z-0 app-canvas-ambient"
-          style={{
-            background: 'radial-gradient(1200px 700px at 50% 0%, rgba(255, 255, 255, 0.012) 0%, transparent 70%)'
-          }}
-        />
+        {/* Ambient backdrop mesh layer for liquid glass depth and refraction */}
+        <div className="absolute inset-0 pointer-events-none z-0 app-canvas-ambient" />
 
         {/* 1. GLOBAL WINDOW TITLEBAR (100% Full Width, Frameless Top Chrome) */}
         <TopTabBar />
@@ -381,6 +377,7 @@ export const App: React.FC = () => {
         <CommandPalette />
         <SettingsModal />
         <ArcLauncherModal />
+        <VoiceDictationPill />
       </div>
     </ErrorBoundary>
   );
