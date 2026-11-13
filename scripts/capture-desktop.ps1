@@ -77,12 +77,24 @@ public class NativeDesktopCapture {
                     StringBuilder sb = new StringBuilder(256);
                     GetWindowText(hWnd, sb, 256);
                     string title = sb.ToString();
-                    if (!string.IsNullOrWhiteSpace(title) && !title.Contains("Program Manager") && !title.Contains("Windows Input Experience")) {
-                        if (title.StartsWith("Orbito", StringComparison.OrdinalIgnoreCase)) {
-                            orbitoHwnd = hWnd;
-                        } else {
-                            ShowWindow(hWnd, 6); // SW_MINIMIZE
+                    uint pid = 0;
+                    GetWindowThreadProcessId(hWnd, out pid);
+                    bool isOrbito = false;
+                    try {
+                        var proc = System.Diagnostics.Process.GetProcessById((int)pid);
+                        if (proc.ProcessName.IndexOf("electron", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            proc.ProcessName.IndexOf("orbito", StringComparison.OrdinalIgnoreCase) >= 0) {
+                            isOrbito = true;
                         }
+                    } catch {}
+                    if (!isOrbito && !string.IsNullOrWhiteSpace(title) && title.StartsWith("Orbito", StringComparison.OrdinalIgnoreCase)) {
+                        isOrbito = true;
+                    }
+
+                    if (isOrbito) {
+                        orbitoHwnd = hWnd;
+                    } else if (!string.IsNullOrWhiteSpace(title) && !title.Contains("Program Manager") && !title.Contains("Windows Input Experience")) {
+                        ShowWindow(hWnd, 6); // SW_MINIMIZE
                     }
                 }
                 return true;

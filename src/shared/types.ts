@@ -135,7 +135,7 @@ export interface WorkspaceConfig {
   uiMode: UIMode;
   theme: WorkspaceTheme;
   autoIndex: boolean;
-  fileIconTheme?: 'vscode' | 'material' | 'minimal';
+  fileIconTheme?: 'symbols' | 'material' | 'minimal' | 'vscode';
   showGitFileColors?: boolean;
   discordRpcEnabled?: boolean;
   discordClientId?: string;

@@ -2,34 +2,21 @@ import React from 'react';
 import {
   Folder,
   FolderOpen,
-  FolderGit2,
-  FolderCode,
-  FolderArchive,
-  FolderCog,
   FileCode,
   FileText,
-  FileJson,
   FileImage,
   FileAudio,
   FileVideo,
   FileKey,
   FileArchive,
   File,
-  Terminal,
-  Database,
-  Layers,
-  Palette,
-  Wrench,
-  Globe,
-  Component,
-  FlaskConical,
-  BookOpen,
   Package
 } from 'lucide-react';
 import { Devicon } from './devicon-svgs';
 import { useWorkspaceStore } from '../stores/workspace.store';
+import { SymbolsFolderIcon } from './symbols-folder-icons';
 
-export type FileIconTheme = 'vscode' | 'material' | 'minimal';
+export type FileIconTheme = 'symbols' | 'material' | 'minimal' | 'vscode';
 
 interface FileIconProps {
   name: string;
@@ -93,93 +80,14 @@ export const FileIcon: React.FC<FileIconProps> = ({
     return <File className={`${className} text-[#747982]`} />;
   }
 
-  // 2. MATERIAL VS CODE ICON THEME (Rich semantic colors & shapes)
+  // 2. SYMBOLS / MATERIAL / VSCODE FOLDER ICON SYSTEM (Miguel Solorio Style)
   if (isDirectory) {
-    if (['src', 'source', 'sources'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#38BDF8]`} />
-      ) : (
-        <FolderCode className={`${className} text-[#38BDF8]`} />
-      );
-    }
-    if (['components', 'component', 'widgets', 'views'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#06B6D4]`} />
-      ) : (
-        <Folder className={`${className} text-[#06B6D4]`} />
-      );
-    }
-    if (['pages', 'screens', 'layouts', 'routes'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#A855F7]`} />
-      ) : (
-        <Folder className={`${className} text-[#A855F7]`} />
-      );
-    }
-    if (['assets', 'images', 'img', 'static', 'public', 'icons'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#10B981]`} />
-      ) : (
-        <Folder className={`${className} text-[#10B981]`} />
-      );
-    }
-    if (['test', 'tests', '__tests__', 'spec', 'specs', 'e2e'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#F43F5E]`} />
-      ) : (
-        <Folder className={`${className} text-[#F43F5E]`} />
-      );
-    }
-    if (['docs', 'doc', 'documentation'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#F59E0B]`} />
-      ) : (
-        <Folder className={`${className} text-[#F59E0B]`} />
-      );
-    }
-    if (['styles', 'style', 'css', 'scss'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#EC4899]`} />
-      ) : (
-        <Folder className={`${className} text-[#EC4899]`} />
-      );
-    }
-    if (['utils', 'util', 'lib', 'helpers', 'tools'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#EAB308]`} />
-      ) : (
-        <Folder className={`${className} text-[#EAB308]`} />
-      );
-    }
-    if (['api', 'services', 'service', 'network'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#14B8A6]`} />
-      ) : (
-        <Folder className={`${className} text-[#14B8A6]`} />
-      );
-    }
-    if (['store', 'stores', 'state', 'redux', 'context'].includes(lowerName)) {
-      return isExpanded ? (
-        <FolderOpen className={`${className} text-[#8B5CF6]`} />
-      ) : (
-        <Folder className={`${className} text-[#8B5CF6]`} />
-      );
-    }
-    if (['node_modules'].includes(lowerName)) {
-      return <Folder className={`${className} text-[#64748B]`} />;
-    }
-    if (['.git', '.github'].includes(lowerName)) {
-      return <FolderGit2 className={`${className} text-[#F97316]`} />;
-    }
-    if (['.vscode', '.idea', 'config', 'configs'].includes(lowerName)) {
-      return <FolderCog className={`${className} text-[#3B82F6]`} />;
-    }
-
-    // Default warm folder
-    return isExpanded ? (
-      <FolderOpen className={`${className} text-[#FBBF24]`} />
-    ) : (
-      <Folder className={`${className} text-[#E5A93C]`} />
+    return (
+      <SymbolsFolderIcon
+        name={name}
+        isExpanded={isExpanded}
+        className={className}
+      />
     );
   }
 

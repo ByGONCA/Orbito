@@ -254,12 +254,12 @@ const ThemeMiniPreview: React.FC<{ variant: 'glass' | 'solid' | 'light' }> = ({ 
   // Glassmorphism (variant === 'glass')
   return (
     <div className="w-full h-28 rounded-xl bg-[#0c0d12]/80 backdrop-blur-md overflow-hidden flex flex-col select-none text-[8px] font-sans shadow-md relative mt-3 border-0">
-      {/* Ambient glowing gradient mesh for glass depth */}
+      {/* Subtle neutral charcoal glass depth */}
       <div
         className="absolute inset-0 pointer-events-none z-0"
         style={{
           background:
-            'radial-gradient(120px 80px at 20% 20%, rgba(99, 102, 241, 0.25), transparent 70%), radial-gradient(140px 90px at 80% 70%, rgba(6, 182, 212, 0.20), transparent 70%), radial-gradient(100px 60px at 50% 90%, rgba(139, 92, 246, 0.18), transparent 70%)'
+            'radial-gradient(120px 80px at 50% 30%, rgba(255, 255, 255, 0.04), transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%)'
         }}
       />
       {/* Specular top highlight */}
@@ -487,7 +487,7 @@ export const AppearancePage: React.FC = () => {
   } = useWorkspaceStore();
 
   const activeTheme = (['glass', 'solid', 'light'].includes(theme) ? theme : 'glass') as 'glass' | 'solid' | 'light';
-  const activeIconTheme: FileIconTheme = fileIconTheme === 'minimal' ? 'minimal' : 'material';
+  const activeIconTheme: FileIconTheme = fileIconTheme === 'minimal' ? 'minimal' : fileIconTheme === 'material' ? 'material' : 'symbols';
 
   const handleThemeChange = async (newTheme: 'glass' | 'solid' | 'light') => {
     setTheme(newTheme);
@@ -513,9 +513,14 @@ export const AppearancePage: React.FC = () => {
     description: string;
   }> = [
     {
+      id: 'symbols',
+      title: 'Symbols Icon Theme (Miguel Solorio Style)',
+      description: 'Crisp minimal outline folders with contextual category badges and distinctive open states.'
+    },
+    {
       id: 'material',
       title: 'Material Icon Theme',
-      description: 'Material Design icon set with distinctive shapes and vivid tones.'
+      description: 'Material Design icon set with rich semantic developer colors and shapes.'
     },
     {
       id: 'minimal',

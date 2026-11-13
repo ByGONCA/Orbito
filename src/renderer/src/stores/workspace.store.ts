@@ -217,9 +217,9 @@ export interface WorkspaceState {
   expandedDirs: Set<string>;
   uiMode: UIMode;
   theme: 'glass' | 'solid' | 'dark' | 'light' | 'system';
-  fileIconTheme: 'vscode' | 'material' | 'minimal';
+  fileIconTheme: 'symbols' | 'material' | 'minimal' | 'vscode';
   showGitFileColors: boolean;
-  setFileIconTheme: (theme: 'vscode' | 'material' | 'minimal') => void;
+  setFileIconTheme: (theme: 'symbols' | 'material' | 'minimal' | 'vscode') => void;
   setShowGitFileColors: (show: boolean) => void;
 
   // AI Intelligence Graph State
@@ -658,7 +658,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   expandedDirs: new Set(),
   uiMode: 'advanced',
   theme: 'glass',
-  fileIconTheme: 'material',
+  fileIconTheme: 'symbols',
   showGitFileColors: true,
   projectGraph: null,
   isGraphLoading: false,
@@ -707,8 +707,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
               projectName: project.name,
               workingDirectory: project.path,
               branch: project.activeBranch || 'main',
-              provider: (project.settings?.defaultProvider as any) || ts.provider,
-              model: project.settings?.defaultModel || ts.model
+              provider: ts.provider || 'powershell',
+              model: ts.model || project.settings?.defaultModel || ''
             }
           : ts
       );
@@ -770,12 +770,26 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
       let restoredTerms: TerminalSessionItem[] = [];
       if (Array.isArray(savedState.terminalSessions) && savedState.terminalSessions.length > 0) {
-        restoredTerms = savedState.terminalSessions.map((ts: any) => ({
-          ...ts,
-          activeSkills: ts.activeSkills || [],
-          status: ts.status === 'running' ? 'idle' : (ts.status || 'idle'),
-          streamOutput: ts.streamOutput || ''
-        }));
+        restoredTerms = savedState.terminalSessions.map((ts: any) => {
+          let provider = ts.provider;
+          // Heal corrupted sessions where Claude was erroneously forced over other shells
+          if (ts.title?.toLowerCase().startsWith('powershell') && provider !== 'powershell') {
+            provider = 'powershell';
+          } else if (ts.title?.toLowerCase().startsWith('cmd') && provider !== 'cmd') {
+            provider = 'cmd';
+          } else if ((ts.title?.toLowerCase().startsWith('git bash') || ts.title?.toLowerCase().startsWith('bash')) && provider !== 'bash') {
+            provider = 'bash';
+          } else if (ts.title?.toLowerCase() === 'antigravity' && provider !== 'antigravity') {
+            provider = 'antigravity';
+          }
+          return {
+            ...ts,
+            provider: provider || 'powershell',
+            activeSkills: ts.activeSkills || [],
+            status: ts.status === 'running' ? 'idle' : (ts.status || 'idle'),
+            streamOutput: ts.streamOutput || ''
+          };
+        });
       } else {
         restoredTerms = get().terminalSessions;
       }
@@ -810,7 +824,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           projectName: project.name,
           workingDirectory: project.path,
           branch: project.activeBranch || 'main',
-          provider: (project.settings?.defaultProvider as any) || 'powershell',
+          provider: 'powershell',
           model: project.settings?.defaultModel || 'gpt-4o',
           activeSkills: [],
           status: 'idle',

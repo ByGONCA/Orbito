@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  GitBranch,
-  Terminal,
-  AlertCircle,
   Cpu
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
@@ -10,17 +7,10 @@ import { ResourceManagerPopover } from './ResourceManagerPopover';
 
 export const BottomStatusBar: React.FC = () => {
   const {
-    project,
     terminalSessions,
     metrics,
     setMetrics,
-    logs,
-    activeOrchestration,
-    gitStatus,
-    isBottomPanelOpen,
-    setBottomPanelOpen,
-    bottomPanelTab,
-    setBottomPanelTab
+    activeOrchestration
   } = useWorkspaceStore();
 
   const [isResMgrOpen, setIsResMgrOpen] = useState(false);
@@ -43,9 +33,6 @@ export const BottomStatusBar: React.FC = () => {
     return () => clearInterval(timer);
   }, [setMetrics]);
 
-  const errorCount = logs.filter((l) => l.level === 'error').length;
-  const changedCount = gitStatus?.changedFiles.length || 0;
-
   const ramMb = metrics?.workingSetMemoryMb || metrics?.totalAppMemoryMb || metrics?.mainProcessMemoryMb || 180;
   const ramText = ramMb >= 1024 ? `${(ramMb / 1024).toFixed(2)} GB` : `${ramMb} MB`;
 
@@ -58,7 +45,7 @@ export const BottomStatusBar: React.FC = () => {
         {/* 2. Center: Empty / Clean whitespace */}
         <div className="flex-1" />
 
-        {/* 3. Right: Agent status, Terminals + RAM, Keep Awake, Output, Errors */}
+        {/* 3. Right: Agent status, Terminals + RAM */}
         <div className="flex items-center gap-3">
           {/* Agent Activity Indicator */}
           <div
@@ -92,50 +79,6 @@ export const BottomStatusBar: React.FC = () => {
               <span>&gt;_</span>
               <span className="text-[#A4A8AF]">{terminalSessions.length}</span>
             </div>
-          </button>
-
-          <span className="text-white/10">|</span>
-
-          {/* Terminal Output Trigger */}
-          <button
-            onClick={() => {
-              if (isBottomPanelOpen && bottomPanelTab === 'terminal') {
-                setBottomPanelOpen(false);
-              } else {
-                setBottomPanelTab('terminal');
-                setBottomPanelOpen(true);
-              }
-            }}
-            className={`flex items-center gap-1 transition-colors cursor-pointer ${
-              isBottomPanelOpen && bottomPanelTab === 'terminal' ? 'text-[#ECEDEF]' : 'text-[#747982] hover:text-[#A4A8AF]'
-            }`}
-            title="Toggle Terminal Output Panel"
-          >
-            <Terminal className="w-3 h-3 text-[#747982]" />
-            <span>Output</span>
-          </button>
-
-          {/* Problems & Errors Trigger */}
-          <button
-            onClick={() => {
-              if (isBottomPanelOpen && bottomPanelTab === 'problems') {
-                setBottomPanelOpen(false);
-              } else {
-                setBottomPanelTab('problems');
-                setBottomPanelOpen(true);
-              }
-            }}
-            className={`flex items-center gap-1 transition-colors cursor-pointer ${
-              isBottomPanelOpen && bottomPanelTab === 'problems'
-                ? 'text-white'
-                : errorCount > 0
-                  ? 'text-rose-400 font-semibold'
-                  : 'text-[#747982] hover:text-[#A4A8AF]'
-            }`}
-            title="Toggle Problems & System Logs"
-          >
-            <AlertCircle className={`w-3 h-3 ${errorCount > 0 ? 'text-rose-400' : 'text-[#747982]'}`} />
-            <span>{errorCount}</span>
           </button>
         </div>
       </footer>

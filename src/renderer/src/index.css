@@ -10,27 +10,27 @@
     --background-secondary: #141619;
     --background-ambient: #101113;
 
-    /* Base Window Canvas Atmosphere (Deep Dark Charcoal over native Windows Acrylic) */
-    --app-window-bg: rgba(9, 10, 13, 0.42);
+    /* Base Window Canvas Atmosphere (Deep Neutral Charcoal over native Windows Acrylic) */
+    --app-window-bg: rgba(10, 11, 14, 0.40);
     --app-window-rim: none;
 
-    /* Deep Dark Charcoal Glass Palette - Unified, Harmonious Column Opacities */
-    --glass-surface-bg: rgba(12, 13, 16, 0.42);
-    --glass-sidebar-bg: rgba(12, 13, 16, 0.38);
+    /* Deep Neutral Charcoal Glass Palette - Calibrated 4-Tier Hierarchy */
+    --glass-surface-bg: rgba(11, 12, 15, 0.42);
+    --glass-sidebar-bg: rgba(11, 12, 15, 0.38);
     --glass-explorer-bg: rgba(12, 13, 16, 0.40);
     --glass-header-bg: rgba(12, 13, 16, 0.45);
-    --glass-status-bg: rgba(10, 11, 14, 0.52);
-    --glass-panel-bg: rgba(12, 13, 16, 0.40);
+    --glass-status-bg: rgba(10, 11, 14, 0.50);
+    --glass-panel-bg: rgba(12, 13, 16, 0.42);
 
     --glass-blur: 14px;
     --glass-blur-header: 14px;
     --glass-blur-sidebar: 14px;
-    --glass-blur-modal: 16px;
-    --glass-saturate: 110%;
+    --glass-blur-modal: 20px;
+    --glass-saturate: 100%;
     --glass-border: 1px solid rgba(255, 255, 255, 0.05);
     --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.035);
-    --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    --glass-rim-subtle: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --glass-rim-subtle: inset 0 1px 0 rgba(255, 255, 255, 0.035);
     --glass-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
     --glass-shadow-floating: 0 12px 36px -4px rgba(0, 0, 0, 0.45);
 
@@ -200,20 +200,15 @@
 
   .theme-glass .app-canvas-ambient,
   .app-canvas-ambient {
-    opacity: 1 !important;
-    background:
-      radial-gradient(46rem 36rem at 38% 30%, rgba(139, 92, 246, 0.13), transparent 60%),
-      radial-gradient(38rem 32rem at 72% 48%, rgba(56, 189, 248, 0.09), transparent 62%),
-      radial-gradient(42rem 36rem at 45% 72%, rgba(99, 102, 241, 0.11), transparent 62%),
-      radial-gradient(64rem 44rem at 15% -12%, rgba(120, 119, 198, 0.15), transparent 60%),
-      radial-gradient(54rem 38rem at 92% 108%, rgba(59, 130, 246, 0.11), transparent 60%) !important;
+    opacity: 0 !important;
+    display: none !important;
   }
 
   /* Liquid Glass Settings Modal Backdrop */
   .settings-modal-root {
-    background: rgba(12, 13, 18, 0.96) !important;
-    backdrop-filter: blur(24px) saturate(120%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
+    background: rgba(11, 12, 15, 0.85) !important;
+    backdrop-filter: blur(24px) saturate(100%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(100%) !important;
   }
 
   .theme-solid .settings-modal-root {
@@ -231,8 +226,8 @@
   .app-loading-screen-root,
   .theme-glass .app-loading-screen-root {
     background: radial-gradient(800px 500px at 50% 50%, rgba(14, 15, 19, 0.60) 0%, rgba(9, 10, 13, 0.75) 100%) !important;
-    backdrop-filter: blur(16px) saturate(110%) !important;
-    -webkit-backdrop-filter: blur(16px) saturate(110%) !important;
+    backdrop-filter: blur(16px) saturate(100%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(100%) !important;
   }
   .theme-solid .app-loading-screen-root {
     background: #101113 !important;

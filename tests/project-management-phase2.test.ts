@@ -130,7 +130,7 @@ describe('AI Workspace — Phase 2: Project Management & Project-Aware Workspace
       expect(validated.updates.settings?.envVars?.API_URL).toBe('https://api.example.com');
     });
 
-    it('applies project-specific default provider/model to active terminal when project switches', () => {
+    it('preserves terminal provider and applies project working directory when project switches', () => {
       const store = useWorkspaceStore.getState();
 
       const termId = store.createTerminalSession('powershell');
@@ -144,7 +144,6 @@ describe('AI Workspace — Phase 2: Project Management & Project-Aware Workspace
         isGitRepo: true,
         permissionLevel: 'standard',
         settings: {
-          defaultProvider: 'gemini',
           defaultModel: 'gemini-2.5-pro'
         }
       };
@@ -152,7 +151,7 @@ describe('AI Workspace — Phase 2: Project Management & Project-Aware Workspace
       store.setProject(projectWithConfig);
 
       const activeTerm = useWorkspaceStore.getState().terminalSessions.find((t) => t.id === termId);
-      expect(activeTerm?.provider).toBe('gemini');
+      expect(activeTerm?.provider).toBe('powershell');
       expect(activeTerm?.model).toBe('gemini-2.5-pro');
       expect(activeTerm?.workingDirectory).toBe('/repos/ai-hub');
     });

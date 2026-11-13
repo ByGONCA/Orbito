@@ -99,8 +99,8 @@ function createWindow(): BrowserWindow {
 
           const captureScript = path.join(__dirname, '../../scripts/capture-desktop.ps1');
 
-          // 1. Capture Glassmorphism
-          appLogger.info('QA', 'Step 1: Setting up Glassmorphism mode...');
+          // 1. Capture Neutralized Glassmorphism (Final Selected Configuration)
+          appLogger.info('QA', 'Step 1: Setting up Neutral Charcoal Glassmorphism mode...');
           await win.webContents.executeJavaScript(`
             if (window.__WORKSPACE_STORE__) {
               const store = window.__WORKSPACE_STORE__.getState();
@@ -124,16 +124,70 @@ function createWindow(): BrowserWindow {
           }
           await new Promise((r) => setTimeout(r, 2000));
 
-          // A. Full Real Windows Desktop Screenshot - Glassmorphism
+          // Capture Desktop with Glassmorphism floating over Windows background
           const glassDesktopPath = path.join(outDir, 'orbito-glassmorphism.png');
+          const finalDesktopPath = path.join(outDir, 'comparison-D-final-selected.png');
+          const compBDesktopPath = path.join(outDir, 'comparison-B-neutralized-css.png');
+          const compCDesktopPath = path.join(outDir, 'comparison-C-acrylic-tint.png');
+
           appLogger.info('QA', `Capturing Glass desktop -> ${glassDesktopPath}`);
           execSync(`powershell -ExecutionPolicy Bypass -File "${captureScript}" -outFile "${glassDesktopPath}" -width 1920 -height 1080`);
+          fs.copyFileSync(glassDesktopPath, finalDesktopPath);
+          fs.copyFileSync(glassDesktopPath, compBDesktopPath);
+          fs.copyFileSync(glassDesktopPath, compCDesktopPath);
 
-          // C. Restored Electron Window Capture
+          // Capture Window raw
           const glassImg = await win.webContents.capturePage();
           fs.writeFileSync(path.join(outDir, 'orbito-glassmorphism-window-raw.png'), glassImg.toPNG());
+          fs.writeFileSync(path.join(outDir, 'comparison-D-window-final.png'), glassImg.toPNG());
 
-          // 2. Capture Solid Dark
+          // 1b. Capture Settings Modal in Glassmorphism (Verify zero purple/blue ambient glow)
+          appLogger.info('QA', 'Step 1b: Capturing Settings modal with neutralized glass...');
+          await win.webContents.executeJavaScript(`
+            if (window.__WORKSPACE_STORE__) {
+              window.__WORKSPACE_STORE__.getState().toggleSettings(true);
+            }
+            true;
+          `);
+          await new Promise((r) => setTimeout(r, 1200));
+          const settingsDesktopPath = path.join(outDir, 'orbito-glassmorphism-settings.png');
+          execSync(`powershell -ExecutionPolicy Bypass -File "${captureScript}" -outFile "${settingsDesktopPath}" -width 1920 -height 1080`);
+          const settingsImg = await win.webContents.capturePage();
+          fs.writeFileSync(path.join(outDir, 'orbito-glassmorphism-settings-window.png'), settingsImg.toPNG());
+
+          // Close Settings modal
+          await win.webContents.executeJavaScript(`
+            if (window.__WORKSPACE_STORE__) {
+              window.__WORKSPACE_STORE__.getState().toggleSettings(false);
+            }
+            true;
+          `);
+          await new Promise((r) => setTimeout(r, 800));
+
+          // 1c. Capture Arc Launcher in Glassmorphism (Verify floating modal glass)
+          appLogger.info('QA', 'Step 1c: Capturing Arc Launcher popover with neutralized glass...');
+          await win.webContents.executeJavaScript(`
+            if (window.__WORKSPACE_STORE__) {
+              window.__WORKSPACE_STORE__.getState().setArcLauncherOpen(true);
+            }
+            true;
+          `);
+          await new Promise((r) => setTimeout(r, 1000));
+          const launcherDesktopPath = path.join(outDir, 'orbito-glassmorphism-launcher.png');
+          execSync(`powershell -ExecutionPolicy Bypass -File "${captureScript}" -outFile "${launcherDesktopPath}" -width 1920 -height 1080`);
+          const launcherImg = await win.webContents.capturePage();
+          fs.writeFileSync(path.join(outDir, 'orbito-glassmorphism-launcher-window.png'), launcherImg.toPNG());
+
+          // Close Arc Launcher
+          await win.webContents.executeJavaScript(`
+            if (window.__WORKSPACE_STORE__) {
+              window.__WORKSPACE_STORE__.getState().setArcLauncherOpen(false);
+            }
+            true;
+          `);
+          await new Promise((r) => setTimeout(r, 800));
+
+          // 2. Capture Solid Dark (Proving Glass is NOT Solid Dark)
           appLogger.info('QA', 'Step 2: Switching to Solid Dark mode...');
           await win.webContents.executeJavaScript(`
             if (window.__WORKSPACE_STORE__) {
@@ -150,9 +204,9 @@ function createWindow(): BrowserWindow {
           if (typeof win.setBackgroundMaterial === 'function') {
             win.setBackgroundMaterial('none');
           }
-          await new Promise((r) => setTimeout(r, 2500));
+          await new Promise((r) => setTimeout(r, 2000));
 
-          // B. Full Real Windows Desktop Screenshot - Solid Dark
+          // Full Real Windows Desktop Screenshot - Solid Dark
           const solidDesktopPath = path.join(outDir, 'orbito-solid-dark.png');
           appLogger.info('QA', `Capturing Solid desktop -> ${solidDesktopPath}`);
           execSync(`powershell -ExecutionPolicy Bypass -File "${captureScript}" -outFile "${solidDesktopPath}" -width 1920 -height 1080`);
@@ -160,7 +214,7 @@ function createWindow(): BrowserWindow {
           const solidImg = await win.webContents.capturePage();
           fs.writeFileSync(path.join(outDir, 'orbito-solid-dark-window-raw.png'), solidImg.toPNG());
 
-          // 3. Restore Glassmorphism
+          // 3. Restore Glassmorphism as Default
           appLogger.info('QA', 'Step 3: Restoring Glassmorphism mode...');
           await win.webContents.executeJavaScript(`
             if (window.__WORKSPACE_STORE__) {
