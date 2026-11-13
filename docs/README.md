@@ -36,6 +36,7 @@ Guides for human developers and AI engineering agents:
 Autonomous multi-agent engineering coordination and orchestration:
 
 - [Agent Orchestration Architecture](./agents/AGENT_ORCHESTRATION.md) — Orchestrator contracts, event loops, and multi-agent coordination models.
+- [Multi-Agent System Specification & Dynamic Orchestration](./agents/MULTI_AGENT_SYSTEM_SPECIFICATION.md) — Complete 15-agent development team, dynamic delegation tiers, and proactive orchestration protocols.
 - Operational infrastructure is managed under the primary workspace directory:
   - `.agents/coordination/` — Multi-agent Git worktree registry, single writer protocol, and task queue.
   - `.agents/agents/` — Specialist agent definitions and domain boundaries.
@@ -98,6 +99,9 @@ Historical and verification reports across all development phases:
 - [Settings Restructure Completion Report](./audits/SETTINGS_RESTRUCTURE_COMPLETION_REPORT.md)
 - [Settings Independent Visual & Functional Audit Report](./audits/SETTINGS_INDEPENDENT_AUDIT_REPORT.md)
 - [Appearance Settings UX Redesign & Complete Light Theme Implementation Report](./audits/APPEARANCE_LIGHT_THEME_AUDIT_REPORT.md)
+- [Multi-Agent System Audit, Expansion & Continuous Orchestration Report](./audits/MULTI_AGENT_AUDIT_EXPANSION_REPORT.md)
+- [Multi-Agent Real-World Stress Test & Performance Benchmark Report](./audits/MULTI_AGENT_BENCHMARK_REPORT.md)
+- [Post-Benchmark Findings, Security Hardening & Implementation Report](./audits/POST_BENCHMARK_IMPLEMENTATION_REPORT.md)
 
 ---
 

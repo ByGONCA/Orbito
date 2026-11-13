@@ -223,7 +223,7 @@ export const UpdateSettingsSchema = z.object({
   uiMode: z.enum(['simple', 'advanced']).optional(),
   theme: z.enum(['glass', 'solid', 'dark', 'light', 'system']).optional(),
   autoIndex: z.boolean().optional(),
-  fileIconTheme: z.enum(['vscode', 'material', 'minimal']).optional(),
+  fileIconTheme: z.enum(['vscode', 'material', 'minimal', 'symbols']).optional(),
   showGitFileColors: z.boolean().optional(),
   discordRpcEnabled: z.boolean().optional(),
   discordClientId: z.string().optional()
@@ -232,6 +232,21 @@ export const UpdateSettingsSchema = z.object({
 export const UpdateDiscordSettingsSchema = z.object({
   enabled: z.boolean().optional(),
   clientId: z.string().optional()
+});
+
+export const CreateWorktreeSchema = z.object({
+  projectPath: z.string().min(1),
+  branchName: z.string().min(1).regex(/^[a-zA-Z0-9_\-\.\/]+$/, 'Invalid branch name characters')
+});
+
+export const RemoveWorktreeSchema = z.object({
+  projectPath: z.string().min(1),
+  worktreePath: z.string().min(1),
+  branchName: z.string().optional()
+});
+
+export const OpenInExplorerSchema = z.object({
+  projectPath: z.string().min(1)
 });
 
 export const GetProjectGitRemoteSchema = z.object({

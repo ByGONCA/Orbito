@@ -5,7 +5,10 @@ import {
   ReadFileSchema,
   UpdateSettingsSchema,
   StoreSecretSchema,
-  SaveMemorySchema
+  SaveMemorySchema,
+  CreateWorktreeSchema,
+  RemoveWorktreeSchema,
+  OpenInExplorerSchema
 } from '../src/shared/ipc';
 
 describe('IPC Zod Schemas Validation Tests', () => {
@@ -41,10 +44,15 @@ describe('IPC Zod Schemas Validation Tests', () => {
   it('validates UpdateSettingsSchema enum bounds', () => {
     expect(() => UpdateSettingsSchema.parse({ uiMode: 'simple', theme: 'dark' })).not.toThrow();
     expect(() => UpdateSettingsSchema.parse({ uiMode: 'advanced', theme: 'system' })).not.toThrow();
+    expect(() => UpdateSettingsSchema.parse({ fileIconTheme: 'symbols' })).not.toThrow();
+    expect(() => UpdateSettingsSchema.parse({ fileIconTheme: 'material' })).not.toThrow();
+    expect(() => UpdateSettingsSchema.parse({ fileIconTheme: 'vscode' })).not.toThrow();
+    expect(() => UpdateSettingsSchema.parse({ fileIconTheme: 'minimal' })).not.toThrow();
 
     // Invalid enum value
     expect(() => UpdateSettingsSchema.parse({ uiMode: 'invalid-mode' as any })).toThrow();
     expect(() => UpdateSettingsSchema.parse({ theme: 'neon-color' as any })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ fileIconTheme: 'invalid-icon-theme' as any })).toThrow();
   });
 
   it('validates StoreSecretSchema key limits', () => {
@@ -78,5 +86,20 @@ describe('IPC Zod Schemas Validation Tests', () => {
         content: 'content'
       })
     ).toThrow();
+  });
+
+  it('validates Worktree and Explorer schemas', () => {
+    // CreateWorktreeSchema
+    expect(() => CreateWorktreeSchema.parse({ projectPath: 'C:/project', branchName: 'feature/auth-v2' })).not.toThrow();
+    expect(() => CreateWorktreeSchema.parse({ projectPath: '', branchName: 'valid' })).toThrow();
+    expect(() => CreateWorktreeSchema.parse({ projectPath: 'C:/project', branchName: 'bad;rm -rf' })).toThrow();
+
+    // RemoveWorktreeSchema
+    expect(() => RemoveWorktreeSchema.parse({ projectPath: 'C:/project', worktreePath: 'C:/wt/1', branchName: 'temp' })).not.toThrow();
+    expect(() => RemoveWorktreeSchema.parse({ projectPath: '', worktreePath: 'C:/wt' })).toThrow();
+
+    // OpenInExplorerSchema
+    expect(() => OpenInExplorerSchema.parse({ projectPath: 'C:/valid/path' })).not.toThrow();
+    expect(() => OpenInExplorerSchema.parse({ projectPath: '' })).toThrow();
   });
 });

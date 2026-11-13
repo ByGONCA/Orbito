@@ -51,6 +51,9 @@ import {
   AssemblePromptSchema,
   ComposeSkillsSchema,
   UpdateDiscordSettingsSchema,
+  CreateWorktreeSchema,
+  RemoveWorktreeSchema,
+  OpenInExplorerSchema,
   GetProjectGitRemoteSchema,
   ListProjectExecutionsSchema,
   GetExecutionFileChangesSchema,
@@ -402,7 +405,11 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('workspace:openInExplorer', async (_, projectPath: string) => {
-    return await shell.openPath(projectPath);
+    const validated = OpenInExplorerSchema.parse({ projectPath });
+    if (!fs.existsSync(validated.projectPath)) {
+      throw new Error(`Path does not exist: ${validated.projectPath}`);
+    }
+    return await shell.openPath(validated.projectPath);
   });
 
   ipcMain.handle('workspace:revealInFileManager', async (_, args) => {
@@ -411,12 +418,14 @@ export function registerIpcHandlers(): void {
     return true;
   });
 
-  ipcMain.handle('workspace:createWorktree', async (_, { projectPath, branchName }: { projectPath: string; branchName: string }) => {
-    return await workspaceService.createWorktree(projectPath, branchName);
+  ipcMain.handle('workspace:createWorktree', async (_, args) => {
+    const validated = CreateWorktreeSchema.parse(args);
+    return await workspaceService.createWorktree(validated.projectPath, validated.branchName);
   });
 
-  ipcMain.handle('workspace:removeWorktree', async (_, { projectPath, worktreePath, branchName }: { projectPath: string; worktreePath: string; branchName?: string }) => {
-    return await workspaceService.removeWorktree(projectPath, worktreePath, branchName);
+  ipcMain.handle('workspace:removeWorktree', async (_, args) => {
+    const validated = RemoveWorktreeSchema.parse(args);
+    return await workspaceService.removeWorktree(validated.projectPath, validated.worktreePath, validated.branchName);
   });
 
   ipcMain.handle('workspace:getGitStatus', async (_, projectPath: string) => {

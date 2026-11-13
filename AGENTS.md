@@ -43,19 +43,23 @@ Token and brevity optimizations must NEVER compromise:
 
 ## 5. Multi-Agent Development System (Lead Architect & Specialists)
 Antigravity operates as a coordinated multi-agent software engineering team.
-- **Role:** You operate as the **Lead Architect & Development Orchestrator**, responsible for requirements analysis, task decomposition, specialist delegation, wave planning, integration, and final delivery.
+- **Role:** You operate as the **Lead Architect & Development Orchestrator**, responsible for requirements analysis, task decomposition, dynamic specialist delegation, parallel wave planning, barrier synchronization, and final delivery.
 - **Specialist Roster:** Defined in `.agents/agents/roster.json` and documented in `.agents/agents/*.md`:
-  1. `frontend-specialist`: React 19 UI, Tailwind, Zustand, Anti-boxiness, virtualized UI.
+  1. `frontend-specialist`: React 19 UI, Tailwind, Zustand, Anti-boxiness, virtualized UI, icon-only toolbars.
   2. `glass-material-specialist`: Physical glass materials, refraction, SVG displacement filters, blur tokens.
   3. `backend-specialist`: Electron main process, IPC, SQLite (`better-sqlite3`, Drizzle), PTY, filesystem.
   4. `git-specialist`: Safe Git operations, worktrees, atomic commits, diff analysis (zero destructive ops).
-  5. `security-specialist`: IPC security, sandboxing, path traversal, secrets protection (read-only audit).
-  6. `qa-specialist`: Vitest automation, `tsc` validation, screenshot-based visual QA, 6-dimension scoring.
-  7. `performance-specialist`: React re-renders, DB query indexing, memory leaks, IPC throughput.
-  8. `code-quality-specialist`: SOLID principles, DRY, clean architecture, Ponytail simplicity ladder.
-  9. `documentation-specialist` (optional): Technical specs, README, changelogs (never unverified code).
-  10. `research-specialist` (optional): Library evaluation, compatibility, architectural feasibility.
-- **Execution Protocol:** Follow the 7-Phase development workflow and wave formation rules documented in `.agents/rules/multi-agent-system.md` and the 14-step Visual Engineering Protocol in `.agents/workflows/visual-engineering.md`.
+  5. `architecture-specialist`: System topology, cross-layer contracts, state models, dependency decoupling, ADRs.
+  6. `critical-thinking-specialist`: Adversarial critique, hypothesis testing, edge cases, anti-overengineering.
+  7. `research-specialist`: Technology evaluations, official documentation, library benchmarking, intelligence.
+  8. `product-strategy-specialist`: Developer velocity, workflow ergonomics, competitor benchmarking, feature pruning.
+  9. `ui-ux-specialist`: Design systems, spatial hierarchy, typography scales, accessibility, zero white borders.
+  10. `security-specialist`: IPC security, sandboxing, path traversal, secrets protection (read-only audit).
+  11. `qa-specialist`: Vitest automation, `tsc` validation, screenshot-based visual QA, 6-dimension scoring.
+  12. `performance-specialist`: React re-renders, DB query indexing, memory leaks, IPC throughput.
+  13. `code-quality-specialist`: SOLID principles, DRY, clean architecture, Ponytail simplicity ladder.
+  14. `documentation-specialist`: Technical specs, `AI_CONTEXT.md` synchronization, central documentation indexing.
+- **Execution Protocol:** Follow the 7-Phase development workflow and wave formation rules in `.agents/rules/multi-agent-system.md`, dynamic orchestration in `.agents/workflows/orchestrate.md`, daily proactive patterns in `.agents/workflows/continuous-orchestration.md`, and the 14-step Visual Engineering Protocol in `.agents/workflows/visual-engineering.md`.
 - **Runtime Registration:** When delegating tasks, if the required specialist subagent is not yet registered in the active session, register it via `define_subagent` using the specifications in `.agents/agents/roster.json`, then dispatch via `invoke_subagent`.
 
 ## 6. Permanent Repository Organisation & Documentation Rules

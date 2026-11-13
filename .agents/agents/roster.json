@@ -1,12 +1,12 @@
 {
   "system": "Orbito Multi-Agent Development System",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "orchestrator": {
     "name": "lead-architect",
     "displayName": "Lead Architect & Development Orchestrator",
     "role": "Central Coordinator & System Architect",
     "tier": "orchestrator",
-    "description": "Analyzes requirements, inspects architecture, decomposes tasks, coordinates parallel/sequential execution, prevents conflicts, and integrates completed work.",
+    "description": "Analyzes requirements, inspects architecture, decomposes tasks, dynamically delegates to specialists across engineering, research, and design, coordinates parallel execution waves, and integrates completed work.",
     "capabilities": {
       "EnableMCPTools": true,
       "EnableSubagentTools": true,
@@ -96,6 +96,90 @@
       "docFile": ".agents/agents/git-specialist.md"
     },
     {
+      "name": "architecture-specialist",
+      "displayName": "Software Architecture Specialist",
+      "role": "System Architect & Structural Reasoner",
+      "tier": "primary",
+      "description": "Responsible for system topology, cross-layer contracts, state models, dependency decoupling, architectural debt elimination, and ADR authoring.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "pro",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/architecture-specialist.md",
+      "skills": [
+        "architect"
+      ]
+    },
+    {
+      "name": "critical-thinking-specialist",
+      "displayName": "Critical Thinking & Problem-Solving Specialist",
+      "role": "Independent Adversarial Reasoner & Hypothesis Challenger",
+      "tier": "primary",
+      "description": "Analyzes complex problems independently, challenges assumptions, detects overengineering, evaluates trade-offs, and stress-tests hypotheses without bias.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": false
+      },
+      "modelDefault": "pro",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/critical-thinking-specialist.md"
+    },
+    {
+      "name": "research-specialist",
+      "displayName": "Research & Intelligence Specialist",
+      "role": "Technical Evaluator & Intelligence Researcher",
+      "tier": "primary",
+      "description": "Conducts evidence-based research on external libraries, frameworks, APIs, competitor tech, and industry best practices with primary source verification.",
+      "capabilities": {
+        "EnableMCPTools": true,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/research-specialist.md"
+    },
+    {
+      "name": "product-strategy-specialist",
+      "displayName": "Product Strategy & UX Research Specialist",
+      "role": "Product Strategist & Workflow Evaluator",
+      "tier": "primary",
+      "description": "Evaluates product workflows, developer velocity, competitor paradigms (Cursor, Windsurf, Zed), feature prioritization, and cognitive load reduction.",
+      "capabilities": {
+        "EnableMCPTools": false,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/product-strategy-specialist.md"
+    },
+    {
+      "name": "ui-ux-specialist",
+      "displayName": "UI/UX & Design Systems Specialist",
+      "role": "Design System Governor & Interface Designer",
+      "tier": "primary",
+      "description": "Governs design system tokens, surface elevation, visual hierarchy, ergonomics, accessibility (WCAG 2.2 AA), and strict enforcement of anti-boxiness, borderless design, and zero white borders.",
+      "capabilities": {
+        "EnableMCPTools": true,
+        "EnableSubagentTools": false,
+        "EnableWriteTools": true
+      },
+      "modelDefault": "inherit",
+      "workspaceMode": "inherit",
+      "docFile": ".agents/agents/ui-ux-specialist.md",
+      "skills": [
+        "ui-ux-pro-max",
+        "youmair-visual-hierarchy",
+        "youmair-dark-mode-design",
+        "web-design-guidelines"
+      ]
+    },
+    {
       "name": "security-specialist",
       "displayName": "Security Specialist",
       "role": "Security & Vulnerability Auditor",
@@ -162,10 +246,10 @@
     },
     {
       "name": "documentation-specialist",
-      "displayName": "Documentation Specialist",
-      "role": "Technical Writer & Specs Maintainer",
-      "tier": "optional",
-      "description": "Maintains and updates architectural specifications, API guides, user guides, changelogs, and codebase documentation accurately reflecting verified code.",
+      "displayName": "Documentation & Knowledge Specialist",
+      "role": "Technical Writer & Knowledge Base Maintainer",
+      "tier": "primary",
+      "description": "Maintains architectural specifications, developer context (AI_CONTEXT.md), documentation indexes (docs/README.md), and ensures repository organization compliance.",
       "capabilities": {
         "EnableMCPTools": false,
         "EnableSubagentTools": false,
@@ -174,21 +258,6 @@
       "modelDefault": "inherit",
       "workspaceMode": "inherit",
       "docFile": ".agents/agents/documentation-specialist.md"
-    },
-    {
-      "name": "research-specialist",
-      "displayName": "Research & Technology Specialist",
-      "role": "Technical Evaluator & Feasibility Researcher",
-      "tier": "optional",
-      "description": "Investigates technical libraries, APIs, architectural patterns, and feasibility questions with fact-checked evidence before code adoption.",
-      "capabilities": {
-        "EnableMCPTools": false,
-        "EnableSubagentTools": false,
-        "EnableWriteTools": false
-      },
-      "modelDefault": "inherit",
-      "workspaceMode": "inherit",
-      "docFile": ".agents/agents/research-specialist.md"
     }
   ]
 }
