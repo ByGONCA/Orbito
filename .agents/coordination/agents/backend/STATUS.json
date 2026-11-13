@@ -3,11 +3,23 @@
   "agent_id": "backend",
   "worktree": "orbito-backend",
   "branch": "agent/backend-core",
-  "status": "READY",
-  "current_task": "ORB-BACK-001",
-  "progress": 0,
+  "status": "WAITING",
+  "current_task": "ORB-BACK-002",
+  "progress": 100,
   "blockers": [],
-  "last_activity": "2026-11-07T22:37:00Z",
-  "last_handoff": null,
+  "last_activity": "2026-11-13T22:58:30Z",
+  "last_handoff": "2026-11-13T22:58:30Z",
+  "active_subagents": [
+    {
+      "role": "security-specialist",
+      "status": "COMPLETED",
+      "assignment": "IPC buffer boundary limits, memory exhaustion prevention, and Windows taskkill privilege containment"
+    },
+    {
+      "role": "performance-specialist",
+      "status": "COMPLETED",
+      "assignment": "PTY stream write backpressure chunking and Windows child process tree cleanup"
+    }
+  ],
   "modified_files": []
 }

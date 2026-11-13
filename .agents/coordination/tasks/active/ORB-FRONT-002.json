@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "task_id": "ORB-FRONT-002",
+  "title": "Terminal 16ms Output Batching & Glassmorphic HUD UI Specification",
+  "assigned_agent": "frontend",
+  "worktree": "orbito-frontend",
+  "branch": "agent/frontend-ui",
+  "priority": "HIGH",
+  "status": "READY",
+  "created_at": "2026-11-13T22:52:00Z",
+  "updated_at": "2026-11-13T22:52:00Z",
+  "objective": "Investigate, architect, and benchmark 16ms requestAnimationFrame output batching for xterm.js in the renderer, alongside a glassmorphic floating HUD with zero white borders.",
+  "context": "Direct unbatched writes to xterm on every IPC chunk degrade framerate from 60fps to under 15fps during log dumps. Buffering chunks and writing in 16ms RAF batches restores fluid rendering. Additionally, the terminal HUD must adhere strictly to zero white borders and icon-only toolbar standards.",
+  "scope": {
+    "allowed_files": [
+      "src/renderer/src/components/TerminalView.tsx",
+      "src/renderer/src/components/TerminalHUD.tsx",
+      "src/renderer/src/stores/terminal.store.ts"
+    ],
+    "forbidden_files": [
+      "src/main/**",
+      "src/shared/ipc.ts",
+      "package.json",
+      "src/renderer/src/components/Review*"
+    ]
+  },
+  "dependencies": [],
+  "expected_deliverables": [
+    "UI/UX evaluation asserting zero white borders, anti-boxiness, and icon-only toolbars",
+    "Glassmorphic material spec using subtle backdrop blur (12px) and translucent surface tokens",
+    "Performance analysis demonstrating 60fps frame stability using 16ms animation-frame batching",
+    "Draft component specification for TerminalHUD"
+  ],
+  "acceptance_criteria": [
+    "Zero white, light gray, or glowing borders anywhere in terminal HUD or surrounding controls",
+    "Renderer frame rate maintained at >= 58fps during high-throughput output streams",
+    "Clean typographic counts with zero card borders or pill backgrounds"
+  ],
+  "required_tests": [
+    "npm run typecheck"
+  ],
+  "risk_assessment": {
+    "level": "LOW",
+    "mitigation": "RAF batching queue operates purely in renderer memory with automatic flush on terminal focus or enter key"
+  },
+  "handoff_requirements": {
+    "status_file": ".agents/coordination/agents/frontend/STATUS.json",
+    "handoff_file": ".agents/coordination/agents/frontend/HANDOFF.md",
+    "evidence_required": [
+      "UI/UX anti-boxiness compliance report",
+      "Glass material token specifications",
+      "Batching benchmark and frame timing results"
+    ]
+  }
+}

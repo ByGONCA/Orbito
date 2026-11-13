@@ -6,9 +6,9 @@
   "worktree": "orbito-backend",
   "branch": "agent/backend-core",
   "priority": "HIGH",
-  "status": "READY",
+  "status": "COMPLETED",
   "created_at": "2026-11-07T22:37:00Z",
-  "updated_at": "2026-11-07T22:37:00Z",
+  "updated_at": "2026-11-13T22:53:36.973Z",
   "objective": "Audit, stabilize and improve the existing backend implementation established in the baseline, focusing on native terminal stability, PTY lifecycle, and CLI adapter reliability.",
   "context": "The baseline established native terminal PTY integration and 30+ CLI adapters. The backend specialist must harden error handling, prevent orphaned processes, ensure reliable process cancellation, and improve resource cleanup without breaking IPC contracts.",
   "scope": {

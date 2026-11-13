@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "task_id": "ORB-BACK-002",
+  "title": "PTY Stream Backpressure & Process-Tree Lifecycle Architecture",
+  "assigned_agent": "backend",
+  "worktree": "orbito-backend",
+  "branch": "agent/backend-core",
+  "priority": "HIGH",
+  "status": "READY",
+  "created_at": "2026-11-13T22:52:00Z",
+  "updated_at": "2026-11-13T22:52:00Z",
+  "objective": "Investigate, architect, and benchmark safe PTY stream write backpressure, Windows taskkill/tree-kill child process cleanup, and IPC burst throughput safeguards without breaking existing contracts.",
+  "context": "High-volume terminal output bursts (e.g. cat of 100k lines or build logs) can overwhelm the Electron IPC bridge and cause UI freezes or memory bloat. Furthermore, child process trees on Windows must be killed cleanly on terminal session closure.",
+  "scope": {
+    "allowed_files": [
+      "src/main/terminal/terminal.service.ts",
+      "src/main/services/pty-service.ts",
+      "src/main/ipc/terminal-handlers.ts",
+      "tests/pty-terminal.test.ts"
+    ],
+    "forbidden_files": [
+      "src/renderer/**",
+      "src/main/services/git/**",
+      "src/main/services/code-review/**",
+      "src/main/db/schema.ts",
+      "src/shared/ipc.ts",
+      "package.json"
+    ]
+  },
+  "dependencies": [],
+  "expected_deliverables": [
+    "Security analysis of IPC buffer limits and denial-of-service risks",
+    "Performance analysis comparing high-water-mark chunking vs unthrottled streaming",
+    "Windows process-tree cleanup specification using native taskkill flags or tree-kill helper",
+    "Draft IPC schema changes for proposed terminal stream flow-control"
+  ],
+  "acceptance_criteria": [
+    "Zero unhandled buffer overflows under 50MB burst streams",
+    "Zero orphaned child processes (node, bash, python) when session closes",
+    "Conforms to Ponytail simplicity ladder (stdlib/native first, no new unvetted npm packages)"
+  ],
+  "required_tests": [
+    "npm run typecheck",
+    "npx vitest run tests/pty-terminal.test.ts"
+  ],
+  "risk_assessment": {
+    "level": "MEDIUM",
+    "mitigation": "Isolate buffer queueing logic in main process service; preserve existing terminal:data event contract"
+  },
+  "handoff_requirements": {
+    "status_file": ".agents/coordination/agents/backend/STATUS.json",
+    "handoff_file": ".agents/coordination/agents/backend/HANDOFF.md",
+    "evidence_required": [
+      "Security audit findings",
+      "Performance throughput benchmark",
+      "Proposed IPC interface specification"
+    ]
+  }
+}

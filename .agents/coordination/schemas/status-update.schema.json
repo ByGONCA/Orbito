@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://orbito.dev/schemas/status-update.schema.json",
+  "title": "Orbito Worktree Team Status Update Schema",
+  "description": "Defines the structure for STATUS.json heartbeat and progress reporting files.",
+  "type": "object",
+  "required": [
+    "agent_id",
+    "worktree",
+    "branch",
+    "status",
+    "last_activity",
+    "progress",
+    "blockers"
+  ],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "enum": ["backend", "frontend", "git-review", "workflows", "main"]
+    },
+    "worktree": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["IDLE", "READY", "BUSY", "WAITING", "BLOCKED", "OFFLINE"]
+    },
+    "current_task": {
+      "type": ["string", "null"]
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "progress": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "active_subagents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "status"],
+        "properties": {
+          "role": { "type": "string" },
+          "conversation_id": { "type": "string" },
+          "status": { "type": "string" },
+          "assignment": { "type": "string" }
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "milestone": {
+      "type": "string"
+    }
+  }
+}
