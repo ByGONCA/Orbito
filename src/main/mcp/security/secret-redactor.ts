@@ -45,26 +45,30 @@ export class SecretRedactor {
 
     let scrubbed = text;
 
-    // 1. Scrub explicitly registered secrets
-    for (const secret of this.registeredSecrets) {
-      if (scrubbed.includes(secret)) {
-        scrubbed = scrubbed.split(secret).join('••••••••');
-      }
-    }
-
-    // 2. Scrub regex patterns
+    // 1. Scrub regex patterns
     scrubbed = scrubbed.replace(
       /Bearer\s+([a-zA-Z0-9_\-\.\~]{8,})/gi,
       'Bearer ••••••••'
     );
     scrubbed = scrubbed.replace(
-      /(sk-[a-zA-Z0-9_-]{10})[a-zA-Z0-9_-]+/gi,
-      '$1••••••••'
+      /(sk-[a-zA-Z0-9_-]{20,})/gi,
+      '[REDACTED_API_KEY]'
     );
     scrubbed = scrubbed.replace(
-      /(ghp_[a-zA-Z0-9]{4})[a-zA-Z0-9]+/gi,
-      '$1••••••••'
+      /(ghp_[a-zA-Z0-9]{20,})/gi,
+      '[REDACTED_TOKEN]'
     );
+    scrubbed = scrubbed.replace(
+      /(gho_[a-zA-Z0-9]{20,})/gi,
+      '[REDACTED_TOKEN]'
+    );
+
+    // 2. Scrub explicitly registered secrets
+    for (const secret of this.registeredSecrets) {
+      if (scrubbed.includes(secret)) {
+        scrubbed = scrubbed.split(secret).join('••••••••');
+      }
+    }
 
     return scrubbed;
   }

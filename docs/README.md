@@ -122,6 +122,12 @@ Historical and verification reports across all development phases:
 - [Orbito Automated Quality Assurance & Release Infrastructure Report](./audits/ORBITO_AUTOMATED_QUALITY_RELEASE.md)
 - [Orbito Project Intelligence Engine Implementation Report](./audits/ORBITO_PROJECT_INTELLIGENCE.md)
 - [Orbito Autonomous Engineering Intelligence Implementation Report](./audits/ORBITO_AUTONOMOUS_ENGINEERING_INTELLIGENCE.md)
+- [Orbito Continuous Engineering Intelligence Architecture & Validation Report](./audits/ORBITO_CONTINUOUS_ENGINEERING_INTELLIGENCE.md)
+- [Orbito Engineering Intelligence Validation, Calibration & Benchmarking Report](./audits/ORBITO_ENGINEERING_INTELLIGENCE_VALIDATION.md)
+- [Orbito Production Hardening & Operational Resilience Report](./audits/ORBITO_PRODUCTION_HARDENING_OPERATIONAL_RESILIENCE.md)
+- [Orbito Operational Resilience Gap Closure & Recovery Validation Report](./audits/ORBITO_OPERATIONAL_RESILIENCE_GAP_CLOSURE.md)
+- [Orbito Operational Resilience Certification & Edge-Case Closure Report](./audits/ORBITO_OPERATIONAL_RESILIENCE_CERTIFICATION.md)
+
 
 ---
 

@@ -174,6 +174,51 @@ import {
   UpsertKnowledgeEntrySchema,
   AssembleRoleContextSchema
 } from './project-intelligence';
+import {
+  TriggerEngineeringAnalysisSchema,
+  QueryEngineeringFindingsSchema,
+  UpdateFindingStatusSchema,
+  QueryRecommendationsSchema,
+  SubmitRecommendationFeedbackSchema,
+  ApproveRecommendationSchema,
+  UpdateContinuousIntelligenceConfigSchema
+} from './continuous-intelligence';
+export {
+  TriggerEngineeringAnalysisSchema,
+  QueryEngineeringFindingsSchema,
+  UpdateFindingStatusSchema,
+  QueryRecommendationsSchema,
+  SubmitRecommendationFeedbackSchema,
+  ApproveRecommendationSchema,
+  UpdateContinuousIntelligenceConfigSchema
+};
+
+export {
+  type AppLifecycleState,
+  type CrashReport,
+  type LifecycleHealthStatus,
+  type RecoveryIncident,
+  type DatabaseHealthStatus,
+  type DatabaseBackupInfo,
+  type WorktreeSafetyStatus,
+  ResolveRecoveryIncidentSchema,
+  CreateDatabaseBackupSchema,
+  VerifyDatabaseBackupSchema,
+  RestoreDatabaseBackupSchema,
+  RecoverCorruptedDatabaseSchema,
+  GetWorktreeHealthSchema,
+  RecoverWorktreeSchema
+} from './lifecycle';
+import {
+  ResolveRecoveryIncidentSchema,
+  CreateDatabaseBackupSchema,
+  VerifyDatabaseBackupSchema,
+  RestoreDatabaseBackupSchema,
+  RecoverCorruptedDatabaseSchema,
+  GetWorktreeHealthSchema,
+  RecoverWorktreeSchema
+} from './lifecycle';
+
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -905,4 +950,35 @@ export interface IElectronAPI {
   upsertKnowledgeEntry: (params: z.input<typeof UpsertKnowledgeEntrySchema>) => Promise<import('./project-intelligence').ProjectKnowledgeEntry>;
   assembleRoleContext: (params: z.input<typeof AssembleRoleContextSchema>) => Promise<import('./project-intelligence').RoleContextPackage>;
   onProjectIntelligenceChange?: (callback: (data: import('./project-intelligence').ProjectIntelligenceData) => void) => () => void;
+
+  // Continuous Engineering Intelligence (Phase 10)
+  getEngineeringSummary: (params: { projectPath: string; projectId?: string }) => Promise<import('./continuous-intelligence').EngineeringIntelligenceSummary>;
+  triggerEngineeringAnalysis: (params: z.infer<typeof TriggerEngineeringAnalysisSchema>) => Promise<import('./continuous-intelligence').EngineeringIntelligenceSummary>;
+  listEngineeringFindings: (params: z.infer<typeof QueryEngineeringFindingsSchema>) => Promise<import('./continuous-intelligence').EngineeringFinding[]>;
+  updateEngineeringFindingStatus: (params: z.infer<typeof UpdateFindingStatusSchema>) => Promise<{ success: boolean }>;
+  listEngineeringRecommendations: (params: z.infer<typeof QueryRecommendationsSchema>) => Promise<import('./continuous-intelligence').EngineeringRecommendation[]>;
+  submitRecommendationFeedback: (params: z.infer<typeof SubmitRecommendationFeedbackSchema>) => Promise<{ success: boolean }>;
+  approveEngineeringRecommendation: (params: z.infer<typeof ApproveRecommendationSchema>) => Promise<{ success: boolean; orchestrationId?: string; plan?: any }>;
+  getEngineeringConfig: (params: { projectId?: string }) => Promise<import('./continuous-intelligence').ContinuousIntelligenceConfig>;
+  updateEngineeringConfig: (params: z.infer<typeof UpdateContinuousIntelligenceConfigSchema> & { projectId?: string }) => Promise<import('./continuous-intelligence').ContinuousIntelligenceConfig>;
+  onEngineeringAnalysisChange?: (callback: (data: import('./continuous-intelligence').EngineeringIntelligenceSummary) => void) => () => void;
+
+  // Engineering Intelligence Validation & Calibration
+  runEngineeringValidation: (params?: z.infer<typeof import('./intelligence-validation').RunValidationSchema>) => Promise<import('./intelligence-validation').OverallValidationReport>;
+  runEngineeringBenchmark: (params?: z.infer<typeof import('./intelligence-validation').RunBenchmarkSchema>) => Promise<import('./intelligence-validation').BenchmarkMeasurement>;
+  getEngineeringScoringAudit: () => Promise<import('./intelligence-validation').ScoringAuditResult>;
+
+  // Operational Resilience & System Lifecycle
+  getLifecycleStatus: () => Promise<import('./lifecycle').LifecycleHealthStatus>;
+  getRecoveryIncidents: () => Promise<import('./lifecycle').RecoveryIncident[]>;
+  resolveRecoveryIncident: (params: z.input<typeof ResolveRecoveryIncidentSchema>) => Promise<{ success: boolean; result?: string }>;
+  getDatabaseHealth: () => Promise<import('./lifecycle').DatabaseHealthStatus>;
+  createDatabaseBackup: (params?: z.input<typeof CreateDatabaseBackupSchema>) => Promise<{ backupPath: string }>;
+  listDatabaseBackups: () => Promise<import('./lifecycle').DatabaseBackupInfo[]>;
+  verifyDatabaseBackup: (params: z.input<typeof VerifyDatabaseBackupSchema>) => Promise<{ valid: boolean; integrity: string; tableCount: number; error?: string }>;
+  restoreDatabaseBackup: (params: z.input<typeof RestoreDatabaseBackupSchema>) => Promise<{ success: boolean; preRestoreBackupPath: string; restoredPath: string }>;
+  recoverCorruptedDatabase: (params: z.input<typeof RecoverCorruptedDatabaseSchema>) => Promise<{ quarantinedCorruptPath: string; newDbPath: string }>;
+  getWorktreeSafetyStatus: (params?: z.input<typeof GetWorktreeHealthSchema>) => Promise<import('./lifecycle').WorktreeSafetyStatus>;
+  recoverWorktree: (params: z.input<typeof RecoverWorktreeSchema>) => Promise<{ success: boolean; message: string }>;
+  onLifecycleStatusChange?: (callback: (status: import('./lifecycle').LifecycleHealthStatus) => void) => () => void;
 }

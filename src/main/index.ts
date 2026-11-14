@@ -17,16 +17,31 @@ import { ptyService } from './terminal/pty-service';
 import { setWindowMaterial } from './services/window-material';
 import { mcpRuntime } from './mcp/mcp-runtime';
 import { executionEngine } from './cli/execution-engine';
+import { lifecycleCoordinatorService } from './services/lifecycle-coordinator.service';
 
 let mainWindow: BrowserWindow | null = null;
 
-// Global process error handlers for developer diagnostics
+// Global process error handlers for developer diagnostics & crash persistence
 process.on('uncaughtException', (error) => {
   appLogger.error('MainProcess', 'Uncaught exception in Main Process', error);
+  lifecycleCoordinatorService.recordCrash({
+    timestamp: Date.now(),
+    source: 'uncaughtException',
+    reason: error?.message || 'Uncaught exception in main process',
+    details: error?.stack,
+    recovered: false
+  });
 });
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', (reason: any) => {
   appLogger.error('MainProcess', 'Unhandled promise rejection in Main Process', reason);
+  lifecycleCoordinatorService.recordCrash({
+    timestamp: Date.now(),
+    source: 'unhandledRejection',
+    reason: reason?.message || String(reason) || 'Unhandled promise rejection',
+    details: reason?.stack,
+    recovered: false
+  });
 });
 
 function createWindow(): BrowserWindow {
@@ -337,6 +352,13 @@ function createWindow(): BrowserWindow {
 
   win.webContents.on('render-process-gone', (_, details) => {
     appLogger.error('Window', `Renderer process gone: reason=${details.reason}, exitCode=${details.exitCode}`);
+    lifecycleCoordinatorService.recordCrash({
+      timestamp: Date.now(),
+      source: 'renderer',
+      reason: `Renderer process terminated: reason=${details.reason}, exitCode=${details.exitCode}`,
+      details: JSON.stringify(details),
+      recovered: false
+    });
   });
 
   // HMR or production file load
@@ -374,13 +396,28 @@ if (!gotTheLock) {
     appLogger.info('Main', `Node ${process.version} | Electron ${process.versions.electron} | ${process.platform} (${process.arch})`);
     appLogger.info('Main', `========================================================`);
 
+    const appDataPath = isDev
+      ? path.join(process.cwd(), '.ai-workspace-data')
+      : path.join(app.getPath('userData'), 'data');
+
+    // 0. Initialize Lifecycle Coordinator & verify previous shutdown
+    const { recoveryRequired } = lifecycleCoordinatorService.initialize(appDataPath);
+    if (recoveryRequired) {
+      appLogger.warn('Lifecycle', 'Recovery required: unclean shutdown detected from previous session.');
+    }
+
     try {
       // 1. Initialize Dual SQLite databases & services
-      const appDataPath = isDev
-        ? path.join(process.cwd(), '.ai-workspace-data')
-        : path.join(app.getPath('userData'), 'data');
       appLogger.info('Database', `Initializing Dual SQLite persistence at ${appDataPath}`);
       databaseService.initialize(appDataPath);
+
+      // Verify database integrity on boot
+      const dbCheck = databaseService.checkDatabaseIntegrity();
+      if (!dbCheck.ok) {
+        appLogger.error('Database', `Database integrity issues detected on boot: ${dbCheck.errors.join(', ')}`);
+        lifecycleCoordinatorService.setDegraded(`Database integrity warning: ${dbCheck.errors[0]}`);
+      }
+
       databaseService.recoverWorkflowExecutionsOnStartup();
       databaseService.recoverCLISessionsOnStartup();
       databaseService.recoverOrchestrationsOnStartup();
@@ -390,7 +427,37 @@ if (!gotTheLock) {
       appLogger.info('Main', 'Core services initialized successfully');
     } catch (err: any) {
       appLogger.error('Main', `Critical startup error: ${err.message}`, err);
+      lifecycleCoordinatorService.setDegraded(`Critical startup error: ${err.message}`);
     }
+
+    // Register deterministic graceful shutdown callbacks
+    lifecycleCoordinatorService.registerShutdownCallback(async () => {
+      appLogger.info('Lifecycle', 'Shutting down Agent Orchestrator...');
+      try { agentOrchestrator.shutdown(); } catch {}
+    });
+    lifecycleCoordinatorService.registerShutdownCallback(async () => {
+      appLogger.info('Lifecycle', 'Terminating CLI Execution Engine subprocesses...');
+      try { executionEngine.killAll(); } catch {}
+    });
+    lifecycleCoordinatorService.registerShutdownCallback(async () => {
+      appLogger.info('Lifecycle', 'Terminating MCP Runtime connections...');
+      try { mcpRuntime.shutdownAll(); } catch {}
+    });
+    lifecycleCoordinatorService.registerShutdownCallback(async () => {
+      appLogger.info('Lifecycle', 'Terminating PTY Terminal sessions...');
+      try { ptyService.killAll(); } catch {}
+    });
+    lifecycleCoordinatorService.registerShutdownCallback(async () => {
+      appLogger.info('Lifecycle', 'Disconnecting Discord RPC...');
+      try { await discordRpcService.shutdown(); } catch {}
+    });
+    lifecycleCoordinatorService.registerShutdownCallback(async () => {
+      appLogger.info('Lifecycle', 'Checkpointing and closing SQLite persistence handles...');
+      try {
+        databaseService.checkpointAll();
+        databaseService.close();
+      } catch {}
+    });
 
     // 2. Set Content Security Policy (CSP)
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -440,6 +507,9 @@ if (!gotTheLock) {
     // 6. Create Window
     mainWindow = createWindow();
 
+    // Mark lifecycle state as ready once window is constructed
+    lifecycleCoordinatorService.setReady();
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         mainWindow = createWindow();
@@ -447,24 +517,14 @@ if (!gotTheLock) {
     });
   });
 
-  app.on('before-quit', () => {
-    appLogger.info('Main', 'Application shutting down, terminating active schedulers, CLI sessions, MCP processes, PTYs, and closing database handles...');
-    try {
-      agentOrchestrator.shutdown();
-    } catch {}
-    try {
-      executionEngine.killAll();
-    } catch {}
-    try {
-      mcpRuntime.shutdownAll();
-    } catch {}
-    try {
-      ptyService.killAll();
-    } catch {}
-    discordRpcService.shutdown().catch(() => {});
-    try {
-      databaseService.close();
-    } catch {}
+  let isQuitting = false;
+  app.on('before-quit', async (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    isQuitting = true;
+    appLogger.info('Main', 'Initiating bounded graceful shutdown via LifecycleCoordinator...');
+    await lifecycleCoordinatorService.executeGracefulShutdown(5000);
+    app.exit(0);
   });
 
   app.on('window-all-closed', () => {

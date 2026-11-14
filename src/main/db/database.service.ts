@@ -44,6 +44,19 @@ import type {
   ProjectHealthReport,
   KnowledgeCategory
 } from '../../shared/project-intelligence';
+import type {
+  EngineeringFinding,
+  FindingLifecycleEvent,
+  EngineeringRecommendation,
+  RecommendationFeedback,
+  AnalysisRunRecord,
+  EngineeringMetricSnapshot,
+  ContinuousIntelligenceConfig,
+  FindingCategory,
+  FindingSeverity,
+  FindingStatus,
+  RecommendationPriority
+} from '../../shared/continuous-intelligence';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -693,6 +706,130 @@ export class DatabaseService {
         created_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_plan_orch ON autonomous_plans(orchestration_id);
+
+      -- Migration 009: Continuous Engineering Intelligence
+      CREATE TABLE IF NOT EXISTS engineering_analysis_runs (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        trigger_type TEXT NOT NULL,
+        scope TEXT NOT NULL DEFAULT 'incremental',
+        status TEXT NOT NULL DEFAULT 'running',
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        categories_json TEXT NOT NULL DEFAULT '[]',
+        findings_generated_count INTEGER NOT NULL DEFAULT 0,
+        new_findings_count INTEGER NOT NULL DEFAULT 0,
+        resolved_findings_count INTEGER NOT NULL DEFAULT 0,
+        skip_reason TEXT,
+        error_message TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_eng_runs_proj ON engineering_analysis_runs(project_id, started_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_eng_runs_status ON engineering_analysis_runs(status);
+
+      CREATE TABLE IF NOT EXISTS engineering_findings (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        detection_timestamp INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        confidence REAL NOT NULL DEFAULT 1.0,
+        affected_files_json TEXT NOT NULL DEFAULT '[]',
+        evidence TEXT NOT NULL,
+        explanation TEXT NOT NULL,
+        baseline_comparison_json TEXT,
+        suggested_remediation TEXT NOT NULL,
+        related_historical_ids_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'new',
+        effort_category TEXT,
+        technical_debt_score REAL,
+        user_dismissed INTEGER NOT NULL DEFAULT 0,
+        user_dismissal_reason TEXT,
+        resolved_at INTEGER,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_eng_find_proj_cat ON engineering_findings(project_id, category);
+      CREATE INDEX IF NOT EXISTS idx_eng_find_status ON engineering_findings(project_id, status);
+      CREATE INDEX IF NOT EXISTS idx_eng_find_sev ON engineering_findings(project_id, severity);
+
+      CREATE TABLE IF NOT EXISTS engineering_finding_events (
+        id TEXT PRIMARY KEY,
+        finding_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        previous_status TEXT,
+        new_status TEXT NOT NULL,
+        comment TEXT,
+        timestamp INTEGER NOT NULL,
+        FOREIGN KEY(finding_id) REFERENCES engineering_findings(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_eng_find_events_find ON engineering_finding_events(finding_id);
+
+      CREATE TABLE IF NOT EXISTS engineering_metric_snapshots (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        methodology_version TEXT NOT NULL DEFAULT '1.0.0',
+        overall_health_score INTEGER NOT NULL,
+        architecture_score INTEGER NOT NULL,
+        technical_debt_score INTEGER NOT NULL,
+        performance_score INTEGER NOT NULL,
+        security_score INTEGER NOT NULL,
+        testing_score INTEGER NOT NULL,
+        agent_pass_rate REAL NOT NULL,
+        active_findings_json TEXT NOT NULL,
+        total_open_debt_items INTEGER NOT NULL,
+        total_recommendations_active INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_eng_snapshots_proj ON engineering_metric_snapshots(project_id, timestamp DESC);
+
+      CREATE TABLE IF NOT EXISTS engineering_recommendations (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        title TEXT NOT NULL,
+        problem TEXT NOT NULL,
+        supporting_evidence TEXT NOT NULL,
+        expected_impact TEXT NOT NULL,
+        confidence REAL NOT NULL DEFAULT 1.0,
+        estimated_effort TEXT NOT NULL DEFAULT 'medium',
+        priority TEXT NOT NULL DEFAULT 'medium',
+        category TEXT NOT NULL,
+        related_finding_ids_json TEXT NOT NULL DEFAULT '[]',
+        suggested_next_action TEXT NOT NULL,
+        task_goal_prompt TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_eng_rec_proj ON engineering_recommendations(project_id, status);
+
+      CREATE TABLE IF NOT EXISTS engineering_recommendation_feedback (
+        id TEXT PRIMARY KEY,
+        recommendation_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        feedback TEXT NOT NULL,
+        comment TEXT,
+        timestamp INTEGER NOT NULL,
+        FOREIGN KEY(recommendation_id) REFERENCES engineering_recommendations(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_eng_rec_feedback ON engineering_recommendation_feedback(recommendation_id);
+
+      CREATE TABLE IF NOT EXISTS engineering_baselines (
+        project_id TEXT PRIMARY KEY,
+        baseline_hash TEXT NOT NULL,
+        methodology_version TEXT NOT NULL DEFAULT '1.0.0',
+        baseline_data_json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS engineering_config (
+        project_id TEXT PRIMARY KEY,
+        config_json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
     `);
 
     // Record tracked migrations in the migration ledger
@@ -704,6 +841,7 @@ export class DatabaseService {
     this.recordMigration(db, 6, '006_pre_production_hardening');
     this.recordMigration(db, 7, '007_project_intelligence_engine');
     this.recordMigration(db, 8, '008_autonomous_engineering_intelligence');
+    this.recordMigration(db, 9, '009_continuous_engineering_intelligence');
   }
 
   private recordMigration(db: Database.Database, version: number, name: string): void {
@@ -2270,7 +2408,7 @@ export class DatabaseService {
   public recoverOrchestrationsOnStartup(): { recoveredOrchestrations: number; recoveredTasks: number } {
     const db = this.getAppDb();
     const now = Date.now();
-    // 1. Mark any active 'running' or 'planning' orchestrations as 'failed' (interrupted by shutdown)
+    // 1. Mark active orchestrations as 'interrupted' rather than blind failure
     const activeOrchs = db.prepare(`SELECT id FROM orchestrations WHERE status IN ('planning', 'running', 'reviewing')`).all() as any[];
     for (const o of activeOrchs) {
       db.prepare(`UPDATE orchestrations SET status = 'failed', error_message = 'Interrupted by application shutdown/restart', completed_at = ? WHERE id = ?`).run(
@@ -2279,18 +2417,26 @@ export class DatabaseService {
       );
     }
 
-    // 2. Mark any active 'running', 'ready', 'reviewing', or 'waiting_approval' tasks as 'failed'
-    const activeTasks = db.prepare(`SELECT id FROM orchestration_tasks WHERE status IN ('running', 'ready', 'reviewing', 'waiting_approval')`).all() as any[];
+    // 2. Mark active tasks: if worktree exists, mark requires_intervention so uncommitted work is inspected
+    const activeTasks = db.prepare(`SELECT id, title, worktree_path FROM orchestration_tasks WHERE status IN ('running', 'ready', 'reviewing', 'waiting_approval')`).all() as any[];
     for (const t of activeTasks) {
-      db.prepare(`UPDATE orchestration_tasks SET status = 'failed', error_message = 'Interrupted by application restart', completed_at = ? WHERE id = ?`).run(
+      let status = 'interrupted';
+      let msg = 'Interrupted by application restart';
+      if (t.worktree_path && fs.existsSync(t.worktree_path)) {
+        status = 'requires_intervention';
+        msg = 'Interrupted with active worktree. Verify status before re-queueing.';
+      }
+      db.prepare(`UPDATE orchestration_tasks SET status = ?, error_message = ?, completed_at = ? WHERE id = ?`).run(
+        status,
+        msg,
         now,
         t.id
       );
     }
 
-    // 3. Mark active task traces as failed
+    // 3. Mark active task traces as interrupted
     try {
-      db.prepare(`UPDATE task_traces SET status = 'failed', completed_at = ? WHERE status = 'running'`).run(now);
+      db.prepare(`UPDATE task_traces SET status = 'interrupted', completed_at = ? WHERE status = 'running'`).run(now);
     } catch {}
 
     return {
@@ -4118,6 +4264,1171 @@ export class DatabaseService {
     const db = this.getAppDb();
     const result = db.prepare(`DELETE FROM project_knowledge_entries WHERE id = ?`).run(id);
     return result.changes > 0;
+  }
+
+  // ==========================================
+  // Continuous Engineering Intelligence (Phase 10)
+  // ==========================================
+
+  public saveEngineeringAnalysisRun(run: AnalysisRunRecord): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_analysis_runs (
+        id, project_id, project_path, trigger_type, scope, status,
+        started_at, completed_at, duration_ms, categories_json,
+        findings_generated_count, new_findings_count, resolved_findings_count,
+        skip_reason, error_message
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        completed_at = excluded.completed_at,
+        duration_ms = excluded.duration_ms,
+        findings_generated_count = excluded.findings_generated_count,
+        new_findings_count = excluded.new_findings_count,
+        resolved_findings_count = excluded.resolved_findings_count,
+        skip_reason = excluded.skip_reason,
+        error_message = excluded.error_message
+    `).run(
+      run.id,
+      run.projectId,
+      run.projectPath,
+      run.triggerType,
+      run.scope,
+      run.status,
+      run.startedAt,
+      run.completedAt || null,
+      run.durationMs || 0,
+      JSON.stringify(run.categoriesAnalyzed || []),
+      run.findingsGeneratedCount || 0,
+      run.newFindingsCount || 0,
+      run.resolvedFindingsCount || 0,
+      run.skipReason || null,
+      run.errorMessage || null
+    );
+  }
+
+  public updateEngineeringAnalysisRun(id: string, updates: Partial<AnalysisRunRecord>): void {
+    const db = this.getAppDb();
+    const existing = db.prepare(`SELECT * FROM engineering_analysis_runs WHERE id = ?`).get(id) as any;
+    if (!existing) return;
+
+    db.prepare(`
+      UPDATE engineering_analysis_runs SET
+        status = ?,
+        completed_at = ?,
+        duration_ms = ?,
+        findings_generated_count = ?,
+        new_findings_count = ?,
+        resolved_findings_count = ?,
+        skip_reason = ?,
+        error_message = ?
+      WHERE id = ?
+    `).run(
+      updates.status || existing.status,
+      updates.completedAt ?? existing.completed_at,
+      updates.durationMs ?? existing.duration_ms,
+      updates.findingsGeneratedCount ?? existing.findings_generated_count,
+      updates.newFindingsCount ?? existing.new_findings_count,
+      updates.resolvedFindingsCount ?? existing.resolved_findings_count,
+      updates.skipReason ?? existing.skip_reason,
+      updates.errorMessage ?? existing.error_message,
+      id
+    );
+  }
+
+  public getEngineeringAnalysisRun(id: string): AnalysisRunRecord | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM engineering_analysis_runs WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      projectPath: row.project_path,
+      triggerType: row.trigger_type,
+      scope: row.scope,
+      status: row.status,
+      startedAt: row.started_at,
+      completedAt: row.completed_at || undefined,
+      durationMs: row.duration_ms,
+      categoriesAnalyzed: JSON.parse(row.categories_json || '[]'),
+      findingsGeneratedCount: row.findings_generated_count,
+      newFindingsCount: row.new_findings_count,
+      resolvedFindingsCount: row.resolved_findings_count,
+      skipReason: row.skip_reason || undefined,
+      errorMessage: row.error_message || undefined
+    };
+  }
+
+  public listEngineeringAnalysisRuns(projectId: string, limit = 50): AnalysisRunRecord[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT * FROM engineering_analysis_runs
+      WHERE project_id = ?
+      ORDER BY started_at DESC
+      LIMIT ?
+    `).all(projectId, limit) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      projectId: r.project_id,
+      projectPath: r.project_path,
+      triggerType: r.trigger_type,
+      scope: r.scope,
+      status: r.status,
+      startedAt: r.started_at,
+      completedAt: r.completed_at || undefined,
+      durationMs: r.duration_ms,
+      categoriesAnalyzed: JSON.parse(r.categories_json || '[]'),
+      findingsGeneratedCount: r.findings_generated_count,
+      newFindingsCount: r.new_findings_count,
+      resolvedFindingsCount: r.resolved_findings_count,
+      skipReason: r.skip_reason || undefined,
+      errorMessage: r.error_message || undefined
+    }));
+  }
+
+  public saveEngineeringFinding(finding: EngineeringFinding): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_findings (
+        id, project_id, project_path, detection_timestamp, category, severity,
+        confidence, affected_files_json, evidence, explanation,
+        baseline_comparison_json, suggested_remediation, related_historical_ids_json,
+        status, effort_category, technical_debt_score, user_dismissed,
+        user_dismissal_reason, resolved_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        severity = excluded.severity,
+        confidence = excluded.confidence,
+        affected_files_json = excluded.affected_files_json,
+        evidence = excluded.evidence,
+        explanation = excluded.explanation,
+        baseline_comparison_json = excluded.baseline_comparison_json,
+        suggested_remediation = excluded.suggested_remediation,
+        status = excluded.status,
+        effort_category = excluded.effort_category,
+        technical_debt_score = excluded.technical_debt_score,
+        user_dismissed = excluded.user_dismissed,
+        user_dismissal_reason = excluded.user_dismissal_reason,
+        resolved_at = excluded.resolved_at,
+        updated_at = excluded.updated_at
+    `).run(
+      finding.id,
+      finding.projectId,
+      finding.projectPath,
+      finding.detectionTimestamp,
+      finding.category,
+      finding.severity,
+      finding.confidence,
+      JSON.stringify(finding.affectedFiles || []),
+      finding.evidence,
+      finding.explanation,
+      finding.baselineComparison ? JSON.stringify(finding.baselineComparison) : null,
+      finding.suggestedRemediation,
+      JSON.stringify(finding.relatedHistoricalFindingIds || []),
+      finding.status,
+      finding.effortCategory || null,
+      finding.technicalDebtScore ?? null,
+      finding.userDismissed ? 1 : 0,
+      finding.userDismissalReason || null,
+      finding.resolvedAt || null,
+      finding.updatedAt || Date.now()
+    );
+  }
+
+  public updateFindingStatus(
+    id: string,
+    projectId: string,
+    status: FindingStatus,
+    comment?: string,
+    dismissalReason?: string
+  ): boolean {
+    const db = this.getAppDb();
+    const existing = db.prepare(`SELECT * FROM engineering_findings WHERE id = ?`).get(id) as any;
+    if (!existing) return false;
+
+    const now = Date.now();
+    const resolvedAt = status === 'resolved' ? now : (status === 'reopened' ? null : existing.resolved_at);
+    const userDismissed = (status === 'accepted' || status === 'false_positive' || dismissalReason) ? 1 : existing.user_dismissed;
+
+    db.prepare(`
+      UPDATE engineering_findings SET
+        status = ?,
+        user_dismissed = ?,
+        user_dismissal_reason = COALESCE(?, user_dismissal_reason),
+        resolved_at = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(status, userDismissed, dismissalReason || null, resolvedAt, now, id);
+
+    // Record lifecycle event
+    this.saveFindingLifecycleEvent({
+      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      findingId: id,
+      projectId,
+      eventType: status === 'resolved' ? 'resolved' : (status === 'reopened' ? 'reopened' : 'status_changed'),
+      previousStatus: existing.status,
+      newStatus: status,
+      comment: comment || dismissalReason,
+      timestamp: now
+    });
+
+    return true;
+  }
+
+  public getEngineeringFinding(id: string): EngineeringFinding | null {
+    const db = this.getAppDb();
+    const r = db.prepare(`SELECT * FROM engineering_findings WHERE id = ?`).get(id) as any;
+    if (!r) return null;
+    return this.mapFindingRow(r);
+  }
+
+  public listEngineeringFindings(params: {
+    projectId?: string;
+    category?: FindingCategory;
+    severity?: FindingSeverity;
+    status?: FindingStatus;
+    limit?: number;
+  } = {}): EngineeringFinding[] {
+    const db = this.getAppDb();
+    const conditions: string[] = [];
+    const values: any[] = [];
+
+    if (params.projectId) {
+      conditions.push('project_id = ?');
+      values.push(params.projectId);
+    }
+    if (params.category) {
+      conditions.push('category = ?');
+      values.push(params.category);
+    }
+    if (params.severity) {
+      conditions.push('severity = ?');
+      values.push(params.severity);
+    }
+    if (params.status) {
+      conditions.push('status = ?');
+      values.push(params.status);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limit = params.limit || 200;
+    values.push(limit);
+
+    const rows = db.prepare(`
+      SELECT * FROM engineering_findings
+      ${whereClause}
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `).all(...values) as any[];
+
+    return rows.map((r) => this.mapFindingRow(r));
+  }
+
+  private mapFindingRow(r: any): EngineeringFinding {
+    return {
+      id: r.id,
+      projectId: r.project_id,
+      projectPath: r.project_path,
+      detectionTimestamp: r.detection_timestamp,
+      category: r.category,
+      severity: r.severity,
+      confidence: r.confidence,
+      affectedFiles: JSON.parse(r.affected_files_json || '[]'),
+      evidence: r.evidence,
+      explanation: r.explanation,
+      baselineComparison: r.baseline_comparison_json ? JSON.parse(r.baseline_comparison_json) : undefined,
+      suggestedRemediation: r.suggested_remediation,
+      relatedHistoricalFindingIds: JSON.parse(r.related_historical_ids_json || '[]'),
+      status: r.status,
+      effortCategory: r.effort_category || undefined,
+      technicalDebtScore: r.technical_debt_score ?? undefined,
+      userDismissed: Boolean(r.user_dismissed),
+      userDismissalReason: r.user_dismissal_reason || undefined,
+      resolvedAt: r.resolved_at || undefined,
+      updatedAt: r.updated_at
+    };
+  }
+
+  public saveFindingLifecycleEvent(event: FindingLifecycleEvent): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_finding_events (
+        id, finding_id, project_id, event_type, previous_status,
+        new_status, comment, timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      event.id,
+      event.findingId,
+      event.projectId,
+      event.eventType,
+      event.previousStatus || null,
+      event.newStatus,
+      event.comment || null,
+      event.timestamp
+    );
+  }
+
+  public listFindingLifecycleEvents(findingId: string): FindingLifecycleEvent[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT * FROM engineering_finding_events
+      WHERE finding_id = ?
+      ORDER BY timestamp ASC
+    `).all(findingId) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      findingId: r.finding_id,
+      projectId: r.project_id,
+      eventType: r.event_type,
+      previousStatus: r.previous_status || undefined,
+      newStatus: r.new_status,
+      comment: r.comment || undefined,
+      timestamp: r.timestamp
+    }));
+  }
+
+  public saveMetricSnapshot(snapshot: EngineeringMetricSnapshot): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_metric_snapshots (
+        id, project_id, timestamp, methodology_version, overall_health_score,
+        architecture_score, technical_debt_score, performance_score,
+        security_score, testing_score, agent_pass_rate, active_findings_json,
+        total_open_debt_items, total_recommendations_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        overall_health_score = excluded.overall_health_score,
+        architecture_score = excluded.architecture_score,
+        technical_debt_score = excluded.technical_debt_score,
+        performance_score = excluded.performance_score,
+        security_score = excluded.security_score,
+        testing_score = excluded.testing_score,
+        agent_pass_rate = excluded.agent_pass_rate,
+        active_findings_json = excluded.active_findings_json,
+        total_open_debt_items = excluded.total_open_debt_items,
+        total_recommendations_active = excluded.total_recommendations_active
+    `).run(
+      snapshot.id,
+      snapshot.projectId,
+      snapshot.timestamp,
+      snapshot.methodologyVersion || '1.0.0',
+      snapshot.overallHealthScore,
+      snapshot.architectureScore,
+      snapshot.technicalDebtScore,
+      snapshot.performanceScore,
+      snapshot.securityScore,
+      snapshot.testingScore,
+      snapshot.agentPassRate,
+      JSON.stringify(snapshot.activeFindingsCount || {}),
+      snapshot.totalOpenDebtItems,
+      snapshot.totalRecommendationsActive
+    );
+  }
+
+  public listMetricSnapshots(projectId: string, limit = 50): EngineeringMetricSnapshot[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT * FROM engineering_metric_snapshots
+      WHERE project_id = ?
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `).all(projectId, limit) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      projectId: r.project_id,
+      timestamp: r.timestamp,
+      methodologyVersion: r.methodology_version,
+      overallHealthScore: r.overall_health_score,
+      architectureScore: r.architecture_score,
+      technicalDebtScore: r.technical_debt_score,
+      performanceScore: r.performance_score,
+      securityScore: r.security_score,
+      testingScore: r.testing_score,
+      agentPassRate: r.agent_pass_rate,
+      activeFindingsCount: JSON.parse(r.active_findings_json || '{}'),
+      totalOpenDebtItems: r.total_open_debt_items,
+      totalRecommendationsActive: r.total_recommendations_active
+    }));
+  }
+
+  public saveEngineeringRecommendation(rec: EngineeringRecommendation): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_recommendations (
+        id, project_id, project_path, title, problem, supporting_evidence,
+        expected_impact, confidence, estimated_effort, priority, category,
+        related_finding_ids_json, suggested_next_action, task_goal_prompt,
+        status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        problem = excluded.problem,
+        supporting_evidence = excluded.supporting_evidence,
+        expected_impact = excluded.expected_impact,
+        confidence = excluded.confidence,
+        estimated_effort = excluded.estimated_effort,
+        priority = excluded.priority,
+        category = excluded.category,
+        related_finding_ids_json = excluded.related_finding_ids_json,
+        suggested_next_action = excluded.suggested_next_action,
+        task_goal_prompt = excluded.task_goal_prompt,
+        status = excluded.status,
+        updated_at = excluded.updated_at
+    `).run(
+      rec.id,
+      rec.projectId,
+      rec.projectPath,
+      rec.title,
+      rec.problem,
+      rec.supportingEvidence,
+      rec.expectedImpact,
+      rec.confidence,
+      rec.estimatedEffort,
+      rec.priority,
+      rec.category,
+      JSON.stringify(rec.relatedFindingIds || []),
+      rec.suggestedNextAction,
+      rec.taskGoalPrompt || null,
+      rec.status,
+      rec.createdAt,
+      rec.updatedAt || Date.now()
+    );
+  }
+
+  public updateRecommendationStatus(
+    id: string,
+    status: 'active' | 'accepted' | 'deferred' | 'dismissed' | 'executed'
+  ): boolean {
+    const db = this.getAppDb();
+    const result = db.prepare(`
+      UPDATE engineering_recommendations
+      SET status = ?, updated_at = ?
+      WHERE id = ?
+    `).run(status, Date.now(), id);
+    return result.changes > 0;
+  }
+
+  public listEngineeringRecommendations(params: {
+    projectId?: string;
+    category?: FindingCategory;
+    status?: string;
+    limit?: number;
+  } = {}): EngineeringRecommendation[] {
+    const db = this.getAppDb();
+    const conditions: string[] = [];
+    const values: any[] = [];
+
+    if (params.projectId) {
+      conditions.push('project_id = ?');
+      values.push(params.projectId);
+    }
+    if (params.category) {
+      conditions.push('category = ?');
+      values.push(params.category);
+    }
+    if (params.status) {
+      conditions.push('status = ?');
+      values.push(params.status);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limit = params.limit || 50;
+    values.push(limit);
+
+    const rows = db.prepare(`
+      SELECT * FROM engineering_recommendations
+      ${whereClause}
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `).all(...values) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      projectId: r.project_id,
+      projectPath: r.project_path,
+      title: r.title,
+      problem: r.problem,
+      supportingEvidence: r.supporting_evidence,
+      expectedImpact: r.expected_impact,
+      confidence: r.confidence,
+      estimatedEffort: r.estimated_effort as any,
+      priority: r.priority as any,
+      category: r.category as any,
+      relatedFindingIds: JSON.parse(r.related_finding_ids_json || '[]'),
+      suggestedNextAction: r.suggested_next_action,
+      taskGoalPrompt: r.task_goal_prompt || undefined,
+      status: r.status as any,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    }));
+  }
+
+  public saveRecommendationFeedback(feedback: RecommendationFeedback): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_recommendation_feedback (
+        id, recommendation_id, project_id, feedback, comment, timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      feedback.id,
+      feedback.recommendationId,
+      feedback.projectId,
+      feedback.feedback,
+      feedback.comment || null,
+      feedback.timestamp
+    );
+
+    // Update recommendation status accordingly
+    if (feedback.feedback === 'accept') {
+      this.updateRecommendationStatus(feedback.recommendationId, 'accepted');
+    } else if (feedback.feedback === 'defer') {
+      this.updateRecommendationStatus(feedback.recommendationId, 'deferred');
+    } else if (feedback.feedback === 'not_useful' || feedback.feedback === 'incorrect') {
+      this.updateRecommendationStatus(feedback.recommendationId, 'dismissed');
+    }
+  }
+
+  public listRecommendationFeedback(recommendationId: string): RecommendationFeedback[] {
+    const db = this.getAppDb();
+    const rows = db.prepare(`
+      SELECT * FROM engineering_recommendation_feedback
+      WHERE recommendation_id = ?
+      ORDER BY timestamp DESC
+    `).all(recommendationId) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      recommendationId: r.recommendation_id,
+      projectId: r.project_id,
+      feedback: r.feedback as any,
+      comment: r.comment || undefined,
+      timestamp: r.timestamp
+    }));
+  }
+
+  public saveEngineeringBaseline(
+    projectId: string,
+    baselineHash: string,
+    data: any,
+    methodologyVersion = '1.0.0'
+  ): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_baselines (
+        project_id, baseline_hash, methodology_version, baseline_data_json, updated_at
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(project_id) DO UPDATE SET
+        baseline_hash = excluded.baseline_hash,
+        methodology_version = excluded.methodology_version,
+        baseline_data_json = excluded.baseline_data_json,
+        updated_at = excluded.updated_at
+    `).run(projectId, baselineHash, methodologyVersion, JSON.stringify(data), Date.now());
+  }
+
+  public getEngineeringBaseline(projectId: string): {
+    baselineHash: string;
+    methodologyVersion: string;
+    data: any;
+    updatedAt: number;
+  } | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM engineering_baselines WHERE project_id = ?`).get(projectId) as any;
+    if (!row) return null;
+    return {
+      baselineHash: row.baseline_hash,
+      methodologyVersion: row.methodology_version,
+      data: JSON.parse(row.baseline_data_json || '{}'),
+      updatedAt: row.updated_at
+    };
+  }
+
+  public saveEngineeringConfig(projectId: string, config: ContinuousIntelligenceConfig): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO engineering_config (project_id, config_json, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(project_id) DO UPDATE SET
+        config_json = excluded.config_json,
+        updated_at = excluded.updated_at
+    `).run(projectId, JSON.stringify(config), Date.now());
+  }
+
+  public getEngineeringConfig(projectId: string): ContinuousIntelligenceConfig | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT config_json FROM engineering_config WHERE project_id = ?`).get(projectId) as any;
+    if (!row || !row.config_json) return null;
+    try {
+      return JSON.parse(row.config_json);
+    } catch {
+      return null;
+    }
+  }
+
+  public pruneEngineeringData(
+    projectId: string,
+    retentionDays: number
+  ): { prunedFindings: number; prunedRuns: number; prunedSnapshots: number } {
+    const db = this.getAppDb();
+    const cutoff = Date.now() - retentionDays * 86400000;
+
+    const runsRes = db.prepare(`
+      DELETE FROM engineering_analysis_runs
+      WHERE project_id = ? AND started_at < ?
+    `).run(projectId, cutoff);
+
+    const snapshotsRes = db.prepare(`
+      DELETE FROM engineering_metric_snapshots
+      WHERE project_id = ? AND timestamp < ?
+    `).run(projectId, cutoff);
+
+    // Keep active/deferred findings, only prune resolved findings older than cutoff
+    const findingsRes = db.prepare(`
+      DELETE FROM engineering_findings
+      WHERE project_id = ? AND status = 'resolved' AND updated_at < ?
+    `).run(projectId, cutoff);
+
+    return {
+      prunedRuns: runsRes.changes,
+      prunedSnapshots: snapshotsRes.changes,
+      prunedFindings: findingsRes.changes
+    };
+  }
+
+  // ==========================================
+  // Production Hardening: Integrity, Backup & Disaster Recovery
+  // ==========================================
+
+  public checkDatabaseIntegrity(): {
+    ok: boolean;
+    integrity: string;
+    foreignKeysOk: boolean;
+    corrupted: boolean;
+    tableCount: number;
+    appDbIntegrity: string;
+    indexDbIntegrity: string;
+    foreignKeyViolations: any[];
+    appliedMigrationsCount: number;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+    let appDbIntegrity = 'unknown';
+    let indexDbIntegrity = 'unknown';
+    let foreignKeyViolations: any[] = [];
+    let appliedMigrationsCount = 0;
+
+    try {
+      if (this.appDb) {
+        const appRes = this.appDb.prepare('PRAGMA integrity_check').get() as any;
+        appDbIntegrity = appRes ? Object.values(appRes)[0] as string : 'failed';
+        if (appDbIntegrity !== 'ok') {
+          errors.push(`app.sqlite integrity check failed: ${appDbIntegrity}`);
+        }
+
+        foreignKeyViolations = this.appDb.prepare('PRAGMA foreign_key_check').all();
+        if (foreignKeyViolations.length > 0) {
+          errors.push(`app.sqlite has ${foreignKeyViolations.length} foreign key violation(s)`);
+        }
+
+        const migrations = this.appDb.prepare('SELECT COUNT(*) as count FROM schema_migrations').get() as any;
+        appliedMigrationsCount = migrations ? migrations.count : 0;
+      } else {
+        errors.push('app.sqlite handle is not initialized');
+      }
+
+      if (this.indexDb) {
+        const indexRes = this.indexDb.prepare('PRAGMA integrity_check').get() as any;
+        indexDbIntegrity = indexRes ? Object.values(indexRes)[0] as string : 'failed';
+        if (indexDbIntegrity !== 'ok') {
+          errors.push(`index.sqlite integrity check failed: ${indexDbIntegrity}`);
+        }
+      }
+    } catch (err: any) {
+      errors.push(`Database integrity inspection threw an error: ${err.message}`);
+    }
+
+    const isOk = errors.length === 0 && appDbIntegrity === 'ok' && foreignKeyViolations.length === 0;
+    return {
+      ok: isOk,
+      integrity: appDbIntegrity,
+      foreignKeysOk: foreignKeyViolations.length === 0,
+      corrupted: !isOk,
+      tableCount: appliedMigrationsCount,
+      appDbIntegrity,
+      indexDbIntegrity,
+      foreignKeyViolations,
+      appliedMigrationsCount,
+      errors
+    };
+  }
+
+  public async createOnlineBackup(targetDir?: string): Promise<{
+    success: boolean;
+    backupPath: string;
+    sizeBytes: number;
+    timestamp: number;
+  }> {
+    if (!this.appDb) {
+      throw new Error('Cannot create backup: Database is not initialized');
+    }
+
+    const backupsDir = targetDir || path.join(this.storageDir, 'backups');
+    if (!fs.existsSync(backupsDir)) {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const backupPath = path.join(backupsDir, `app-backup-${timestamp}.sqlite`);
+
+    // Use native SQLite online backup API to safely snapshot active WAL database
+    await this.appDb.backup(backupPath);
+
+    // Verify written backup immediately
+    const verify = this.verifyBackup(backupPath);
+    if (!verify.valid) {
+      try { fs.unlinkSync(backupPath); } catch {}
+      throw new Error(`Backup verification failed: ${verify.error || verify.integrity}`);
+    }
+
+    const sizeBytes = fs.statSync(backupPath).size;
+    return {
+      success: true,
+      backupPath,
+      sizeBytes,
+      timestamp
+    };
+  }
+
+  public verifyBackup(backupFilePath: string): {
+    valid: boolean;
+    integrity: string;
+    tableCount: number;
+    error?: string;
+  } {
+    if (!fs.existsSync(backupFilePath)) {
+      return { valid: false, integrity: 'file_not_found', tableCount: 0, error: 'Backup file does not exist' };
+    }
+
+    let candidateDb: Database.Database | null = null;
+    try {
+      candidateDb = new Database(backupFilePath, { readonly: true, timeout: 3000 });
+      const res = candidateDb.prepare('PRAGMA integrity_check').get() as any;
+      const integrity = res ? Object.values(res)[0] as string : 'unknown';
+
+      const tables = candidateDb.prepare(`
+        SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+      `).get() as any;
+
+      const tableCount = tables ? tables.count : 0;
+      candidateDb.close();
+      candidateDb = null;
+
+      return {
+        valid: integrity === 'ok' && tableCount > 0,
+        integrity,
+        tableCount
+      };
+    } catch (err: any) {
+      if (candidateDb) {
+        try { candidateDb.close(); } catch {}
+      }
+      return {
+        valid: false,
+        integrity: 'error',
+        tableCount: 0,
+        error: err.message
+      };
+    }
+  }
+
+  public listBackups(): Array<{
+    fileName: string;
+    filePath: string;
+    sizeBytes: number;
+    timestamp: number;
+    valid: boolean;
+  }> {
+    const backupsDir = path.join(this.storageDir, 'backups');
+    if (!fs.existsSync(backupsDir)) return [];
+
+    const files = fs.readdirSync(backupsDir);
+    const result: Array<{
+      fileName: string;
+      filePath: string;
+      sizeBytes: number;
+      timestamp: number;
+      valid: boolean;
+    }> = [];
+
+    for (const f of files) {
+      if (f.endsWith('.sqlite')) {
+        const fullPath = path.join(backupsDir, f);
+        try {
+          const stats = fs.statSync(fullPath);
+          const verify = this.verifyBackup(fullPath);
+          result.push({
+            fileName: f,
+            filePath: fullPath,
+            sizeBytes: stats.size,
+            timestamp: stats.mtimeMs,
+            valid: verify.valid
+          });
+        } catch {}
+      }
+    }
+
+    return result.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  private logRecoveryEvent(event: Record<string, any>): void {
+    try {
+      const logsDir = path.join(this.storageDir, 'logs');
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+      const logPath = path.join(logsDir, 'recovery.log');
+      const entry = {
+        timestamp: Date.now(),
+        isoTime: new Date().toISOString(),
+        ...event
+      };
+      fs.appendFileSync(logPath, JSON.stringify(entry) + '\n', 'utf8');
+    } catch (err) {
+      console.error('[DatabaseService] Failed to write recovery log:', err);
+    }
+  }
+
+  public restoreFromBackup(backupFilePath: string, explicitConfirm = false): {
+    success: boolean;
+    preRestoreBackupPath: string;
+    restoredPath: string;
+    candidateValidated: boolean;
+  } {
+    if (!explicitConfirm) {
+      throw new Error('Restore rejected: Explicit confirmation (explicitConfirm: true) is required to restore database backups.');
+    }
+
+    if (!fs.existsSync(backupFilePath)) {
+      throw new Error(`Backup file does not exist: ${backupFilePath}`);
+    }
+
+    const verification = this.verifyBackup(backupFilePath);
+    if (!verification.valid) {
+      throw new Error(`Cannot restore invalid backup: ${verification.error || verification.integrity}`);
+    }
+
+    const timestamp = Date.now();
+    const appDbPath = path.join(this.storageDir, 'app.sqlite');
+    const candidatePath = path.join(this.storageDir, `app.sqlite.restore-candidate-${timestamp}`);
+    const preRestoreBackupPath = path.join(this.storageDir, `app.sqlite.pre-restore-${timestamp}`);
+
+    // Step 1: Copy backup to isolated candidate file for verification before touching live DB
+    try {
+      fs.copyFileSync(backupFilePath, candidatePath);
+    } catch (err: any) {
+      throw new Error(`Failed to stage candidate restore database: ${err.message}`);
+    }
+
+    // Step 2: Thoroughly validate candidate database in isolation
+    let candidateDb: Database.Database | null = null;
+    try {
+      candidateDb = new Database(candidatePath, { readonly: true, fileMustExist: true });
+      const integrityRes = candidateDb.prepare('PRAGMA integrity_check').get() as any;
+      const integrity = integrityRes ? (Object.values(integrityRes)[0] as string) : 'unknown';
+      if (integrity !== 'ok') {
+        throw new Error(`Candidate database failed PRAGMA integrity_check: ${integrity}`);
+      }
+
+      const fkViolations = candidateDb.prepare('PRAGMA foreign_key_check').all();
+      if (fkViolations.length > 0) {
+        throw new Error(`Candidate database has ${fkViolations.length} foreign key violation(s)`);
+      }
+
+      const migrationsCheck = candidateDb.prepare(`SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name='schema_migrations'`).get() as any;
+      if (!migrationsCheck || migrationsCheck.count === 0) {
+        throw new Error('Candidate database is missing schema_migrations table');
+      }
+
+      candidateDb.close();
+      candidateDb = null;
+    } catch (err: any) {
+      if (candidateDb) {
+        try { candidateDb.close(); } catch {}
+      }
+      if (fs.existsSync(candidatePath)) {
+        try { fs.unlinkSync(candidatePath); } catch {}
+      }
+      this.logRecoveryEvent({
+        action: 'restore_rejected',
+        backupFilePath,
+        reason: err.message,
+        candidateValidated: false
+      });
+      throw new Error(`Restore aborted: Candidate database validation failed: ${err.message}`);
+    }
+
+    // Step 3: Candidate passed validation. Safely snapshot live database before replacement.
+    this.close();
+    if (fs.existsSync(appDbPath)) {
+      try {
+        fs.copyFileSync(appDbPath, preRestoreBackupPath);
+      } catch (err: any) {
+        if (fs.existsSync(candidatePath)) {
+          try { fs.unlinkSync(candidatePath); } catch {}
+        }
+        this.initialize();
+        throw new Error(`Failed to create pre-restore snapshot: ${err.message}`);
+      }
+    }
+
+    // Step 4: Atomic swap — move candidate database to active app.sqlite
+    try {
+      if (fs.existsSync(appDbPath)) {
+        try { fs.unlinkSync(appDbPath); } catch {}
+      }
+      fs.renameSync(candidatePath, appDbPath);
+    } catch (err: any) {
+      // Emergency rollback to pre-restore snapshot
+      if (fs.existsSync(preRestoreBackupPath)) {
+        try { fs.copyFileSync(preRestoreBackupPath, appDbPath); } catch {}
+      }
+      this.initialize();
+      throw new Error(`Atomic swap of restored database failed: ${err.message}`);
+    }
+
+    // Clean up any stale live WAL/SHM from previous database state
+    try {
+      const wal = path.join(this.storageDir, 'app.sqlite-wal');
+      const shm = path.join(this.storageDir, 'app.sqlite-shm');
+      if (fs.existsSync(wal)) fs.unlinkSync(wal);
+      if (fs.existsSync(shm)) fs.unlinkSync(shm);
+    } catch {}
+
+    // Step 5: Re-initialize connections with new validated database
+    this.initialize();
+
+    this.logRecoveryEvent({
+      action: 'restore_completed',
+      backupFilePath,
+      preRestoreBackupPath,
+      restoredPath: appDbPath,
+      candidateValidated: true,
+      timestamp
+    });
+
+    return {
+      success: true,
+      preRestoreBackupPath,
+      restoredPath: appDbPath,
+      candidateValidated: true
+    };
+  }
+
+  public recoverCorruptedDatabase(): {
+    quarantinedCorruptPath: string;
+    newDbPath: string;
+    timestamp: number;
+    dataSalvaged: boolean;
+    salvageOutcome: 'SALVAGE_FULL_SUCCESS' | 'SALVAGE_PARTIAL_SUCCESS' | 'SALVAGE_FAILED_EMPTY_SCHEMA_REBUILT';
+    salvagedTables: string[];
+    salvagedRecordsCount: number;
+    totalRecordsFound: number;
+    unrecoverableTables: string[];
+    conflictingRecordsCount: number;
+    rejectedRecordsCount: number;
+    foreignKeyViolationsCount: number;
+    tableAccounting: Record<string, {
+      found: number;
+      salvaged: number;
+      conflicts: number;
+      rejected: number;
+      unrecoverable: number;
+      reason?: string;
+    }>;
+  } {
+    const timestamp = Date.now();
+    const appDbPath = path.join(this.storageDir, 'app.sqlite');
+    const walPath = path.join(this.storageDir, 'app.sqlite-wal');
+    const shmPath = path.join(this.storageDir, 'app.sqlite-shm');
+
+    const quarantinedCorruptPath = path.join(this.storageDir, `app.sqlite.corrupt-${timestamp}`);
+    const quarantinedWalPath = path.join(this.storageDir, `app.sqlite-wal.corrupt-${timestamp}`);
+    const quarantinedShmPath = path.join(this.storageDir, `app.sqlite-shm.corrupt-${timestamp}`);
+
+    this.close();
+
+    // Safely quarantine database file
+    if (fs.existsSync(appDbPath)) {
+      try {
+        fs.renameSync(appDbPath, quarantinedCorruptPath);
+      } catch {
+        fs.copyFileSync(appDbPath, quarantinedCorruptPath);
+        try { fs.unlinkSync(appDbPath); } catch {}
+      }
+    }
+
+    // Safely quarantine WAL and SHM files (do NOT delete blindly — may hold uncheckpointed data)
+    if (fs.existsSync(walPath)) {
+      try {
+        fs.renameSync(walPath, quarantinedWalPath);
+      } catch {
+        try { fs.copyFileSync(walPath, quarantinedWalPath); fs.unlinkSync(walPath); } catch {}
+      }
+    }
+    if (fs.existsSync(shmPath)) {
+      try {
+        fs.renameSync(shmPath, quarantinedShmPath);
+      } catch {
+        try { fs.copyFileSync(shmPath, quarantinedShmPath); fs.unlinkSync(shmPath); } catch {}
+      }
+    }
+
+    // Step 1: Dynamic table and schema extraction from quarantined database
+    const salvagedData = new Map<string, any[]>();
+    const salvagedTables: string[] = [];
+    const unrecoverableTables: string[] = [];
+    const tableAccounting: Record<string, {
+      found: number;
+      salvaged: number;
+      conflicts: number;
+      rejected: number;
+      unrecoverable: number;
+      reason?: string;
+    }> = {};
+
+    let totalRecordsFound = 0;
+    let salvagedRecordsCount = 0;
+    let conflictingRecordsCount = 0;
+    let rejectedRecordsCount = 0;
+
+    let corruptDb: Database.Database | null = null;
+    try {
+      corruptDb = new Database(quarantinedCorruptPath, { readonly: true, fileMustExist: true });
+      const tablesRes = corruptDb.prepare(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_migrations'
+      `).all() as Array<{ name: string }>;
+
+      for (const t of tablesRes) {
+        tableAccounting[t.name] = { found: 0, salvaged: 0, conflicts: 0, rejected: 0, unrecoverable: 0 };
+        try {
+          const rows = corruptDb.prepare(`SELECT * FROM "${t.name}"`).all();
+          if (rows && rows.length > 0) {
+            tableAccounting[t.name].found = rows.length;
+            totalRecordsFound += rows.length;
+            salvagedData.set(t.name, rows);
+            salvagedTables.push(t.name);
+          }
+        } catch (err: any) {
+          unrecoverableTables.push(t.name);
+          tableAccounting[t.name].unrecoverable = 1;
+          tableAccounting[t.name].reason = err.message;
+        }
+      }
+      corruptDb.close();
+      corruptDb = null;
+    } catch {
+      if (corruptDb) {
+        try { corruptDb.close(); } catch {}
+      }
+    }
+
+    // Step 2: Initialize clean database schema with all migrations
+    const { appDbPath: newDbPath } = this.initialize();
+
+    // Step 3: Re-insert salvaged records with foreign keys disabled during bulk insert
+    let foreignKeyViolationsCount = 0;
+    if (this.appDb && salvagedData.size > 0) {
+      try {
+        this.appDb.pragma('foreign_keys = OFF');
+        const insertTx = this.appDb.transaction(() => {
+          for (const [table, rows] of salvagedData.entries()) {
+            if (rows.length === 0) continue;
+            const columns = Object.keys(rows[0]);
+            const placeholders = columns.map(() => '?').join(', ');
+            const colNames = columns.map((c) => `"${c}"`).join(', ');
+            const stmt = this.appDb!.prepare(`INSERT OR IGNORE INTO "${table}" (${colNames}) VALUES (${placeholders})`);
+
+            let tableSalvaged = 0;
+            let tableConflicts = 0;
+
+            for (const row of rows) {
+              const vals = columns.map((c) => row[c]);
+              try {
+                const info = stmt.run(...vals);
+                if (info.changes > 0) {
+                  tableSalvaged++;
+                  salvagedRecordsCount++;
+                } else {
+                  tableConflicts++;
+                  conflictingRecordsCount++;
+                }
+              } catch {
+                rejectedRecordsCount++;
+                tableAccounting[table].rejected++;
+              }
+            }
+
+            tableAccounting[table].salvaged = tableSalvaged;
+            tableAccounting[table].conflicts = tableConflicts;
+          }
+        });
+        insertTx();
+        this.appDb.pragma('foreign_keys = ON');
+
+        // Check foreign key consistency post-salvage
+        try {
+          const fkViolations = this.appDb.prepare('PRAGMA foreign_key_check').all();
+          foreignKeyViolationsCount = fkViolations.length;
+        } catch {}
+      } catch (err: any) {
+        console.error('[DatabaseService] Failed to insert salvaged records:', err.message);
+      }
+    }
+
+    const wasNonEmpty = fs.existsSync(quarantinedCorruptPath) && fs.statSync(quarantinedCorruptPath).size > 4096;
+    let salvageOutcome: 'SALVAGE_FULL_SUCCESS' | 'SALVAGE_PARTIAL_SUCCESS' | 'SALVAGE_FAILED_EMPTY_SCHEMA_REBUILT';
+
+    if (salvagedRecordsCount > 0 && salvagedRecordsCount === totalRecordsFound) {
+      salvageOutcome = 'SALVAGE_FULL_SUCCESS';
+    } else if (salvagedRecordsCount > 0) {
+      salvageOutcome = 'SALVAGE_PARTIAL_SUCCESS';
+    } else {
+      salvageOutcome = 'SALVAGE_FAILED_EMPTY_SCHEMA_REBUILT';
+    }
+
+    this.logRecoveryEvent({
+      action: 'database_corrupt_recovery',
+      quarantinedCorruptPath,
+      newDbPath,
+      dataSalvaged: salvagedRecordsCount > 0,
+      salvageOutcome,
+      salvagedTables,
+      salvagedRecordsCount,
+      totalRecordsFound,
+      conflictingRecordsCount,
+      rejectedRecordsCount,
+      foreignKeyViolationsCount,
+      unrecoverableTables,
+      timestamp
+    });
+
+    return {
+      quarantinedCorruptPath,
+      newDbPath,
+      timestamp,
+      dataSalvaged: salvagedRecordsCount > 0,
+      salvageOutcome,
+      salvagedTables,
+      salvagedRecordsCount,
+      totalRecordsFound,
+      unrecoverableTables,
+      conflictingRecordsCount,
+      rejectedRecordsCount,
+      foreignKeyViolationsCount,
+      tableAccounting
+    };
   }
 
   // ==========================================

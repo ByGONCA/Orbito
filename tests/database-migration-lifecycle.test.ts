@@ -62,12 +62,13 @@ describe('Orbito Database Migration & Upgrade Lifecycle Suite', () => {
 
     // Verify schema_migrations ledger exists and is populated
     const migrations = databaseService.getAppliedMigrations();
-    expect(migrations.length).toBeGreaterThanOrEqual(8);
-    expect(migrations.map((m) => m.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(migrations.length).toBeGreaterThanOrEqual(9);
+    expect(migrations.map((m) => m.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(migrations.find((m) => m.version === 1)?.name).toBe('001_core_baseline');
     expect(migrations.find((m) => m.version === 6)?.name).toBe('006_pre_production_hardening');
     expect(migrations.find((m) => m.version === 7)?.name).toBe('007_project_intelligence_engine');
     expect(migrations.find((m) => m.version === 8)?.name).toBe('008_autonomous_engineering_intelligence');
+    expect(migrations.find((m) => m.version === 9)?.name).toBe('009_continuous_engineering_intelligence');
   });
 
   // -------------------------------------------------------------
@@ -104,7 +105,7 @@ describe('Orbito Database Migration & Upgrade Lifecycle Suite', () => {
 
     // Verify migration count did not duplicate
     const migrations = databaseService.getAppliedMigrations();
-    expect(migrations.length).toBe(8);
+    expect(migrations.length).toBe(9);
   });
 
   // -------------------------------------------------------------
@@ -206,7 +207,7 @@ describe('Orbito Database Migration & Upgrade Lifecycle Suite', () => {
 
     // 4. Verify schema_migrations ledger was recorded
     const migrations = databaseService.getAppliedMigrations();
-    expect(migrations.length).toBe(8);
+    expect(migrations.length).toBe(9);
   });
 
   // -------------------------------------------------------------

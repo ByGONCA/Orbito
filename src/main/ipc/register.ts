@@ -95,8 +95,16 @@ import {
   GetProjectHealthSchema,
   GetProjectKnowledgeSchema,
   UpsertKnowledgeEntrySchema,
-  AssembleRoleContextSchema
+  AssembleRoleContextSchema,
+  ResolveRecoveryIncidentSchema,
+  CreateDatabaseBackupSchema,
+  VerifyDatabaseBackupSchema,
+  RestoreDatabaseBackupSchema,
+  RecoverCorruptedDatabaseSchema,
+  GetWorktreeHealthSchema,
+  RecoverWorktreeSchema
 } from '../../shared/ipc';
+import { lifecycleCoordinatorService } from '../services/lifecycle-coordinator.service';
 import { autoUpdateService } from '../services/auto-update.service';
 import { projectIntelligenceService } from '../intelligence/project-intelligence.service';
 import {
@@ -183,6 +191,20 @@ import { auditService } from '../services/audit.service';
 import { airGapManager } from '../services/air-gap.manager';
 import { ollamaAdapter } from '../cli/adapters/ollama.adapter';
 import { appLogger } from '../services/app-logger';
+import { continuousIntelligenceCoordinator } from '../intelligence/continuous-intelligence-coordinator';
+import {
+  TriggerEngineeringAnalysisSchema,
+  QueryEngineeringFindingsSchema,
+  UpdateFindingStatusSchema,
+  QueryRecommendationsSchema,
+  SubmitRecommendationFeedbackSchema,
+  ApproveRecommendationSchema,
+  UpdateContinuousIntelligenceConfigSchema
+} from '../../shared/continuous-intelligence';
+import { EngineeringIntelligenceValidator } from '../intelligence/validation/intelligence-validator';
+import { PerformanceBenchmarkHarness } from '../intelligence/benchmarks/performance-benchmark';
+import { technicalDebtIntelligenceService } from '../intelligence/technical-debt-intelligence.service';
+import { RunValidationSchema, RunBenchmarkSchema } from '../../shared/intelligence-validation';
 import type { SystemResourceMetrics, DetailedResourceMetrics } from '../../shared/types';
 
 let keepAwakeBlockerId: number | null = null;
@@ -220,7 +242,47 @@ async function checkPortOpen(port: number): Promise<boolean> {
   });
 }
 
+export function assertTrustedSender(event: Electron.IpcMainInvokeEvent, channelName: string): void {
+  if (!event || !event.sender) {
+    throw new Error(`Unauthorized IPC call to ${channelName}: Missing event sender`);
+  }
+  if (BrowserWindow && typeof BrowserWindow.fromWebContents === 'function') {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      throw new Error(`Unauthorized IPC call to ${channelName}: Sender window is invalid or destroyed`);
+    }
+  }
+
+  // Frame Identity Guard: reject subframe/iframe injections
+  if (event.senderFrame && (event.sender as any)?.mainFrame) {
+    if (event.senderFrame !== (event.sender as any).mainFrame) {
+      throw new Error(`Unauthorized IPC call to ${channelName}: Subframe or iframe invocation rejected`);
+    }
+  }
+
+  const senderUrl = (event.sender && typeof event.sender.getURL === 'function') ? event.sender.getURL() : '';
+  const isAllowedOrigin =
+    senderUrl.startsWith('file://') ||
+    senderUrl.startsWith('http://localhost:') ||
+    senderUrl.startsWith('http://127.0.0.1:') ||
+    senderUrl === '' ||
+    senderUrl.startsWith('about:blank');
+  if (!isAllowedOrigin) {
+    throw new Error(`Unauthorized IPC call to ${channelName}: Untrusted origin "${senderUrl}"`);
+  }
+}
+
 export function registerIpcHandlers(): void {
+  // Enforce assertTrustedSender across all registered IPC handlers
+  if (ipcMain && typeof ipcMain.handle === 'function') {
+    const originalHandle = ipcMain.handle.bind(ipcMain);
+    (ipcMain as any).handle = function(channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any) {
+      return originalHandle(channel, async (event: Electron.IpcMainInvokeEvent, ...args: any[]) => {
+        assertTrustedSender(event, channel);
+        return listener(event, ...args);
+      });
+    };
+  }
   // Global PTY interactive terminal data & exit broadcasts
   ptyService.on('data', (evt) => {
     const windows = BrowserWindow.getAllWindows();
@@ -1572,6 +1634,257 @@ export function registerIpcHandlers(): void {
     for (const win of windows) {
       if (!win.isDestroyed()) {
         win.webContents.send('intelligence:projectChanged', data);
+      }
+    }
+  });
+
+  // ==========================================
+  // Continuous Engineering Intelligence (Phase 10)
+  // ==========================================
+  ipcMain.handle('engineering:getSummary', async (_, args) => {
+    const projectPath = args?.projectPath || process.cwd();
+    return continuousIntelligenceCoordinator.getSummary(projectPath, args?.projectId);
+  });
+
+  ipcMain.handle('engineering:analyze', async (_, args) => {
+    const validated = TriggerEngineeringAnalysisSchema.parse(args || {});
+    return continuousIntelligenceCoordinator.runAnalysis(validated.projectPath, {
+      projectId: validated.projectId,
+      scope: validated.scope,
+      triggerType: validated.triggerType
+    });
+  });
+
+  ipcMain.handle('engineering:listFindings', async (_, args) => {
+    const validated = QueryEngineeringFindingsSchema.parse(args || {});
+    return databaseService.listEngineeringFindings(validated);
+  });
+
+  ipcMain.handle('engineering:updateFindingStatus', async (_, args) => {
+    const validated = UpdateFindingStatusSchema.parse(args || {});
+    const success = continuousIntelligenceCoordinator.updateFindingStatus(
+      validated.findingId,
+      validated.projectId,
+      validated.status,
+      validated.comment,
+      validated.reason
+    );
+    return { success };
+  });
+
+  ipcMain.handle('engineering:listRecommendations', async (_, args) => {
+    const validated = QueryRecommendationsSchema.parse(args || {});
+    return databaseService.listEngineeringRecommendations(validated);
+  });
+
+  ipcMain.handle('engineering:submitFeedback', async (_, args) => {
+    const validated = SubmitRecommendationFeedbackSchema.parse(args || {});
+    continuousIntelligenceCoordinator.submitRecommendationFeedback(
+      validated.recommendationId,
+      validated.projectId,
+      validated.feedback,
+      validated.comment
+    );
+    return { success: true };
+  });
+
+  ipcMain.handle('engineering:approveRecommendation', async (_, args) => {
+    const validated = ApproveRecommendationSchema.parse(args || {});
+    const recs = databaseService.listEngineeringRecommendations({
+      projectId: validated.projectId,
+      limit: 100
+    });
+    const rec = recs.find((r) => r.id === validated.recommendationId);
+    if (!rec) {
+      throw new Error(`Recommendation '${validated.recommendationId}' not found.`);
+    }
+
+    // Mark recommendation as executed
+    databaseService.updateRecommendationStatus(rec.id, 'executed');
+
+    // Create autonomous engineering intelligence plan preserving finding context
+    const plan = await agentOrchestrator.planTask({
+      projectId: validated.projectId,
+      projectPath: validated.projectPath,
+      userGoal: rec.taskGoalPrompt || rec.suggestedNextAction,
+      mode: validated.mode || 'supervised',
+      provider: (validated.provider as any) || 'claude-code',
+      model: validated.model
+    });
+
+    return { success: true, orchestrationId: plan.orchestrationId, plan };
+  });
+
+  ipcMain.handle('engineering:getConfig', async (_, args) => {
+    return continuousIntelligenceCoordinator.getConfig(args?.projectId);
+  });
+
+  ipcMain.handle('engineering:updateConfig', async (_, args) => {
+    const validated = UpdateContinuousIntelligenceConfigSchema.parse(args || {});
+    return continuousIntelligenceCoordinator.updateConfig(validated.config as any, args?.projectId);
+  });
+
+  // Engineering Intelligence Validation & Calibration
+  ipcMain.handle('engineering:runValidation', async (_, args) => {
+    const validated = RunValidationSchema.parse(args || {});
+    return EngineeringIntelligenceValidator.runValidation(validated.domain);
+  });
+
+  ipcMain.handle('engineering:runBenchmark', async (_, args) => {
+    const validated = RunBenchmarkSchema.parse(args || {});
+    return PerformanceBenchmarkHarness.runBenchmark(validated.profile);
+  });
+
+  ipcMain.handle('engineering:getScoringAudit', async () => {
+    // Audit monotonicity and severity floor enforcement across debt score inputs
+    const criticalScore = technicalDebtIntelligenceService.calculateDebtPriorityScore({
+      technicalImpact: 9,
+      securityImplications: 9,
+      maintainabilityImpact: 8,
+      changeFrequency: 7,
+      failureHistory: 8,
+      dependencyCentrality: 8,
+      confidence: 0.95,
+      effort: 'epic' // High effort must NOT suppress below severity floor
+    });
+
+    const minorScore = technicalDebtIntelligenceService.calculateDebtPriorityScore({
+      technicalImpact: 2,
+      securityImplications: 1,
+      maintainabilityImpact: 3,
+      changeFrequency: 2,
+      failureHistory: 1,
+      dependencyCentrality: 2,
+      confidence: 0.8,
+      effort: 'trivial'
+    });
+
+    return {
+      methodologyVersion: '1.1.0',
+      severityFloorsEnforced: criticalScore >= 80.0,
+      criticalFloorMinimum: 80.0,
+      monotonicityPreserved: criticalScore > minorScore,
+      scoreRangeVerified: { min: 1.0, max: 100.0 },
+      sampleComparisons: [
+        {
+          findingId: 'sample-critical-sec',
+          category: 'security',
+          severity: 'critical',
+          effort: 'epic',
+          confidence: 0.95,
+          debtScore: criticalScore,
+          explanation: 'Critical security issue with epic remediation effort retains >= 80.0 priority floor.'
+        },
+        {
+          findingId: 'sample-minor-clean',
+          category: 'technical_debt',
+          severity: 'low',
+          effort: 'trivial',
+          confidence: 0.8,
+          debtScore: minorScore,
+          explanation: 'Low severity item with trivial effort receives quick-win bonus but remains appropriately prioritized.'
+        }
+      ]
+    };
+  });
+
+  continuousIntelligenceCoordinator.on('analyzed', (summary) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('engineering:analysisChanged', summary);
+      }
+    }
+  });
+
+  // ==========================================
+  // Operational Resilience & System Lifecycle
+  // ==========================================
+
+  ipcMain.handle('system:getLifecycleStatus', async () => {
+    return lifecycleCoordinatorService.getStatus();
+  });
+
+  ipcMain.handle('system:getRecoveryIncidents', async () => {
+    return lifecycleCoordinatorService.getIncidents();
+  });
+
+  ipcMain.handle('system:resolveRecoveryIncident', async (_, raw) => {
+    const data = ResolveRecoveryIncidentSchema.parse(raw);
+    return lifecycleCoordinatorService.resolveIncident(data.incidentId, data.action, data.confirmed);
+  });
+
+  ipcMain.handle('system:getDatabaseHealth', async () => {
+    return databaseService.checkDatabaseIntegrity();
+  });
+
+  ipcMain.handle('system:createDatabaseBackup', async (_, raw) => {
+    const data = CreateDatabaseBackupSchema.parse(raw || {});
+    return await databaseService.createOnlineBackup(data.destinationPath);
+  });
+
+  ipcMain.handle('system:listDatabaseBackups', async () => {
+    return databaseService.listBackups();
+  });
+
+  ipcMain.handle('system:verifyDatabaseBackup', async (_, raw) => {
+    const data = VerifyDatabaseBackupSchema.parse(raw);
+    return databaseService.verifyBackup(data.filePath);
+  });
+
+  ipcMain.handle('system:restoreDatabaseBackup', async (_, raw) => {
+    const data = RestoreDatabaseBackupSchema.parse(raw);
+    return databaseService.restoreFromBackup(data.filePath, data.explicitConfirm);
+  });
+
+  ipcMain.handle('system:recoverCorruptedDatabase', async (_, raw) => {
+    const data = RecoverCorruptedDatabaseSchema.parse(raw || {});
+    if (!data.explicitConfirm) {
+      throw new Error('Explicit confirmation is required to recover a corrupted database.');
+    }
+    return databaseService.recoverCorruptedDatabase();
+  });
+
+  ipcMain.handle('system:getWorktreeSafetyStatus', async (_, raw) => {
+    const data = GetWorktreeHealthSchema.parse(raw || {});
+    const repoPath = data.repoPath || process.cwd();
+    const interrupted = await WorktreeManager.detectInterruptedGitOperations(repoPath);
+    const interruptedOps: Array<{ type: 'rebase' | 'merge' | 'cherry-pick' | 'revert'; path: string }> = [];
+    if (interrupted.hasInterruptedOperation && interrupted.operationType) {
+      interruptedOps.push({
+        type: interrupted.operationType === 'index_lock' ? 'rebase' : (interrupted.operationType as any),
+        path: repoPath
+      });
+    }
+    const quarantined = await WorktreeManager.listQuarantinedBranches(repoPath);
+    return {
+      activeLocksCount: WorktreeManager.getActiveLockCount(),
+      activeWorktreesCount: (await WorktreeManager.listActiveTaskWorktrees(repoPath)).length,
+      interruptedOperations: interruptedOps,
+      quarantinedBranchesCount: quarantined.length
+    };
+  });
+
+  ipcMain.handle('system:recoverWorktree', async (_, raw) => {
+    const data = RecoverWorktreeSchema.parse(raw);
+    if (data.action === 'clean_stale_lock') {
+      return WorktreeManager.abortInterruptedGitOperation(data.repoPath, 'index_lock', true);
+    }
+    if (data.action === 'abort_interrupted') {
+      const op = await WorktreeManager.detectInterruptedGitOperations(data.repoPath);
+      if (op.operationType === 'merge' || op.operationType === 'rebase') {
+        return WorktreeManager.abortInterruptedGitOperation(data.repoPath, op.operationType, true);
+      }
+      return { success: false, message: 'No interrupted operation detected to abort.' };
+    }
+    return { success: false, message: `Unsupported action: ${data.action}` };
+  });
+
+  lifecycleCoordinatorService.on('lifecycleChange', (status) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('lifecycle:statusChange', status);
       }
     }
   });

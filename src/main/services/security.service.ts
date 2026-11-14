@@ -28,6 +28,12 @@ export class SecurityService {
       throw new SecurityViolationException(err);
     }
 
+    if (targetPath.startsWith('\\\\') || targetPath.startsWith('//') || targetPath.startsWith('\\\\?\\') || targetPath.startsWith('\\\\.\\')) {
+      const err = 'Windows UNC network path injection rejected.';
+      auditService.logSecurityViolation('security_kernel', 'unc_path_rejected', err, targetPath);
+      throw new SecurityViolationException(err);
+    }
+
     const resolvedRoot = path.resolve(workspaceRoot);
     if (!fs.existsSync(resolvedRoot)) {
       const err = `Workspace root does not exist on disk: ${workspaceRoot}`;

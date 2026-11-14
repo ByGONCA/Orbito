@@ -1,5 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
+import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { WorktreeConflictCheck } from '../../shared/agents';
@@ -19,8 +21,258 @@ export interface OverlapCheckResult {
   conflictingFiles: string[];
 }
 
+export interface CrossProcessLockData {
+  pid: number;
+  hostname: string;
+  processStartTime: number;
+  createdAt: number;
+  lockId: string;
+  repoPath: string;
+  taskId?: string;
+  taskOwner?: string;
+}
+
 export class WorktreeManager {
   private static activeWorktreeRegistry: Map<string, WorktreeInfo> = new Map();
+  private static repoLocks: Map<string, Promise<any>> = new Map();
+  private static heldLocks: Map<string, { lockId: string; count: number }> = new Map();
+
+  private static isProcessAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch (err: any) {
+      return err.code === 'EPERM';
+    }
+  }
+
+  /**
+   * Resolves the canonical common Git directory for a repository or linked worktree.
+   * Ensures that all worktrees belonging to the same repository resolve to the same shared directory.
+   */
+  public static async resolveCommonGitDir(projectPath: string): Promise<string | null> {
+    try {
+      const gitPath = path.join(projectPath, '.git');
+      if (!fs.existsSync(gitPath)) return null;
+
+      // 1. Try git rev-parse --git-common-dir
+      try {
+        const res = await this.runGit(['rev-parse', '--git-common-dir'], projectPath);
+        if (res.exitCode === 0 && res.stdout) {
+          const resolved = path.isAbsolute(res.stdout)
+            ? res.stdout
+            : path.resolve(projectPath, res.stdout);
+          try {
+            return fs.realpathSync.native ? fs.realpathSync.native(resolved) : fs.realpathSync(resolved);
+          } catch {
+            return resolved;
+          }
+        }
+      } catch {}
+
+      // 2. Fallback: inspect .git filesystem entry
+      const stats = fs.statSync(gitPath);
+      if (stats.isDirectory()) {
+        try {
+          return fs.realpathSync.native ? fs.realpathSync.native(gitPath) : fs.realpathSync(gitPath);
+        } catch {
+          return gitPath;
+        }
+      }
+
+      // If .git is a file (linked worktree pointer), read gitdir: <path>
+      const content = fs.readFileSync(gitPath, 'utf8').trim();
+      if (content.startsWith('gitdir:')) {
+        const gitDirPointer = content.replace(/^gitdir:\s*/, '').trim();
+        const resolvedGitDir = path.isAbsolute(gitDirPointer)
+          ? gitDirPointer
+          : path.resolve(projectPath, gitDirPointer);
+
+        const commondirFile = path.join(resolvedGitDir, 'commondir');
+        if (fs.existsSync(commondirFile)) {
+          const commonRelative = fs.readFileSync(commondirFile, 'utf8').trim();
+          const commonDir = path.isAbsolute(commonRelative)
+            ? commonRelative
+            : path.resolve(resolvedGitDir, commonRelative);
+          try {
+            return fs.realpathSync.native ? fs.realpathSync.native(commonDir) : fs.realpathSync(commonDir);
+          } catch {
+            return commonDir;
+          }
+        }
+
+        try {
+          return fs.realpathSync.native ? fs.realpathSync.native(resolvedGitDir) : fs.realpathSync(resolvedGitDir);
+        } catch {
+          return resolvedGitDir;
+        }
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  public static async getLockFilePath(projectPath: string): Promise<string | null> {
+    const commonDir = await this.resolveCommonGitDir(projectPath);
+    if (!commonDir) return null;
+    return path.join(commonDir, 'orbito-repo.lock');
+  }
+
+  /**
+   * Atomically acquires cross-process file lock on repository with stale PID dead-process detection,
+   * hostname verification, process start identity, and in-process re-entrancy tracking.
+   */
+  public static async acquireCrossProcessLock(
+    projectPath: string,
+    timeoutMs = 8000,
+    taskId?: string,
+    taskOwner?: string
+  ): Promise<string | null> {
+    const commonDir = await this.resolveCommonGitDir(projectPath);
+    if (!commonDir) return null;
+
+    const normCommon = path.resolve(commonDir).toLowerCase();
+
+    // In-process re-entrancy check
+    const existing = this.heldLocks.get(normCommon);
+    if (existing) {
+      existing.count++;
+      return existing.lockId;
+    }
+
+    const lockFilePath = path.join(commonDir, 'orbito-repo.lock');
+    const lockId = crypto.randomUUID();
+    const processStartTime = Math.floor(Date.now() - (process.uptime() * 1000));
+
+    const payload: CrossProcessLockData = {
+      pid: process.pid,
+      hostname: os.hostname(),
+      processStartTime,
+      createdAt: Date.now(),
+      lockId,
+      repoPath: commonDir,
+      taskId,
+      taskOwner
+    };
+
+    const startTime = Date.now();
+    let delayMs = 25;
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const fd = fs.openSync(lockFilePath, 'wx');
+        fs.writeFileSync(fd, JSON.stringify(payload), 'utf8');
+        fs.closeSync(fd);
+
+        this.heldLocks.set(normCommon, { lockId, count: 1 });
+        return lockId;
+      } catch (err: any) {
+        if (err.code !== 'EEXIST') {
+          return null;
+        }
+
+        // Lock file exists — inspect holding process
+        try {
+          const content = fs.readFileSync(lockFilePath, 'utf8');
+          const data: CrossProcessLockData = JSON.parse(content);
+
+          const isLocalHost = data.hostname === os.hostname();
+
+          if (!isLocalHost) {
+            // NEVER automatically break another machine's lock without explicit protocol!
+            // Wait for lock release until timeout
+          } else {
+            const holdingProcessDead = !this.isProcessAlive(data.pid);
+            if (holdingProcessDead) {
+              // Stale lock from dead local process — atomically rename to avoid race
+              const staleToken = `${lockFilePath}.stale-${Date.now()}`;
+              try {
+                fs.renameSync(lockFilePath, staleToken);
+                try { fs.unlinkSync(staleToken); } catch {}
+                continue; // retry immediate acquisition
+              } catch {
+                // Another process unlinked or claimed
+              }
+            }
+          }
+        } catch {
+          // Unparseable, corrupted, or 0-byte lock file — safe atomic rename
+          const corruptToken = `${lockFilePath}.corrupt-${Date.now()}`;
+          try {
+            fs.renameSync(lockFilePath, corruptToken);
+            try { fs.unlinkSync(corruptToken); } catch {}
+            continue;
+          } catch {}
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        delayMs = Math.min(200, delayMs * 1.5);
+      }
+    }
+
+    throw new Error(`Repository concurrency lock timeout: ${projectPath} is locked by another process (lockfile: ${lockFilePath}).`);
+  }
+
+  /**
+   * Releases cross-process file lock if owned by our lockId.
+   */
+  public static async releaseCrossProcessLock(projectPath: string, lockId: string | null): Promise<void> {
+    if (!lockId) return;
+    const commonDir = await this.resolveCommonGitDir(projectPath);
+    if (!commonDir) return;
+
+    const normCommon = path.resolve(commonDir).toLowerCase();
+    const existing = this.heldLocks.get(normCommon);
+    if (existing) {
+      if (existing.lockId !== lockId) {
+        return; // Lock owned by another token
+      }
+      existing.count--;
+      if (existing.count > 0) {
+        return; // Still held by nested call
+      }
+      this.heldLocks.delete(normCommon);
+    }
+
+    const lockFilePath = path.join(commonDir, 'orbito-repo.lock');
+    if (!fs.existsSync(lockFilePath)) return;
+
+    try {
+      const content = fs.readFileSync(lockFilePath, 'utf8');
+      const data: CrossProcessLockData = JSON.parse(content);
+      if (data.lockId === lockId) {
+        fs.unlinkSync(lockFilePath);
+      }
+    } catch {}
+  }
+
+  /**
+   * Serializes mutating Git operations per repository path both intra-process and cross-process.
+   */
+  public static async withRepoLock<T>(projectPath: string, fn: () => Promise<T>): Promise<T> {
+    const norm = path.resolve(projectPath).toLowerCase();
+    const prev = this.repoLocks.get(norm) || Promise.resolve();
+    let releaseIntra: () => void = () => {};
+    const next = new Promise<void>((r) => { releaseIntra = r; });
+    this.repoLocks.set(norm, prev.then(() => next, () => next));
+    await prev;
+
+    let crossLockId: string | null = null;
+    try {
+      crossLockId = await this.acquireCrossProcessLock(projectPath);
+      return await fn();
+    } finally {
+      if (crossLockId) {
+        await this.releaseCrossProcessLock(projectPath, crossLockId);
+      }
+      releaseIntra();
+      if (this.repoLocks.get(norm) === next) {
+        this.repoLocks.delete(norm);
+      }
+    }
+  }
   /**
    * Executes a git command safely in the target repository directory.
    */
@@ -242,36 +494,97 @@ export class WorktreeManager {
   }
 
   /**
-   * Merges an agent branch into current main branch upon approval.
+   * Performs multi-step pre-merge safety validation immediately before integration.
    */
-  public static async mergeBranch(projectPath: string, branchName: string): Promise<{ success: boolean; conflicts?: string[]; error?: string }> {
+  public static async verifyPreMergeSafety(
+    projectPath: string,
+    branchName: string
+  ): Promise<{ safe: boolean; reason?: string; conflicts?: string[] }> {
     const isRepo = await this.isGitRepo(projectPath);
     if (!isRepo || branchName === 'none') {
-      return { success: true };
+      return { safe: true };
     }
 
-    const mergeRes = await this.runGit(['merge', '--no-ff', '-m', `Merge agent branch ${branchName}`, branchName], projectPath);
+    // 1. Re-read target branch HEAD
+    const headRes = await this.runGit(['rev-parse', 'HEAD'], projectPath);
+    if (headRes.exitCode !== 0) {
+      return { safe: false, reason: 'Failed to read current repository HEAD' };
+    }
 
-    if (mergeRes.exitCode !== 0) {
-      // Check if merge conflicts
-      const statusRes = await this.runGit(['diff', '--name-only', '--diff-filter=U'], projectPath);
-      const conflicts = statusRes.stdout ? statusRes.stdout.split('\n').filter(Boolean) : [];
+    // 2. Re-read source branch HEAD
+    const branchHeadRes = await this.runGit(['rev-parse', branchName], projectPath);
+    if (branchHeadRes.exitCode !== 0) {
+      return { safe: false, reason: `Target branch "${branchName}" does not exist or has no commits` };
+    }
 
-      // Abort failed merge to protect user repository
-      await this.runGit(['merge', '--abort'], projectPath);
-
+    // 3. User Change Protection: Assert main working tree is clean
+    const isDirty = await this.hasUncommittedChanges(projectPath);
+    if (isDirty) {
       return {
-        success: false,
-        conflicts,
-        error: `Merge conflict detected on branch ${branchName}: ${conflicts.join(', ')}`
+        safe: false,
+        reason: 'User working tree contains uncommitted changes. Stash or commit changes before integrating agent task branch.'
       };
     }
 
-    return { success: true };
+    // 4. Proactive merge simulation
+    const sim = await this.simulateMerge(projectPath, branchName);
+    if (!sim.clean) {
+      return {
+        safe: false,
+        reason: `Merge conflict predicted: ${sim.conflicts.join(', ')}`,
+        conflicts: sim.conflicts
+      };
+    }
+
+    return { safe: true };
   }
 
   /**
-   * Removes a worktree and optionally deletes the ephemeral branch.
+   * Merges an agent branch into current main branch upon approval with pre-merge safety checks and mutex locking.
+   */
+  public static async mergeBranch(
+    projectPath: string,
+    branchName: string
+  ): Promise<{ success: boolean; conflicts?: string[]; error?: string }> {
+    return this.withRepoLock(projectPath, async () => {
+      const isRepo = await this.isGitRepo(projectPath);
+      if (!isRepo || branchName === 'none') {
+        return { success: true };
+      }
+
+      // Step 1: Pre-merge safety verification
+      const safety = await this.verifyPreMergeSafety(projectPath, branchName);
+      if (!safety.safe) {
+        return {
+          success: false,
+          error: safety.reason,
+          conflicts: safety.conflicts
+        };
+      }
+
+      // Step 2: Merge execution
+      const mergeRes = await this.runGit(['merge', '--no-ff', '-m', `Merge agent branch ${branchName}`, branchName], projectPath);
+
+      if (mergeRes.exitCode !== 0) {
+        const statusRes = await this.runGit(['diff', '--name-only', '--diff-filter=U'], projectPath);
+        const conflicts = statusRes.stdout ? statusRes.stdout.split('\n').filter(Boolean) : [];
+
+        // Abort failed merge cleanly to protect user repository
+        await this.runGit(['merge', '--abort'], projectPath);
+
+        return {
+          success: false,
+          conflicts,
+          error: `Merge conflict detected on branch ${branchName}: ${conflicts.join(', ')}`
+        };
+      }
+
+      return { success: true };
+    });
+  }
+
+  /**
+   * Removes a worktree and safely deletes ephemeral branch without destroying uncommitted work.
    */
   public static async removeWorktree(
     projectPath: string,
@@ -280,7 +593,13 @@ export class WorktreeManager {
     deleteBranch = false
   ): Promise<boolean> {
     if (!fs.existsSync(worktreePath)) return true;
-    if (projectPath === worktreePath) return true; // Never delete project root!
+    if (projectPath === worktreePath) return true; // Invariant: Never delete project root!
+
+    // Safety check: if worktree contains uncommitted changes, do not delete branch
+    let hasDirtyChanges = false;
+    try {
+      hasDirtyChanges = await this.hasUncommittedChanges(worktreePath);
+    } catch {}
 
     // git worktree remove --force <path>
     await this.runGit(['worktree', 'remove', '--force', worktreePath], projectPath);
@@ -294,7 +613,15 @@ export class WorktreeManager {
     }
 
     if (deleteBranch && branchName && branchName !== 'none') {
-      await this.runGit(['branch', '-D', branchName], projectPath);
+      if (hasDirtyChanges) {
+        // Quarantine to stash branch instead of destructive deletion
+        const stashBranch = `orphaned/${branchName.replace(/^agent\//, '')}-${Date.now()}`;
+        try {
+          await this.runGit(['branch', '-m', branchName, stashBranch], projectPath);
+        } catch {}
+      } else {
+        await this.runGit(['branch', '-D', branchName], projectPath);
+      }
     }
 
     for (const [tId, wt] of this.activeWorktreeRegistry.entries()) {
@@ -304,6 +631,87 @@ export class WorktreeManager {
     }
 
     return true;
+  }
+
+  /**
+   * Detects interrupted Git states in the repository (interrupted merge, rebase, or stale index lock).
+   */
+  public static async detectInterruptedGitOperations(projectPath: string): Promise<{
+    hasInterruptedOperation: boolean;
+    operationType?: 'merge' | 'rebase' | 'cherry_pick' | 'index_lock';
+    details?: string;
+  }> {
+    const isRepo = await this.isGitRepo(projectPath);
+    if (!isRepo) return { hasInterruptedOperation: false };
+
+    const gitDir = path.join(projectPath, '.git');
+
+    // Check for interrupted merge
+    if (fs.existsSync(path.join(gitDir, 'MERGE_HEAD'))) {
+      return {
+        hasInterruptedOperation: true,
+        operationType: 'merge',
+        details: 'An in-progress git merge was interrupted. Run git merge --abort or resolve conflicts.'
+      };
+    }
+
+    // Check for interrupted rebase
+    if (fs.existsSync(path.join(gitDir, 'rebase-merge')) || fs.existsSync(path.join(gitDir, 'rebase-apply'))) {
+      return {
+        hasInterruptedOperation: true,
+        operationType: 'rebase',
+        details: 'An in-progress git rebase was interrupted. Run git rebase --abort to safely recover.'
+      };
+    }
+
+    // Check for stale index.lock
+    const lockPath = path.join(gitDir, 'index.lock');
+    if (fs.existsSync(lockPath)) {
+      const stats = fs.statSync(lockPath);
+      // If lock file is older than 60 seconds, it is likely abandoned from a crashed process
+      if (Date.now() - stats.mtimeMs > 60000) {
+        return {
+          hasInterruptedOperation: true,
+          operationType: 'index_lock',
+          details: 'Stale .git/index.lock detected from a previously terminated Git process.'
+        };
+      }
+    }
+
+    return { hasInterruptedOperation: false };
+  }
+
+  /**
+   * Safely aborts an interrupted merge or rebase, or cleans a stale lock file.
+   */
+  public static async abortInterruptedGitOperation(
+    projectPath: string,
+    operationType: 'merge' | 'rebase' | 'index_lock',
+    explicitConfirm = false
+  ): Promise<{ success: boolean; message: string }> {
+    if (!explicitConfirm) {
+      throw new Error('Explicit confirmation is required to recover interrupted Git operations.');
+    }
+
+    if (operationType === 'merge') {
+      const res = await this.runGit(['merge', '--abort'], projectPath);
+      return { success: res.exitCode === 0, message: res.exitCode === 0 ? 'Aborted interrupted merge.' : res.stderr };
+    }
+
+    if (operationType === 'rebase') {
+      const res = await this.runGit(['rebase', '--abort'], projectPath);
+      return { success: res.exitCode === 0, message: res.exitCode === 0 ? 'Aborted interrupted rebase.' : res.stderr };
+    }
+
+    if (operationType === 'index_lock') {
+      const lockPath = path.join(projectPath, '.git', 'index.lock');
+      if (fs.existsSync(lockPath)) {
+        fs.unlinkSync(lockPath);
+        return { success: true, message: 'Removed stale .git/index.lock file.' };
+      }
+    }
+
+    return { success: false, message: 'Unknown or unrecoverable operation.' };
   }
 
   /**
@@ -388,15 +796,79 @@ export class WorktreeManager {
   /**
    * Saves a safe patch snapshot of uncommitted/staged work in an active worktree.
    */
-  public static async saveWorktreeSnapshot(worktreePath: string): Promise<string | null> {
+  public static async saveWorktreeSnapshot(worktreePath: string, taskId?: string): Promise<{
+    patchPath: string | null;
+    manifestPath: string | null;
+    snapshotRef: string | null;
+    untrackedFiles: string[];
+    modifiedFiles: string[];
+  } | null> {
     if (!fs.existsSync(worktreePath)) return null;
-    const diff = await this.getDiff(worktreePath);
-    if (!diff) return null;
 
     try {
-      const snapshotPath = path.join(worktreePath, `.snapshot-${Date.now()}.patch`);
-      fs.writeFileSync(snapshotPath, diff, 'utf8');
-      return snapshotPath;
+      const isRepo = await this.isGitRepo(worktreePath);
+      const untrackedFiles: string[] = [];
+      const modifiedFiles: string[] = [];
+
+      if (isRepo) {
+        const statusRes = await this.runGit(['status', '--porcelain=v1', '-uall'], worktreePath);
+        if (statusRes.exitCode === 0 && statusRes.stdout) {
+          const lines = statusRes.stdout.split('\n').filter(Boolean);
+          for (const line of lines) {
+            const code = line.substring(0, 2).trim();
+            const file = line.substring(3).trim();
+            if (code === '??') {
+              untrackedFiles.push(file);
+            } else {
+              modifiedFiles.push(file);
+            }
+          }
+        }
+      }
+
+      const diff = isRepo ? await this.getDiff(worktreePath) : null;
+      const timestamp = Date.now();
+      const patchPath = path.join(worktreePath, `.snapshot-${timestamp}.patch`);
+      if (diff) {
+        fs.writeFileSync(patchPath, diff, 'utf8');
+      }
+
+      // Save complete snapshot manifest
+      const manifestPath = path.join(worktreePath, `.snapshot-${timestamp}.json`);
+      const manifest = {
+        taskId: taskId || 'unknown',
+        worktreePath,
+        timestamp,
+        untrackedFiles,
+        modifiedFiles,
+        hasPatch: Boolean(diff),
+        patchPath: diff ? patchPath : null
+      };
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+
+      let snapshotRef: string | null = null;
+      if (isRepo && (untrackedFiles.length > 0 || modifiedFiles.length > 0)) {
+        try {
+          const refName = `refs/orbito/interrupted/${taskId || 'unassigned'}-${timestamp}`;
+          await this.runGit(['add', '-A'], worktreePath);
+          const commitRes = await this.runGit(['commit', '-m', `orbito-recovery-snapshot: ${taskId || 'interrupted'}`, '--no-verify'], worktreePath);
+          if (commitRes.exitCode === 0) {
+            const headRes = await this.runGit(['rev-parse', 'HEAD'], worktreePath);
+            if (headRes.exitCode === 0) {
+              await this.runGit(['update-ref', refName, headRes.stdout], worktreePath);
+              snapshotRef = refName;
+            }
+          }
+        } catch {}
+      }
+
+      return {
+        patchPath: diff ? patchPath : null,
+        manifestPath,
+        snapshotRef,
+        untrackedFiles,
+        modifiedFiles
+      };
     } catch {
       return null;
     }
@@ -414,6 +886,18 @@ export class WorktreeManager {
    */
   public static unregisterActiveTaskWorktree(taskId: string): void {
     this.activeWorktreeRegistry.delete(taskId);
+  }
+
+  public static getActiveLockCount(): number {
+    return this.repoLocks.size;
+  }
+
+  public static async listQuarantinedBranches(projectPath: string): Promise<string[]> {
+    const isRepo = await this.isGitRepo(projectPath);
+    if (!isRepo) return [];
+    const res = await this.runGit(['branch', '--list', 'orphaned/*'], projectPath);
+    if (res.exitCode !== 0 || !res.stdout) return [];
+    return res.stdout.split('\n').map(b => b.replace(/^[* ]+/, '').trim()).filter(Boolean);
   }
 
   /**

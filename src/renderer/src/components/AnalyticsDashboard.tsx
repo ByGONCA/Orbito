@@ -24,9 +24,12 @@ import { AgentDiagnosticsView } from './AgentDiagnosticsView';
 import { WorktreeDiagnosticsView } from './WorktreeDiagnosticsView';
 import { TaskTracingView } from './TaskTracingView';
 import { ProjectIntelligenceView } from './ProjectIntelligenceView';
+import { EngineeringIntelligenceView } from './EngineeringIntelligenceView';
+import { OperationalHealthView } from './OperationalHealthView';
 
 export const AnalyticsDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'intelligence' | 'agents' | 'worktrees' | 'mcp' | 'traces' | 'audit'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'resilience' | 'continuous-intelligence' | 'intelligence' | 'agents' | 'worktrees' | 'mcp' | 'traces' | 'audit'>('overview');
+
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [providerMetrics, setProviderMetrics] = useState<ProviderCostMetrics[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
@@ -126,6 +129,14 @@ export const AnalyticsDashboard: React.FC = () => {
               Project Intelligence
             </button>
             <button
+              onClick={() => setActiveTab('continuous-intelligence')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'continuous-intelligence' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Continuous Intelligence
+            </button>
+            <button
               onClick={() => setActiveTab('agents')}
               className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
                 activeTab === 'agents' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
@@ -165,6 +176,14 @@ export const AnalyticsDashboard: React.FC = () => {
             >
               Security Audit
             </button>
+            <button
+              onClick={() => setActiveTab('resilience')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'resilience' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Resilience & Recovery
+            </button>
           </div>
 
           <button
@@ -179,7 +198,11 @@ export const AnalyticsDashboard: React.FC = () => {
         </div>
       </div>
 
-      {activeTab === 'intelligence' ? (
+      {activeTab === 'continuous-intelligence' ? (
+        <EngineeringIntelligenceView />
+      ) : activeTab === 'resilience' ? (
+        <OperationalHealthView />
+      ) : activeTab === 'intelligence' ? (
         <ProjectIntelligenceView />
       ) : activeTab === 'agents' ? (
         <AgentDiagnosticsView />

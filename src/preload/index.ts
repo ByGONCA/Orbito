@@ -310,6 +310,49 @@ const api: IElectronAPI = {
     return () => {
       ipcRenderer.removeListener('intelligence:projectChanged', handler);
     };
+  },
+
+  // Continuous Engineering Intelligence (Phase 10)
+  getEngineeringSummary: (params: any) => ipcRenderer.invoke('engineering:getSummary', params),
+  triggerEngineeringAnalysis: (params: any) => ipcRenderer.invoke('engineering:analyze', params),
+  listEngineeringFindings: (params: any) => ipcRenderer.invoke('engineering:listFindings', params),
+  updateEngineeringFindingStatus: (params: any) => ipcRenderer.invoke('engineering:updateFindingStatus', params),
+  listEngineeringRecommendations: (params: any) => ipcRenderer.invoke('engineering:listRecommendations', params),
+  submitRecommendationFeedback: (params: any) => ipcRenderer.invoke('engineering:submitFeedback', params),
+  approveEngineeringRecommendation: (params: any) => ipcRenderer.invoke('engineering:approveRecommendation', params),
+  getEngineeringConfig: (params: any) => ipcRenderer.invoke('engineering:getConfig', params),
+  updateEngineeringConfig: (params: any) => ipcRenderer.invoke('engineering:updateConfig', params),
+  onEngineeringAnalysisChange: (callback: (data: any) => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('engineering:analysisChanged', handler);
+    return () => {
+      ipcRenderer.removeListener('engineering:analysisChanged', handler);
+    };
+  },
+
+  // Engineering Intelligence Validation & Calibration
+  runEngineeringValidation: (params?: any) => ipcRenderer.invoke('engineering:runValidation', params),
+  runEngineeringBenchmark: (params?: any) => ipcRenderer.invoke('engineering:runBenchmark', params),
+  getEngineeringScoringAudit: () => ipcRenderer.invoke('engineering:getScoringAudit'),
+
+  // Operational Resilience & System Lifecycle
+  getLifecycleStatus: () => ipcRenderer.invoke('system:getLifecycleStatus'),
+  getRecoveryIncidents: () => ipcRenderer.invoke('system:getRecoveryIncidents'),
+  resolveRecoveryIncident: (params: any) => ipcRenderer.invoke('system:resolveRecoveryIncident', params),
+  getDatabaseHealth: () => ipcRenderer.invoke('system:getDatabaseHealth'),
+  createDatabaseBackup: (params?: any) => ipcRenderer.invoke('system:createDatabaseBackup', params),
+  listDatabaseBackups: () => ipcRenderer.invoke('system:listDatabaseBackups'),
+  verifyDatabaseBackup: (params: any) => ipcRenderer.invoke('system:verifyDatabaseBackup', params),
+  restoreDatabaseBackup: (params: any) => ipcRenderer.invoke('system:restoreDatabaseBackup', params),
+  recoverCorruptedDatabase: (params: any) => ipcRenderer.invoke('system:recoverCorruptedDatabase', params),
+  getWorktreeSafetyStatus: (params?: any) => ipcRenderer.invoke('system:getWorktreeSafetyStatus', params),
+  recoverWorktree: (params: any) => ipcRenderer.invoke('system:recoverWorktree', params),
+  onLifecycleStatusChange: (callback: (status: any) => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('lifecycle:statusChange', handler);
+    return () => {
+      ipcRenderer.removeListener('lifecycle:statusChange', handler);
+    };
   }
 };
 

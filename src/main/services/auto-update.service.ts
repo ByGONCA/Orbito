@@ -15,6 +15,7 @@ import type {
   InstallUpdateResult
 } from '../../shared/update';
 import { databaseService } from '../db/database.service';
+import { lifecycleCoordinatorService } from './lifecycle-coordinator.service';
 
 export interface AutoUpdateConfig {
   channel: ReleaseChannel;
@@ -229,19 +230,26 @@ export class AutoUpdateService {
   }
 
   public async installUpdate(options: { restartImmediately?: boolean } = {}): Promise<InstallUpdateResult> {
+    // Safety check: Never disrupt active AI sessions or running orchestrations
+        // Enter authoritative Maintenance Gate: blocks any new operations from starting
+    lifecycleCoordinatorService.enterMaintenanceMode('Orbito update installation');
+
+    // Wait up to 8000ms for active operations to drain
+    const drained = await lifecycleCoordinatorService.waitForMaintenanceGate(8000);
+    const activeTasks = this.countActiveSessions() + lifecycleCoordinatorService.getMaintenanceStatus().activeOperationsCount;
+
+    if (!drained || activeTasks > 0) {
+      lifecycleCoordinatorService.exitMaintenanceMode();
+      return {
+        success: false,
+        message: `Cannot apply update: ${activeTasks} active task(s) or orchestration(s) are currently in progress. Complete or pause active work first.`
+      };
+    }
+
     if (!this.stagedUpdatePath || !fs.existsSync(this.stagedUpdatePath)) {
       return {
         success: false,
         message: 'No verified update has been staged for installation.'
-      };
-    }
-
-    // Safety check: Never disrupt active AI sessions or running orchestrations
-    const activeTasks = this.countActiveSessions();
-    if (activeTasks > 0) {
-      return {
-        success: false,
-        message: `Cannot apply update: ${activeTasks} active task(s) or orchestration(s) are currently in progress. Complete or pause active work first.`
       };
     }
 

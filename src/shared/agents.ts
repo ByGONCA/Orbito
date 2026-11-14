@@ -171,6 +171,7 @@ export type OrchestrationEventType =
   | 'task_approval_needed'
   | 'task_completed'
   | 'task_failed'
+  | 'task_retry_scheduled'
   | 'task_blocked'
   | 'worktree_created'
   | 'worktree_merged'
