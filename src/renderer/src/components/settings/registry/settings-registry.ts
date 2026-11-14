@@ -12,6 +12,7 @@ import {
   Database,
   Blocks,
   Radio,
+  Cpu,
   Info
 } from 'lucide-react';
 import type { SettingsSectionId } from '../../../../../shared/types';
@@ -237,6 +238,23 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
     ]
   },
   {
+    id: 'adaptive-intelligence',
+    label: 'Adaptive Intelligence',
+    category: 'Agents & Engine',
+    description: 'Dynamic multi-model routing, evidence-based capability profiles, and in-flight model orchestration.',
+    icon: Cpu,
+    keywords: ['adaptive', 'intelligence', 'routing', 'models', 'claude', 'gpt', 'gemini', 'ollama', 'switching', 'cost'],
+    settings: [
+      {
+        id: 'adaptive-intelligence-engine',
+        sectionId: 'adaptive-intelligence',
+        label: 'Dynamic Model Routing Engine',
+        description: 'Orchestrate execution across specialized models per task operation.',
+        keywords: ['adaptive', 'routing', 'models', 'capabilities']
+      }
+    ]
+  },
+  {
     id: 'memory',
     label: 'Memory',
     category: 'Agents & Engine',
@@ -276,10 +294,17 @@ export const SETTINGS_SECTIONS: SettingsSectionMetadata[] = [
     id: 'integrations',
     label: 'Integrations',
     category: 'System',
-    description: 'External service connections and Discord Rich Presence live desktop status daemon.',
+    description: 'Centralized Model Context Protocol (MCP) servers, tool discovery, and Discord Rich Presence live desktop status daemon.',
     icon: Radio,
-    keywords: ['integrations', 'discord', 'rpc', 'status'],
+    keywords: ['integrations', 'mcp', 'model context protocol', 'tools', 'discord', 'rpc', 'status'],
     settings: [
+      {
+        id: 'integrations-mcp-servers',
+        sectionId: 'integrations',
+        label: 'MCP Servers',
+        description: 'Centrally configure stdio and Streamable HTTP MCP tool servers for Claude Code, Codex, Antigravity, and OpenCode.',
+        keywords: ['mcp', 'servers', 'tools', 'model context protocol', 'stdio', 'http', 'sse']
+      },
       {
         id: 'integrations-discord-rpc',
         sectionId: 'integrations',

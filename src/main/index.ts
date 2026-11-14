@@ -15,6 +15,8 @@ import { appLogger } from './services/app-logger';
 import { discordRpcService } from './services/discord/discord-rpc.service';
 import { ptyService } from './terminal/pty-service';
 import { setWindowMaterial } from './services/window-material';
+import { mcpRuntime } from './mcp/mcp-runtime';
+import { executionEngine } from './cli/execution-engine';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -381,6 +383,7 @@ if (!gotTheLock) {
       databaseService.initialize(appDataPath);
       databaseService.recoverWorkflowExecutionsOnStartup();
       databaseService.recoverCLISessionsOnStartup();
+      databaseService.recoverOrchestrationsOnStartup();
       skillRegistry.initialize(appDataPath);
       agentOrchestrator.initialize();
       extensionRegistry.initialize(appDataPath);
@@ -445,10 +448,23 @@ if (!gotTheLock) {
   });
 
   app.on('before-quit', () => {
-    appLogger.info('Main', 'Application shutting down, terminating PTYs and closing database handles...');
-    ptyService.killAll();
+    appLogger.info('Main', 'Application shutting down, terminating active schedulers, CLI sessions, MCP processes, PTYs, and closing database handles...');
+    try {
+      agentOrchestrator.shutdown();
+    } catch {}
+    try {
+      executionEngine.killAll();
+    } catch {}
+    try {
+      mcpRuntime.shutdownAll();
+    } catch {}
+    try {
+      ptyService.killAll();
+    } catch {}
     discordRpcService.shutdown().catch(() => {});
-    databaseService.close();
+    try {
+      databaseService.close();
+    } catch {}
   });
 
   app.on('window-all-closed', () => {

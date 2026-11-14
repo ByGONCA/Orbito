@@ -1,0 +1,123 @@
+name: Orbito CI Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    name: Fast-Fail Quality Gates (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Rebuild Native Modules (Electron ABI)
+        run: npm run postinstall
+
+      - name: Validate Repository Structure & Governance
+        run: node scripts/validate-structure.js
+
+      - name: Validate Agent System & Coordination
+        run: npm run validate:coordination
+
+      - name: Audit Security, Dependencies & Licenses
+        run: node scripts/validate-security-and-licenses.js
+
+      - name: Run TypeScript Typecheck
+        run: npm run typecheck
+
+  test-suite:
+    name: Automated Test & Simulation Suite
+    needs: quality-gates
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Rebuild Native Modules (Electron ABI)
+        run: npm run postinstall
+
+      - name: Execute Electron-Runtime Test Suite
+        run: npm test
+
+      - name: Preserve Test Failure Diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-failure-diagnostics
+          path: |
+            .ai-workspace-data
+            *.log
+          retention-days: 7
+
+  build-and-packaging:
+    name: Production Build & Packaging Validation
+    needs: quality-gates
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Rebuild Native Modules (Electron ABI)
+        run: npm run postinstall
+
+      - name: Compile Production Bundle
+        run: npm run build
+
+      - name: Validate Electron Packaging & ASAR Rules
+        run: node scripts/validate-packaging.js --require-build
+
+      - name: Validate CLI Diagnostics Dry-Run
+        run: node bin/orbito.js doctor --json
+
+  ci-verdict:
+    name: CI Quality Gate Verdict
+    needs: [quality-gates, test-suite, build-and-packaging]
+    runs-on: windows-latest
+    steps:
+      - name: Confirm Pipeline Success
+        run: echo "All Orbito CI validation stages passed successfully. Ready for worktree integration."

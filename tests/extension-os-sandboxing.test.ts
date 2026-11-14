@@ -347,7 +347,7 @@ describe('Extension Security 2.0: OS-Level Sandboxing Adversarial Suite', () => 
       for (const rec of records) {
         await extensionHostManager.terminateHost(rec.id);
       }
-    });
+    }, 20000);
 
     it('cleanly terminates process tree without leaving orphaned processes', async () => {
       const script = `

@@ -14,29 +14,86 @@ export type SpecialistRole =
 
 export type TaskStatus =
   | 'pending'
+  | 'understanding'
+  | 'planning'
   | 'ready'
   | 'running'
+  | 'executing'
   | 'waiting_approval'
+  | 'awaiting_approval'
+  | 'verifying'
   | 'reviewing'
+  | 'integrating'
   | 'completed'
   | 'failed'
   | 'cancelled'
   | 'blocked';
 
 export type OrchestrationStatus =
+  | 'understanding'
   | 'planning'
+  | 'ready'
   | 'running'
+  | 'executing'
   | 'waiting_approval'
+  | 'awaiting_approval'
   | 'reviewing'
+  | 'verifying'
+  | 'integrating'
   | 'completed'
   | 'failed'
   | 'cancelled';
 
 export type ExecutionMode = 'manual' | 'supervised' | 'autonomous';
 
+export interface PlanObjective {
+  id: string;
+  title: string;
+  description: string;
+  acceptanceCriteria: string[];
+}
+
+export interface PlanRisk {
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+  mitigation: string;
+}
+
+export interface VerificationStrategy {
+  typecheckRequired: boolean;
+  testsRequired: boolean;
+  securityAuditRequired: boolean;
+  diffInspectionRequired: boolean;
+  testCommands?: string[];
+}
+
+export interface IntegrationStrategy {
+  mergeStrategy: 'worktree_squash' | 'direct_branch' | 'sequential_merge';
+  preMergeSimulation: boolean;
+  requireApproval: boolean;
+}
+
+export interface AutonomousPlan {
+  orchestrationId: string;
+  userGoal: string;
+  intent: string;
+  category: string;
+  complexity: 'simple' | 'routine' | 'intermediate' | 'complex' | 'critical';
+  riskLevel: 'low' | 'medium' | 'high';
+  objectives: PlanObjective[];
+  affectedModules: string[];
+  risks: PlanRisk[];
+  verificationStrategy: VerificationStrategy;
+  integrationStrategy: IntegrationStrategy;
+  tasks: OrchestrationTask[];
+  parallelExecutionFeasible: boolean;
+  createdAt: number;
+}
+
 export interface OrchestrationTask {
   id: string;
   orchestrationId: string;
+  traceId?: string;
   title: string;
   description: string;
   acceptanceCriteria: string[];
@@ -47,6 +104,7 @@ export interface OrchestrationTask {
   requiredSkills: string[]; // Skill IDs from Skills Engine
   requiredPermissions: SkillPermissions;
   isModifying: boolean; // True if task makes code modifications needing a worktree
+  plannedFiles?: string[]; // Files expected to be touched for conflict avoidance
   worktreePath?: string;
   branchName?: string;
   status: TaskStatus;
@@ -66,12 +124,14 @@ export interface OrchestrationTask {
 
 export interface OrchestrationRecord {
   id: string;
+  traceId?: string;
   projectId: string;
   projectPath: string;
   userGoal: string;
   mode: ExecutionMode;
   status: OrchestrationStatus;
   tasks: OrchestrationTask[];
+  plan?: AutonomousPlan;
   createdAt: number;
   startedAt?: number;
   completedAt?: number;
@@ -105,7 +165,9 @@ export type OrchestrationEventType =
   | 'task_scheduled'
   | 'task_started'
   | 'task_output'
+  | 'task_verifying'
   | 'task_review'
+  | 'task_integrating'
   | 'task_approval_needed'
   | 'task_completed'
   | 'task_failed'
@@ -132,7 +194,16 @@ export interface OrchestrationEvent {
 export const StartOrchestrationSchema = z.object({
   projectId: z.string().min(1),
   projectPath: z.string().min(1),
-  userGoal: z.string().min(5),
+  userGoal: z.string().min(3),
+  mode: z.enum(['manual', 'supervised', 'autonomous']).default('supervised'),
+  provider: z.enum(['claude', 'codex', 'gemini', 'ollama']).default('claude'),
+  model: z.string().optional()
+});
+
+export const PlanAutonomousTaskSchema = z.object({
+  projectId: z.string().optional(),
+  projectPath: z.string().min(1),
+  userGoal: z.string().min(3),
   mode: z.enum(['manual', 'supervised', 'autonomous']).default('supervised'),
   provider: z.enum(['claude', 'codex', 'gemini', 'ollama']).default('claude'),
   model: z.string().optional()
@@ -164,4 +235,98 @@ export const RetryTaskSchema = z.object({
 
 export const GetWorktreeDiffSchema = z.object({
   taskId: z.string().min(1)
+});
+
+// ==========================================
+// Ecosystem Integration & Traceability Contracts
+// ==========================================
+
+export interface AgentCapability {
+  agentId: string;
+  name: string;
+  role: SpecialistRole | 'general';
+  provider: CLIProvider;
+  isInstalled: boolean;
+  version?: string;
+  authStatus: 'authenticated' | 'configured' | 'missing' | 'unsupported';
+  supportedModels: string[];
+  maxTokens: number;
+  boundSkills: string[];
+  authorizedMCPServers: string[];
+  discoveredToolsCount: number;
+  discoveredTools: string[];
+  status: 'idle' | 'busy' | 'offline';
+  activeTasksCount: number;
+}
+
+export interface TraceSpan {
+  id: string;
+  name: string;
+  layer:
+    | 'user'
+    | 'orchestrator'
+    | 'scheduler'
+    | 'worker'
+    | 'worktree'
+    | 'cli'
+    | 'mcp_gateway'
+    | 'mcp_tool'
+    | 'reviewer'
+    | 'verification'
+    | 'integration'
+    | 'approval';
+  status: 'running' | 'completed' | 'failed' | 'denied';
+  startedAt: number;
+  completedAt?: number;
+  durationMs?: number;
+  metadata?: Record<string, any>;
+  errorMessage?: string;
+}
+
+export interface TaskExecutionTrace {
+  traceId: string;
+  orchestrationId: string;
+  taskId: string;
+  taskTitle: string;
+  agentId: string;
+  role: string;
+  worktreePath?: string;
+  spans: TraceSpan[];
+  startedAt: number;
+  completedAt?: number;
+  durationMs?: number;
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
+}
+
+export interface WorktreeConflictCheck {
+  taskId: string;
+  plannedFiles: string[];
+  conflictingTaskIds: string[];
+  conflictingFiles: string[];
+  canRunParallel: boolean;
+}
+
+export const GetAgentCapabilitiesSchema = z.object({
+  projectPath: z.string().optional()
+});
+
+export const GetTaskTraceSchema = z.object({
+  taskId: z.string().min(1)
+});
+
+export const ListTaskTracesSchema = z.object({
+  orchestrationId: z.string().optional(),
+  limit: z.number().int().min(1).max(100).optional().default(50)
+});
+
+export const GetActiveWorktreesSchema = z.object({
+  projectPath: z.string().optional()
+});
+
+export const ExplainTaskSchema = z.object({
+  taskId: z.string().min(1)
+});
+
+export const ExecuteAutonomousPlanSchema = z.object({
+  plan: z.any()
 });

@@ -10,6 +10,7 @@ export interface AssemblyOptions {
   maxTokens?: number;
   modelTarget?: 'claude' | 'codex' | 'gemini' | string;
   safetyMarginRatio?: number;
+  roleContextPackage?: import('../../../shared/project-intelligence').RoleContextPackage;
 }
 
 export class ContextAssemblyService {
@@ -157,7 +158,8 @@ export class ContextAssemblyService {
       actualTokens: accumulatedActualTokens,
       estimatedTokens: accumulatedEstimatedTokens,
       budget: tokenBudget,
-      truncated
+      truncated,
+      roleContextPackage: options.roleContextPackage
     });
 
     const totalActual = tokenCounterService.countActualTokens(assembledText);
@@ -253,7 +255,13 @@ export class ContextAssemblyService {
   private formatAssembledContext(
     projectPath: string,
     fragments: ContextFragment[],
-    meta: { actualTokens: number; estimatedTokens: number; budget: number; truncated: boolean }
+    meta: {
+      actualTokens: number;
+      estimatedTokens: number;
+      budget: number;
+      truncated: boolean;
+      roleContextPackage?: import('../../../shared/project-intelligence').RoleContextPackage;
+    }
   ): string {
     const parts: string[] = [];
 
@@ -261,6 +269,18 @@ export class ContextAssemblyService {
     parts.push(
       `<!-- Metrics: Actual Tokens (BPE): ${meta.actualTokens} | Estimated: ${meta.estimatedTokens} | Budget: ${meta.budget}${meta.truncated ? ' | [TRUNCATED]' : ''} -->\n`
     );
+
+    if (meta.roleContextPackage) {
+      parts.push(`## [ROLE INTELLIGENCE: ${meta.roleContextPackage.role.toUpperCase()}]`);
+      parts.push(meta.roleContextPackage.architecturalNotes);
+      if (meta.roleContextPackage.keyConventions.length > 0) {
+        parts.push(`**Key Conventions:** ${meta.roleContextPackage.keyConventions.join('; ')}`);
+      }
+      if (meta.roleContextPackage.systemConstraints.length > 0) {
+        parts.push(`**Constraints:** ${meta.roleContextPackage.systemConstraints.join('; ')}`);
+      }
+      parts.push('');
+    }
 
     if (fragments.length === 0) {
       parts.push('_No relevant code fragments retrieved for this query._');

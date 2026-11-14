@@ -124,7 +124,8 @@ export type SettingsSectionId =
   | 'plugins'
   | 'integrations'
   | 'memory'
-  | 'orchestration';
+  | 'orchestration'
+  | 'adaptive-intelligence';
 
 export type WorkspaceTheme = 'glass' | 'solid' | 'light' | 'dark' | 'system';
 

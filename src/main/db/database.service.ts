@@ -18,7 +18,7 @@ import type {
 import type { CLISessionRecord, CLISessionMessage, CLISessionStatus, CLIProvider } from '../../shared/cli';
 import type { FileSymbol, CodeChunk, SearchResult, IndexStats } from '../../shared/context';
 import type { SkillMetadata, SkillExecutionRecord, SkillManifest } from '../../shared/skills';
-import type { OrchestrationRecord, OrchestrationTask, ApprovalRequest } from '../../shared/agents';
+import type { OrchestrationRecord, OrchestrationTask, ApprovalRequest, TaskExecutionTrace, AutonomousPlan } from '../../shared/agents';
 import type { WorkflowRecord, WorkflowExecutionRecord, NodeExecutionRecord } from '../../shared/workflows';
 import type { ExtensionRecord, ExtensionManifest } from '../../shared/extensions';
 import type {
@@ -29,6 +29,21 @@ import type {
   AuditLogFilter,
   AirGapConfig
 } from '../../shared/analytics';
+import type {
+  MCPServerConfig,
+  MCPServerStatus,
+  MCPToolDefinition,
+  MCPAuditLogEntry,
+  MCPConnectionEvent,
+  MCPObservabilitySummary,
+  MCPAuditLogFilter
+} from '../../shared/mcp';
+import type {
+  ProjectIntelligenceData,
+  ProjectKnowledgeEntry,
+  ProjectHealthReport,
+  KnowledgeCategory
+} from '../../shared/project-intelligence';
 
 export class DatabaseService {
   private appDb: Database.Database | null = null;
@@ -55,11 +70,17 @@ export class DatabaseService {
     const indexDbPath = path.join(this.storageDir, 'index.sqlite');
 
     // 1. Initialize app.sqlite
+    if (this.appDb) {
+      try { this.appDb.close(); } catch {}
+    }
     this.appDb = new Database(appDbPath, { timeout: 5000 });
     this.configurePragmas(this.appDb);
     this.migrateAppSchema(this.appDb);
 
     // 2. Initialize index.sqlite
+    if (this.indexDb) {
+      try { this.indexDb.close(); } catch {}
+    }
     this.indexDb = new Database(indexDbPath, { timeout: 5000 });
     this.configurePragmas(this.indexDb);
     this.migrateIndexSchema(this.indexDb);
@@ -77,6 +98,12 @@ export class DatabaseService {
 
   private migrateAppSchema(db: Database.Database): void {
     db.exec(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at INTEGER NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS workspaces (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -436,7 +463,104 @@ export class DatabaseService {
       );
       CREATE INDEX IF NOT EXISTS idx_rev_comm_rev ON review_comments(review_id);
       CREATE INDEX IF NOT EXISTS idx_rev_comm_proj ON review_comments(project_id);
+
+      -- Centralized MCP Infrastructure (Phase 1)
+      CREATE TABLE IF NOT EXISTS mcp_servers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT DEFAULT '',
+        transport TEXT NOT NULL,
+        command TEXT,
+        args_json TEXT DEFAULT '[]',
+        env_keys_json TEXT DEFAULT '[]',
+        url TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        status TEXT NOT NULL DEFAULT 'disconnected',
+        error_message TEXT,
+        tools_cache_json TEXT DEFAULT '[]',
+        auth_type TEXT NOT NULL DEFAULT 'none',
+        auth_config_json TEXT DEFAULT '{}',
+        agent_permissions_json TEXT DEFAULT '{"all":true,"allowedAgents":[]}',
+        project_scope TEXT,
+        auto_reconnect INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_mcp_servers_enabled ON mcp_servers(enabled);
+      CREATE INDEX IF NOT EXISTS idx_mcp_servers_project ON mcp_servers(project_scope);
+
+      CREATE TABLE IF NOT EXISTS mcp_audit_logs (
+        id TEXT PRIMARY KEY,
+        server_id TEXT NOT NULL,
+        server_name TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        agent_id TEXT DEFAULT 'system',
+        status TEXT NOT NULL,
+        duration_ms INTEGER DEFAULT 0,
+        timestamp INTEGER NOT NULL,
+        error_message TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_mcp_audit_server ON mcp_audit_logs(server_id);
+      CREATE INDEX IF NOT EXISTS idx_mcp_audit_timestamp ON mcp_audit_logs(timestamp);
+
+      CREATE TABLE IF NOT EXISTS mcp_connection_events (
+        id TEXT PRIMARY KEY,
+        server_id TEXT NOT NULL,
+        server_name TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        latency_ms INTEGER,
+        error_message TEXT,
+        timestamp INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_mcp_conn_server ON mcp_connection_events(server_id);
+      CREATE INDEX IF NOT EXISTS idx_mcp_conn_timestamp ON mcp_connection_events(timestamp);
+
+      -- Ecosystem Multi-Agent Task Tracing & Correlation
+      CREATE TABLE IF NOT EXISTS task_traces (
+        trace_id TEXT PRIMARY KEY,
+        orchestration_id TEXT NOT NULL,
+        task_id TEXT NOT NULL,
+        task_title TEXT NOT NULL,
+        agent_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        worktree_path TEXT,
+        spans_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'running',
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        duration_ms INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_traces_task ON task_traces(task_id);
+      CREATE INDEX IF NOT EXISTS idx_traces_orch ON task_traces(orchestration_id);
     `);
+
+    try {
+      db.exec(`ALTER TABLE orchestration_tasks ADD COLUMN trace_id TEXT`);
+    } catch {}
+
+    try {
+      db.exec(`ALTER TABLE orchestrations ADD COLUMN trace_id TEXT`);
+    } catch {}
+
+    try {
+      db.exec(`ALTER TABLE mcp_audit_logs ADD COLUMN task_id TEXT`);
+    } catch {}
+
+    try {
+      db.exec(`ALTER TABLE mcp_audit_logs ADD COLUMN orchestration_id TEXT`);
+    } catch {}
+
+    try {
+      db.exec(`ALTER TABLE mcp_audit_logs ADD COLUMN trace_id TEXT`);
+    } catch {}
+
+    try {
+      db.exec(`ALTER TABLE mcp_servers ADD COLUMN last_activity_at INTEGER`);
+    } catch {}
+
+    try {
+      db.exec(`ALTER TABLE mcp_servers ADD COLUMN last_latency_ms INTEGER`);
+    } catch {}
 
     try {
       db.exec(`ALTER TABLE cli_sessions ADD COLUMN provider_session_id TEXT`);
@@ -513,7 +637,92 @@ export class DatabaseService {
         FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
       );
       CREATE INDEX IF NOT EXISTS idx_pws_updated ON project_workspace_states(updated_at);
+
+      -- Pre-production performance composite indices
+      CREATE INDEX IF NOT EXISTS idx_orch_tasks_status ON orchestration_tasks(status, orchestration_id);
+      CREATE INDEX IF NOT EXISTS idx_cli_sess_status ON cli_sessions(status, created_at);
+      CREATE INDEX IF NOT EXISTS idx_traces_status ON task_traces(status, started_at);
+
+      -- Project Intelligence Engine (Phase 9)
+      CREATE TABLE IF NOT EXISTS project_intelligence (
+        project_id TEXT PRIMARY KEY,
+        project_path TEXT NOT NULL,
+        architecture_style TEXT NOT NULL DEFAULT 'modular-monolith',
+        architecture_summary TEXT,
+        tech_stack_json TEXT NOT NULL DEFAULT '{}',
+        monorepo_info_json TEXT NOT NULL DEFAULT '{}',
+        conventions_json TEXT NOT NULL DEFAULT '[]',
+        health_score INTEGER NOT NULL DEFAULT 100,
+        health_findings_json TEXT NOT NULL DEFAULT '[]',
+        modules_json TEXT NOT NULL DEFAULT '[]',
+        entry_points_json TEXT NOT NULL DEFAULT '[]',
+        last_analyzed_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_proj_intel_analyzed ON project_intelligence(last_analyzed_at);
+
+      CREATE TABLE IF NOT EXISTS project_knowledge_entries (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        category TEXT NOT NULL CHECK(category IN ('architecture', 'tech_stack', 'convention', 'decision', 'constraint', 'terminology', 'git_context', 'file_importance')),
+        key TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        confidence REAL NOT NULL DEFAULT 1.0,
+        source TEXT NOT NULL CHECK(source IN ('observed', 'inferred', 'agent_summary', 'user_decision')),
+        source_path TEXT,
+        is_confirmed INTEGER NOT NULL DEFAULT 1,
+        metadata_json TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_proj_know_proj_cat ON project_knowledge_entries(project_id, category);
+      CREATE INDEX IF NOT EXISTS idx_proj_know_key ON project_knowledge_entries(project_id, key);
+
+      -- Migration 008: Autonomous Engineering Intelligence Plans
+      CREATE TABLE IF NOT EXISTS autonomous_plans (
+        id TEXT PRIMARY KEY,
+        orchestration_id TEXT NOT NULL UNIQUE,
+        project_id TEXT,
+        user_goal TEXT NOT NULL,
+        intent TEXT NOT NULL,
+        category TEXT NOT NULL,
+        complexity TEXT NOT NULL,
+        risk_level TEXT NOT NULL,
+        plan_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_plan_orch ON autonomous_plans(orchestration_id);
     `);
+
+    // Record tracked migrations in the migration ledger
+    this.recordMigration(db, 1, '001_core_baseline');
+    this.recordMigration(db, 2, '002_enterprise_and_analytics');
+    this.recordMigration(db, 3, '003_project_explorer_and_reviews');
+    this.recordMigration(db, 4, '004_mcp_and_task_tracing');
+    this.recordMigration(db, 5, '005_project_customizations_and_states');
+    this.recordMigration(db, 6, '006_pre_production_hardening');
+    this.recordMigration(db, 7, '007_project_intelligence_engine');
+    this.recordMigration(db, 8, '008_autonomous_engineering_intelligence');
+  }
+
+  private recordMigration(db: Database.Database, version: number, name: string): void {
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
+        VALUES (?, ?, ?)
+      `).run(version, name, Date.now());
+    } catch {}
+  }
+
+  public getAppliedMigrations(): Array<{ version: number; name: string; appliedAt: number }> {
+    const db = this.getAppDb();
+    try {
+      const rows = db.prepare(`SELECT version, name, applied_at as appliedAt FROM schema_migrations ORDER BY version ASC`).all() as any[];
+      return rows;
+    } catch {
+      return [];
+    }
   }
 
   private migrateIndexSchema(db: Database.Database): void {
@@ -597,13 +806,17 @@ export class DatabaseService {
   }
 
   public getAppDb(): Database.Database {
-    if (!this.appDb) throw new Error('Database not initialized. Call initialize() first.');
-    return this.appDb;
+    if (!this.appDb) {
+      this.initialize();
+    }
+    return this.appDb!;
   }
 
   public getIndexDb(): Database.Database {
-    if (!this.indexDb) throw new Error('Database not initialized. Call initialize() first.');
-    return this.indexDb;
+    if (!this.indexDb) {
+      this.initialize();
+    }
+    return this.indexDb!;
   }
 
   public getSettings(): WorkspaceConfig {
@@ -1064,6 +1277,12 @@ export class DatabaseService {
     const db = this.getAppDb();
     const rows = db.prepare('SELECT key, encrypted_value FROM secrets_store').all() as any[];
     return rows.map((r) => ({ key: r.key, encryptedValue: r.encrypted_value }));
+  }
+
+  public deleteSecret(key: string): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare('DELETE FROM secrets_store WHERE key = ?').run(key);
+    return res.changes > 0;
   }
 
   // ==========================================
@@ -1678,6 +1897,46 @@ export class DatabaseService {
     });
   }
 
+  public saveAutonomousPlan(plan: AutonomousPlan, projectId?: string): void {
+    const db = this.getAppDb();
+    const id = `plan-${plan.orchestrationId}`;
+    db.prepare(`
+      INSERT INTO autonomous_plans (
+        id, orchestration_id, project_id, user_goal, intent,
+        category, complexity, risk_level, plan_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(orchestration_id) DO UPDATE SET
+        user_goal = excluded.user_goal,
+        intent = excluded.intent,
+        category = excluded.category,
+        complexity = excluded.complexity,
+        risk_level = excluded.risk_level,
+        plan_json = excluded.plan_json
+    `).run(
+      id,
+      plan.orchestrationId,
+      projectId || null,
+      plan.userGoal,
+      plan.intent,
+      plan.category,
+      plan.complexity,
+      plan.riskLevel,
+      JSON.stringify(plan),
+      plan.createdAt || Date.now()
+    );
+  }
+
+  public getAutonomousPlan(orchestrationId: string): AutonomousPlan | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT plan_json FROM autonomous_plans WHERE orchestration_id = ?`).get(orchestrationId) as any;
+    if (!row || !row.plan_json) return null;
+    try {
+      return JSON.parse(row.plan_json) as AutonomousPlan;
+    } catch {
+      return null;
+    }
+  }
+
   public updateOrchestration(
     id: string,
     updates: {
@@ -1736,8 +1995,8 @@ export class DatabaseService {
         status, dependencies_json, acceptance_criteria_json, required_skills_json, permissions_json,
         is_modifying, worktree_path, branch_name, retry_count, max_retries,
         timeout_seconds, changed_files_json, diff, result_summary,
-        review_feedback, review_status, error_message, created_at, started_at, completed_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        review_feedback, review_status, error_message, created_at, started_at, completed_at, trace_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
         retry_count = excluded.retry_count,
@@ -1750,7 +2009,8 @@ export class DatabaseService {
         review_status = excluded.review_status,
         error_message = excluded.error_message,
         started_at = excluded.started_at,
-        completed_at = excluded.completed_at
+        completed_at = excluded.completed_at,
+        trace_id = COALESCE(excluded.trace_id, orchestration_tasks.trace_id)
     `).run(
       task.id,
       task.orchestrationId,
@@ -1778,7 +2038,8 @@ export class DatabaseService {
       task.errorMessage || null,
       task.createdAt,
       task.startedAt || null,
-      task.completedAt || null
+      task.completedAt || null,
+      task.traceId || null
     );
   }
 
@@ -1788,6 +2049,7 @@ export class DatabaseService {
     return rows.map((r) => ({
       id: r.id,
       orchestrationId: r.orchestration_id,
+      traceId: r.trace_id || undefined,
       title: r.title,
       description: r.description,
       acceptanceCriteria: JSON.parse(r.acceptance_criteria_json || '[]'),
@@ -1823,6 +2085,7 @@ export class DatabaseService {
     return {
       id: r.id,
       orchestrationId: r.orchestration_id,
+      traceId: r.trace_id || undefined,
       title: r.title,
       description: r.description,
       acceptanceCriteria: JSON.parse(r.acceptance_criteria_json || '[]'),
@@ -1859,6 +2122,10 @@ export class DatabaseService {
     const sets: string[] = [];
     const params: any[] = [];
 
+    if (updates.traceId !== undefined) {
+      sets.push('trace_id = ?');
+      params.push(updates.traceId);
+    }
     if (updates.status !== undefined) {
       sets.push('status = ?');
       params.push(updates.status);
@@ -2002,23 +2269,29 @@ export class DatabaseService {
 
   public recoverOrchestrationsOnStartup(): { recoveredOrchestrations: number; recoveredTasks: number } {
     const db = this.getAppDb();
+    const now = Date.now();
     // 1. Mark any active 'running' or 'planning' orchestrations as 'failed' (interrupted by shutdown)
     const activeOrchs = db.prepare(`SELECT id FROM orchestrations WHERE status IN ('planning', 'running', 'reviewing')`).all() as any[];
     for (const o of activeOrchs) {
       db.prepare(`UPDATE orchestrations SET status = 'failed', error_message = 'Interrupted by application shutdown/restart', completed_at = ? WHERE id = ?`).run(
-        Date.now(),
+        now,
         o.id
       );
     }
 
-    // 2. Mark any active 'running' or 'reviewing' tasks as 'failed'
-    const activeTasks = db.prepare(`SELECT id FROM orchestration_tasks WHERE status IN ('running', 'reviewing')`).all() as any[];
+    // 2. Mark any active 'running', 'ready', 'reviewing', or 'waiting_approval' tasks as 'failed'
+    const activeTasks = db.prepare(`SELECT id FROM orchestration_tasks WHERE status IN ('running', 'ready', 'reviewing', 'waiting_approval')`).all() as any[];
     for (const t of activeTasks) {
       db.prepare(`UPDATE orchestration_tasks SET status = 'failed', error_message = 'Interrupted by application restart', completed_at = ? WHERE id = ?`).run(
-        Date.now(),
+        now,
         t.id
       );
     }
+
+    // 3. Mark active task traces as failed
+    try {
+      db.prepare(`UPDATE task_traces SET status = 'failed', completed_at = ? WHERE status = 'running'`).run(now);
+    } catch {}
 
     return {
       recoveredOrchestrations: activeOrchs.length,
@@ -3114,6 +3387,737 @@ export class DatabaseService {
     const db = this.getAppDb();
     const res = db.prepare(`DELETE FROM review_comments WHERE id = ?`).run(commentId);
     return res.changes > 0;
+  }
+
+  // ==========================================
+  // Centralized MCP Infrastructure Methods
+  // ==========================================
+
+  public saveMCPServer(server: MCPServerConfig, envKeys: string[] = []): void {
+    const db = this.getAppDb();
+    const stmt = db.prepare(`
+      INSERT INTO mcp_servers (
+        id, name, description, transport, command, args_json, env_keys_json, url,
+        enabled, status, error_message, tools_cache_json, auth_type, auth_config_json,
+        agent_permissions_json, project_scope, auto_reconnect, created_at, updated_at
+      ) VALUES (
+        @id, @name, @description, @transport, @command, @args_json, @env_keys_json, @url,
+        @enabled, @status, @error_message, @tools_cache_json, @auth_type, @auth_config_json,
+        @agent_permissions_json, @project_scope, @auto_reconnect, @created_at, @updated_at
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        transport = excluded.transport,
+        command = excluded.command,
+        args_json = excluded.args_json,
+        env_keys_json = excluded.env_keys_json,
+        url = excluded.url,
+        enabled = excluded.enabled,
+        status = excluded.status,
+        error_message = excluded.error_message,
+        tools_cache_json = excluded.tools_cache_json,
+        auth_type = excluded.auth_type,
+        auth_config_json = excluded.auth_config_json,
+        agent_permissions_json = excluded.agent_permissions_json,
+        project_scope = excluded.project_scope,
+        auto_reconnect = excluded.auto_reconnect,
+        updated_at = excluded.updated_at
+    `);
+
+    stmt.run({
+      id: server.id,
+      name: server.name,
+      description: server.description || '',
+      transport: server.transport,
+      command: server.command || null,
+      args_json: JSON.stringify(server.args || []),
+      env_keys_json: JSON.stringify(envKeys),
+      url: server.url || null,
+      enabled: server.enabled ? 1 : 0,
+      status: server.status,
+      error_message: server.errorMessage || null,
+      tools_cache_json: JSON.stringify(server.tools || []),
+      auth_type: server.authType || 'none',
+      auth_config_json: JSON.stringify(server.authConfig || {}),
+      agent_permissions_json: JSON.stringify(server.agentPermissions || { all: true, allowedAgents: [] }),
+      project_scope: server.projectScope || null,
+      auto_reconnect: server.autoReconnect ? 1 : 0,
+      created_at: server.createdAt || Date.now(),
+      updated_at: Date.now()
+    });
+  }
+
+  public getMCPServer(id: string): MCPServerConfig | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM mcp_servers WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+    return this.mapMCPServerRow(row);
+  }
+
+  public getMCPServerByName(name: string): MCPServerConfig | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM mcp_servers WHERE name = ?`).get(name) as any;
+    if (!row) return null;
+    return this.mapMCPServerRow(row);
+  }
+
+  public listMCPServers(projectScope?: string): MCPServerConfig[] {
+    const db = this.getAppDb();
+    let rows: any[] = [];
+    if (projectScope) {
+      rows = db.prepare(`
+        SELECT * FROM mcp_servers
+        WHERE project_scope IS NULL OR project_scope = '' OR project_scope = ?
+        ORDER BY name ASC
+      `).all(projectScope);
+    } else {
+      rows = db.prepare(`SELECT * FROM mcp_servers ORDER BY name ASC`).all();
+    }
+    return rows.map((r) => this.mapMCPServerRow(r));
+  }
+
+  public deleteMCPServer(id: string): boolean {
+    const db = this.getAppDb();
+    const res = db.prepare(`DELETE FROM mcp_servers WHERE id = ?`).run(id);
+    return res.changes > 0;
+  }
+
+  public updateMCPServerStatus(
+    id: string,
+    status: MCPServerStatus,
+    tools?: MCPToolDefinition[],
+    errorMessage?: string
+  ): void {
+    const db = this.getAppDb();
+    if (tools !== undefined) {
+      db.prepare(`
+        UPDATE mcp_servers
+        SET status = ?, tools_cache_json = ?, error_message = ?, updated_at = ?
+        WHERE id = ?
+      `).run(status, JSON.stringify(tools), errorMessage || null, Date.now(), id);
+    } else {
+      db.prepare(`
+        UPDATE mcp_servers
+        SET status = ?, error_message = ?, updated_at = ?
+        WHERE id = ?
+      `).run(status, errorMessage || null, Date.now(), id);
+    }
+  }
+
+  public getMCPServerEnvKeys(id: string): string[] {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT env_keys_json FROM mcp_servers WHERE id = ?`).get(id) as any;
+    if (!row || !row.env_keys_json) return [];
+    try {
+      return JSON.parse(row.env_keys_json);
+    } catch {
+      return [];
+    }
+  }
+
+  public saveMCPAuditLog(entry: MCPAuditLogEntry): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO mcp_audit_logs (
+        id, server_id, server_name, tool_name, agent_id, status, duration_ms, timestamp, error_message,
+        task_id, orchestration_id, trace_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      entry.id,
+      entry.serverId,
+      entry.serverName,
+      entry.toolName,
+      entry.agentId || 'system',
+      entry.status,
+      entry.durationMs || 0,
+      entry.timestamp || Date.now(),
+      entry.errorMessage || null,
+      entry.taskId || null,
+      entry.orchestrationId || null,
+      entry.traceId || null
+    );
+  }
+
+  public listMCPAuditLogs(serverId?: string, limit: number = 50): MCPAuditLogEntry[] {
+    const db = this.getAppDb();
+    let rows: any[] = [];
+    if (serverId) {
+      rows = db.prepare(`
+        SELECT * FROM mcp_audit_logs
+        WHERE server_id = ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+      `).all(serverId, limit);
+    } else {
+      rows = db.prepare(`
+        SELECT * FROM mcp_audit_logs
+        ORDER BY timestamp DESC
+        LIMIT ?
+      `).all(limit);
+    }
+    return rows.map((r) => ({
+      id: r.id,
+      serverId: r.server_id,
+      serverName: r.server_name,
+      toolName: r.tool_name,
+      agentId: r.agent_id,
+      status: r.status,
+      durationMs: r.duration_ms,
+      timestamp: r.timestamp,
+      errorMessage: r.error_message || undefined,
+      taskId: r.task_id || undefined,
+      orchestrationId: r.orchestration_id || undefined,
+      traceId: r.trace_id || undefined
+    }));
+  }
+
+  public saveMCPConnectionEvent(event: MCPConnectionEvent): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO mcp_connection_events (
+        id, server_id, server_name, event_type, latency_ms, error_message, timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      event.id,
+      event.serverId,
+      event.serverName,
+      event.eventType,
+      event.latencyMs ?? null,
+      event.errorMessage ?? null,
+      event.timestamp || Date.now()
+    );
+  }
+
+  public listMCPConnectionEvents(serverId?: string, limit: number = 50): MCPConnectionEvent[] {
+    const db = this.getAppDb();
+    let rows: any[] = [];
+    if (serverId) {
+      rows = db.prepare(`
+        SELECT * FROM mcp_connection_events
+        WHERE server_id = ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+      `).all(serverId, limit);
+    } else {
+      rows = db.prepare(`
+        SELECT * FROM mcp_connection_events
+        ORDER BY timestamp DESC
+        LIMIT ?
+      `).all(limit);
+    }
+    return rows.map((r: any) => ({
+      id: r.id,
+      serverId: r.server_id,
+      serverName: r.server_name,
+      eventType: r.event_type,
+      latencyMs: r.latency_ms ?? undefined,
+      errorMessage: r.error_message || undefined,
+      timestamp: r.timestamp
+    }));
+  }
+
+  public queryMCPAuditLogs(filter?: MCPAuditLogFilter): { logs: MCPAuditLogEntry[]; total: number } {
+    const db = this.getAppDb();
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (filter?.serverId) {
+      conditions.push('server_id = ?');
+      params.push(filter.serverId);
+    }
+    if (filter?.agentId) {
+      conditions.push('agent_id = ?');
+      params.push(filter.agentId);
+    }
+    if (filter?.toolName) {
+      conditions.push('tool_name = ?');
+      params.push(filter.toolName);
+    }
+    if (filter?.status && filter.status !== 'all') {
+      conditions.push('status = ?');
+      params.push(filter.status);
+    }
+    if (filter?.fromTimestamp) {
+      conditions.push('timestamp >= ?');
+      params.push(filter.fromTimestamp);
+    }
+    if (filter?.toTimestamp) {
+      conditions.push('timestamp <= ?');
+      params.push(filter.toTimestamp);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countRow = db.prepare(`SELECT COUNT(*) as count FROM mcp_audit_logs ${whereClause}`).get(...params) as { count: number };
+    const total = countRow?.count ?? 0;
+
+    const limit = filter?.limit ?? 50;
+    const offset = filter?.offset ?? 0;
+    const queryParams = [...params, limit, offset];
+
+    const rows = db.prepare(`
+      SELECT * FROM mcp_audit_logs
+      ${whereClause}
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `).all(...queryParams) as any[];
+
+    const logs: MCPAuditLogEntry[] = rows.map((r) => ({
+      id: r.id,
+      serverId: r.server_id,
+      serverName: r.server_name,
+      toolName: r.tool_name,
+      agentId: r.agent_id,
+      status: r.status,
+      durationMs: r.duration_ms,
+      timestamp: r.timestamp,
+      errorMessage: r.error_message || undefined,
+      taskId: r.task_id || undefined,
+      orchestrationId: r.orchestration_id || undefined,
+      traceId: r.trace_id || undefined
+    }));
+
+    return { logs, total };
+  }
+
+  public computeMCPObservabilityMetrics(fromTimestamp?: number): MCPObservabilitySummary {
+    const db = this.getAppDb();
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (fromTimestamp) {
+      conditions.push('timestamp >= ?');
+      params.push(fromTimestamp);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Total counts by status
+    const counts = db.prepare(`
+      SELECT status, COUNT(*) as cnt
+      FROM mcp_audit_logs
+      ${whereClause}
+      GROUP BY status
+    `).all(...params) as { status: string; cnt: number }[];
+
+    let totalExecutions = 0;
+    let successfulExecutions = 0;
+    let failedExecutions = 0;
+    let deniedExecutions = 0;
+
+    for (const c of counts) {
+      totalExecutions += c.cnt;
+      if (c.status === 'success') successfulExecutions = c.cnt;
+      else if (c.status === 'error') failedExecutions = c.cnt;
+      else if (c.status === 'denied') deniedExecutions = c.cnt;
+    }
+
+    // Durations for percentiles
+    const durations = db.prepare(`
+      SELECT duration_ms FROM mcp_audit_logs
+      ${whereClause}
+      ORDER BY duration_ms ASC
+    `).all(...params).map((r: any) => Number(r.duration_ms) || 0);
+
+    const medianDurationMs = durations.length === 0 ? 0 : durations[Math.floor(durations.length * 0.5)];
+    const p95DurationMs = durations.length === 0 ? 0 : durations[Math.floor(durations.length * 0.95)];
+    const sumDuration = durations.reduce((acc, val) => acc + val, 0);
+    const avgDurationMs = durations.length === 0 ? 0 : Math.round(sumDuration / durations.length);
+
+    // Slowest tools
+    const slowestRows = db.prepare(`
+      SELECT tool_name, server_name, AVG(duration_ms) as avg_duration, COUNT(*) as call_count
+      FROM mcp_audit_logs
+      ${whereClause}
+      GROUP BY tool_name, server_name
+      ORDER BY avg_duration DESC
+      LIMIT 5
+    `).all(...params) as any[];
+
+    const slowestTools = slowestRows.map((r) => ({
+      toolName: r.tool_name,
+      serverName: r.server_name,
+      avgDurationMs: Math.round(Number(r.avg_duration) || 0),
+      callCount: Number(r.call_count) || 0
+    }));
+
+    // Executions by Agent
+    const agentRows = db.prepare(`
+      SELECT agent_id, COUNT(*) as cnt
+      FROM mcp_audit_logs
+      ${whereClause}
+      GROUP BY agent_id
+    `).all(...params) as any[];
+    const executionsByAgent: Record<string, number> = {};
+    for (const r of agentRows) {
+      executionsByAgent[r.agent_id || 'system'] = Number(r.cnt) || 0;
+    }
+
+    // Executions by Server
+    const serverRows = db.prepare(`
+      SELECT server_name, COUNT(*) as cnt
+      FROM mcp_audit_logs
+      ${whereClause}
+      GROUP BY server_name
+    `).all(...params) as any[];
+    const executionsByServer: Record<string, number> = {};
+    for (const r of serverRows) {
+      executionsByServer[r.server_name] = Number(r.cnt) || 0;
+    }
+
+    return {
+      totalExecutions,
+      successfulExecutions,
+      failedExecutions,
+      deniedExecutions,
+      avgDurationMs,
+      medianDurationMs,
+      p95DurationMs,
+      activeServersCount: 0,
+      activeSessionsCount: 0,
+      concurrentExecutions: 0,
+      slowestTools,
+      executionsByAgent,
+      executionsByServer
+    };
+  }
+
+  public pruneMCPAuditLogs(retentionDays: number = 30, maxRows: number = 10000): number {
+    const db = this.getAppDb();
+    const cutoffTime = Date.now() - retentionDays * 86400 * 1000;
+
+    let deleted = 0;
+    const deleteOldResult = db.prepare(`
+      DELETE FROM mcp_audit_logs WHERE timestamp < ?
+    `).run(cutoffTime);
+    deleted += deleteOldResult.changes;
+
+    db.prepare(`
+      DELETE FROM mcp_connection_events WHERE timestamp < ?
+    `).run(cutoffTime);
+
+    // Limit table to maxRows if it exceeds
+    const countRow = db.prepare(`SELECT COUNT(*) as count FROM mcp_audit_logs`).get() as { count: number };
+    if (countRow && countRow.count > maxRows) {
+      const excess = countRow.count - maxRows;
+      const deleteExcessResult = db.prepare(`
+        DELETE FROM mcp_audit_logs
+        WHERE id IN (
+          SELECT id FROM mcp_audit_logs
+          ORDER BY timestamp ASC
+          LIMIT ?
+        )
+      `).run(excess);
+      deleted += deleteExcessResult.changes;
+    }
+
+    return deleted;
+  }
+
+  public updateMCPServerActivity(id: string, latencyMs?: number): void {
+    const db = this.getAppDb();
+    const now = Date.now();
+    if (latencyMs !== undefined) {
+      db.prepare(`
+        UPDATE mcp_servers
+        SET last_activity_at = ?, last_latency_ms = ?, updated_at = ?
+        WHERE id = ?
+      `).run(now, latencyMs, now, id);
+    } else {
+      db.prepare(`
+        UPDATE mcp_servers
+        SET last_activity_at = ?, updated_at = ?
+        WHERE id = ?
+      `).run(now, now, id);
+    }
+  }
+
+  private mapMCPServerRow(row: any): MCPServerConfig {
+    let args: string[] = [];
+    let tools: MCPToolDefinition[] = [];
+    let authConfig: any = {};
+    let agentPermissions: any = { all: true, allowedAgents: [] };
+
+    try {
+      args = row.args_json ? JSON.parse(row.args_json) : [];
+    } catch {}
+
+    try {
+      tools = row.tools_cache_json ? JSON.parse(row.tools_cache_json) : [];
+    } catch {}
+
+    try {
+      authConfig = row.auth_config_json ? JSON.parse(row.auth_config_json) : {};
+    } catch {}
+
+    try {
+      agentPermissions = row.agent_permissions_json ? JSON.parse(row.agent_permissions_json) : { all: true, allowedAgents: [] };
+    } catch {}
+
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description || '',
+      transport: row.transport,
+      command: row.command || undefined,
+      args,
+      url: row.url || undefined,
+      enabled: Boolean(row.enabled),
+      status: row.status,
+      errorMessage: row.error_message || undefined,
+      tools,
+      authType: row.auth_type,
+      authConfig,
+      agentPermissions,
+      projectScope: row.project_scope || null,
+      autoReconnect: Boolean(row.auto_reconnect),
+      lastActivityAt: row.last_activity_at || undefined,
+      lastLatencyMs: row.last_latency_ms != null ? Number(row.last_latency_ms) : undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  public saveTaskTrace(trace: TaskExecutionTrace): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO task_traces (
+        trace_id, orchestration_id, task_id, task_title, agent_id, role,
+        worktree_path, spans_json, status, started_at, completed_at, duration_ms
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(trace_id) DO UPDATE SET
+        spans_json = excluded.spans_json,
+        status = excluded.status,
+        completed_at = excluded.completed_at,
+        duration_ms = excluded.duration_ms
+    `).run(
+      trace.traceId,
+      trace.orchestrationId,
+      trace.taskId,
+      trace.taskTitle,
+      trace.agentId,
+      trace.role,
+      trace.worktreePath || null,
+      JSON.stringify(trace.spans || []),
+      trace.status,
+      trace.startedAt,
+      trace.completedAt || null,
+      trace.durationMs || 0
+    );
+  }
+
+  public getTaskTrace(taskId: string): TaskExecutionTrace | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`SELECT * FROM task_traces WHERE task_id = ? OR trace_id = ?`).get(taskId, taskId) as any;
+    if (!row) return null;
+    return {
+      traceId: row.trace_id,
+      orchestrationId: row.orchestration_id,
+      taskId: row.task_id,
+      taskTitle: row.task_title,
+      agentId: row.agent_id,
+      role: row.role,
+      worktreePath: row.worktree_path || undefined,
+      spans: JSON.parse(row.spans_json || '[]'),
+      status: row.status,
+      startedAt: row.started_at,
+      completedAt: row.completed_at || undefined,
+      durationMs: row.duration_ms
+    };
+  }
+
+  public listTaskTraces(orchestrationId?: string, limit: number = 50): TaskExecutionTrace[] {
+    const db = this.getAppDb();
+    let rows: any[] = [];
+    if (orchestrationId) {
+      rows = db.prepare(`SELECT * FROM task_traces WHERE orchestration_id = ? ORDER BY started_at DESC LIMIT ?`).all(orchestrationId, limit);
+    } else {
+      rows = db.prepare(`SELECT * FROM task_traces ORDER BY started_at DESC LIMIT ?`).all(limit);
+    }
+    return rows.map((row) => ({
+      traceId: row.trace_id,
+      orchestrationId: row.orchestration_id,
+      taskId: row.task_id,
+      taskTitle: row.task_title,
+      agentId: row.agent_id,
+      role: row.role,
+      worktreePath: row.worktree_path || undefined,
+      spans: JSON.parse(row.spans_json || '[]'),
+      status: row.status,
+      startedAt: row.started_at,
+      completedAt: row.completed_at || undefined,
+      durationMs: row.duration_ms
+    }));
+  }
+
+  // ==========================================
+  // Project Intelligence & Knowledge Persistence (Phase 9)
+  // ==========================================
+
+  public upsertProjectIntelligence(data: ProjectIntelligenceData): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO project_intelligence (
+        project_id, project_path, architecture_style, architecture_summary,
+        tech_stack_json, monorepo_info_json, conventions_json,
+        health_score, health_findings_json, modules_json, entry_points_json,
+        last_analyzed_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(project_id) DO UPDATE SET
+        project_path = excluded.project_path,
+        architecture_style = excluded.architecture_style,
+        architecture_summary = excluded.architecture_summary,
+        tech_stack_json = excluded.tech_stack_json,
+        monorepo_info_json = excluded.monorepo_info_json,
+        conventions_json = excluded.conventions_json,
+        health_score = excluded.health_score,
+        health_findings_json = excluded.health_findings_json,
+        modules_json = excluded.modules_json,
+        entry_points_json = excluded.entry_points_json,
+        last_analyzed_at = excluded.last_analyzed_at,
+        updated_at = excluded.updated_at
+    `).run(
+      data.projectId,
+      data.projectPath,
+      data.architecture?.style || 'modular-monolith',
+      data.architecture?.summary || '',
+      JSON.stringify(data.techStack || {}),
+      JSON.stringify(data.monorepo || {}),
+      JSON.stringify(data.knowledgeEntries?.filter((k) => k.category === 'convention') || []),
+      data.health?.overallScore ?? 100,
+      JSON.stringify(data.health?.findings || []),
+      JSON.stringify(data.architecture?.modules || []),
+      JSON.stringify(data.architecture?.entryPoints || []),
+      data.lastAnalyzedAt || Date.now(),
+      Date.now()
+    );
+  }
+
+  public getProjectIntelligence(projectIdOrPath: string): ProjectIntelligenceData | null {
+    const db = this.getAppDb();
+    const row = db.prepare(`
+      SELECT * FROM project_intelligence
+      WHERE project_id = ? OR project_path = ?
+    `).get(projectIdOrPath, projectIdOrPath) as any;
+
+    if (!row) return null;
+
+    const knowledge = this.listKnowledgeEntries(row.project_id);
+    const techStack = JSON.parse(row.tech_stack_json || '{}');
+    const monorepo = JSON.parse(row.monorepo_info_json || '{}');
+    const modules = JSON.parse(row.modules_json || '[]');
+    const entryPoints = JSON.parse(row.entry_points_json || '[]');
+    const healthFindings = JSON.parse(row.health_findings_json || '[]');
+
+    return {
+      projectId: row.project_id,
+      projectPath: row.project_path,
+      techStack,
+      monorepo,
+      architecture: {
+        style: row.architecture_style || (monorepo.isMonorepo ? 'monorepo' : 'modular-monolith'),
+        entryPoints,
+        modules,
+        circularDependencies: [],
+        criticalPaths: [],
+        summary: row.architecture_summary || ''
+      },
+      git: {
+        branch: 'main',
+        headCommit: '',
+        commitMessage: '',
+        isDirty: false,
+        modifiedFiles: [],
+        stagedFiles: [],
+        untrackedFiles: [],
+        activeWorktrees: [],
+        hotspotFiles: []
+      },
+      health: {
+        overallScore: row.health_score,
+        categoryScores: {
+          architecture: row.health_score,
+          dependencies: row.health_score,
+          testing: row.health_score,
+          documentation: row.health_score,
+          security: row.health_score,
+          build: row.health_score
+        },
+        findings: healthFindings,
+        evaluatedAt: row.last_analyzed_at
+      },
+      knowledgeEntries: knowledge,
+      lastAnalyzedAt: row.last_analyzed_at
+    };
+  }
+
+  public upsertKnowledgeEntry(entry: ProjectKnowledgeEntry): void {
+    const db = this.getAppDb();
+    db.prepare(`
+      INSERT INTO project_knowledge_entries (
+        id, project_id, category, key, title, content,
+        confidence, source, source_path, is_confirmed, metadata_json,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        content = excluded.content,
+        confidence = excluded.confidence,
+        source = excluded.source,
+        source_path = excluded.source_path,
+        is_confirmed = excluded.is_confirmed,
+        metadata_json = excluded.metadata_json,
+        updated_at = excluded.updated_at
+    `).run(
+      entry.id,
+      entry.projectId,
+      entry.category,
+      entry.key,
+      entry.title,
+      entry.content,
+      entry.confidence ?? 1.0,
+      entry.source,
+      entry.sourcePath || null,
+      entry.isConfirmed ? 1 : 0,
+      JSON.stringify(entry.metadata || {}),
+      entry.createdAt || Date.now(),
+      entry.updatedAt || Date.now()
+    );
+  }
+
+  public listKnowledgeEntries(projectId: string, category?: KnowledgeCategory): ProjectKnowledgeEntry[] {
+    const db = this.getAppDb();
+    let query = `SELECT * FROM project_knowledge_entries WHERE project_id = ?`;
+    const params: any[] = [projectId];
+    if (category) {
+      query += ` AND category = ?`;
+      params.push(category);
+    }
+    query += ` ORDER BY updated_at DESC`;
+
+    const rows = db.prepare(query).all(...params) as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      projectId: r.project_id,
+      category: r.category,
+      key: r.key,
+      title: r.title,
+      content: r.content,
+      confidence: r.confidence,
+      source: r.source,
+      sourcePath: r.source_path || undefined,
+      isConfirmed: Boolean(r.is_confirmed),
+      metadata: JSON.parse(r.metadata_json || '{}'),
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    }));
+  }
+
+  public deleteKnowledgeEntry(id: string): boolean {
+    const db = this.getAppDb();
+    const result = db.prepare(`DELETE FROM project_knowledge_entries WHERE id = ?`).run(id);
+    return result.changes > 0;
   }
 
   // ==========================================

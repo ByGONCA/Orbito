@@ -7,6 +7,9 @@ import type {
 import { AgentWorker } from './agent-worker';
 import { DAGValidator } from './dag-validator';
 import { databaseService } from '../db/database.service';
+import { WorktreeManager } from './worktree-manager';
+import { agentCapabilityRegistry } from './agent-capability-registry';
+import { traceService } from '../services/trace-service';
 
 export interface SchedulerOptions {
   orchestrationId: string;
@@ -79,6 +82,8 @@ export class AgentScheduler extends EventEmitter {
           status: 'cancelled',
           errorMessage: task.errorMessage
         });
+        traceService.completeTrace(task.id, 'cancelled', task.errorMessage);
+        agentCapabilityRegistry.trackTaskEnd(task.role);
       }
     }
 
@@ -131,6 +136,15 @@ export class AgentScheduler extends EventEmitter {
         break; // Bounded parallelism ceiling reached
       }
 
+      // Check for file conflict overlap with other actively running tasks
+      if (task.isModifying && task.plannedFiles && task.plannedFiles.length > 0) {
+        const conflict = await WorktreeManager.checkTaskFileConflicts(task.id, task.plannedFiles);
+        if (!conflict.canRunParallel) {
+          // Defer running this task until conflicting tasks finish to protect git worktree
+          continue;
+        }
+      }
+
       // Transition to running
       task.status = 'running';
       task.startedAt = Date.now();
@@ -139,6 +153,7 @@ export class AgentScheduler extends EventEmitter {
         startedAt: task.startedAt
       });
 
+      agentCapabilityRegistry.trackTaskStart(task.role);
       this.activeWorkersCount++;
       this.emitEvent('task_started', {
         taskId: task.id,
@@ -161,6 +176,28 @@ export class AgentScheduler extends EventEmitter {
       const allSuccess = allTasks.every((t) => t.status === 'completed');
 
       if (allSuccess) {
+        // Record persistent engineering memory upon successful completion
+        try {
+          const orch = databaseService.getOrchestration(this.orchestrationId);
+          if (orch && orch.projectId) {
+            const allFiles = Array.from(new Set(allTasks.flatMap((t) => t.changedFiles)));
+            databaseService.upsertKnowledgeEntry({
+              id: `know-${this.orchestrationId}`,
+              projectId: orch.projectId,
+              category: 'convention',
+              key: `orch-success-${this.orchestrationId}`,
+              title: `Autonomous Task Execution: ${orch.userGoal.substring(0, 50)}`,
+              content: `Successfully completed ${allTasks.length} task(s) under mode ${this.mode}. Touched: ${allFiles.join(', ') || 'no file changes'}`,
+              confidence: 0.95,
+              source: 'agent_summary',
+              isConfirmed: true,
+              metadata: { orchestrationId: this.orchestrationId, totalTasks: allTasks.length },
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            });
+          }
+        } catch {}
+
         this.emitEvent('orchestration_completed', {
           orchestrationId: this.orchestrationId,
           tasksCount: allTasks.length
@@ -225,6 +262,7 @@ export class AgentScheduler extends EventEmitter {
       });
       this.emitEvent('task_failed', { taskId: task.id, error: task.errorMessage });
     } finally {
+      agentCapabilityRegistry.trackTaskEnd(task.role);
       this.activeWorkersCount--;
       // Trigger next tick immediately to advance downstream dependencies
       await this.tick();

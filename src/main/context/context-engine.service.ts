@@ -11,6 +11,8 @@ import type {
   SearchResult,
   ContextAssemblyResult
 } from '../../shared/context';
+import type { AgentRoleType } from '../../shared/project-intelligence';
+import { projectIntelligenceService } from '../intelligence/project-intelligence.service';
 
 export class ContextEngineService extends EventEmitter {
   private activeProjectPath: string | null = null;
@@ -69,6 +71,7 @@ export class ContextEngineService extends EventEmitter {
     activeFilePath?: string;
     maxTokens?: number;
     modelTarget?: CLIProvider;
+    role?: AgentRoleType;
   }): Promise<ContextAssemblyResult> {
     const searchStartTime = Date.now();
 
@@ -81,12 +84,26 @@ export class ContextEngineService extends EventEmitter {
 
     const searchTimeMs = Date.now() - searchStartTime;
 
-    // 2. Assemble context with live disk reads & token optimization
+    // 2. Fetch role context package if role specified
+    let rolePackage = undefined;
+    if (params.role) {
+      try {
+        rolePackage = await projectIntelligenceService.assembleContextForRole(
+          params.projectPath,
+          params.role,
+          params.taskDescription,
+          params.maxTokens
+        );
+      } catch {}
+    }
+
+    // 3. Assemble context with live disk reads & token optimization
     const result = await contextAssemblyService.assemble({
       projectPath: params.projectPath,
       fragments,
       maxTokens: params.maxTokens,
-      modelTarget: params.modelTarget
+      modelTarget: params.modelTarget,
+      roleContextPackage: rolePackage
     });
 
     result.metrics.searchTimeMs = searchTimeMs;

@@ -293,10 +293,11 @@ export class OllamaAdapter implements ICLIAdapter {
     };
   }
 
-  public buildCommand(prompt: string, _workingDirectory: string, _resumeSessionId?: string): CommandSpec {
+  public buildCommand(prompt: string, _workingDirectory: string, _resumeSessionId?: string, model?: string): CommandSpec {
+    const modelToUse = (model && model.trim()) || this.activeModel;
     return {
       executable: 'ollama',
-      args: ['run', this.activeModel, '--nowordwrap', prompt],
+      args: ['run', modelToUse, '--nowordwrap', prompt],
       env: {
         OLLAMA_HOST: '127.0.0.1:11434'
       }

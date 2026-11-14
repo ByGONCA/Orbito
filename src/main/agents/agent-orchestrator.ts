@@ -6,7 +6,8 @@ import type {
   OrchestrationTask,
   ApprovalRequest,
   OrchestrationEvent,
-  ExecutionMode
+  ExecutionMode,
+  AutonomousPlan
 } from '../../shared/agents';
 import { CoordinatorAgent } from './coordinator-agent';
 import { AgentScheduler } from './agent-scheduler';
@@ -37,19 +38,50 @@ export class AgentOrchestrator extends EventEmitter {
   }
 
   /**
+   * Previews and constructs an autonomous task plan without starting execution.
+   */
+  public async planTask(params: StartOrchestrationParams): Promise<AutonomousPlan> {
+    const { projectId, projectPath, userGoal, mode, provider, model } = params;
+    const orchestrationId = `orch-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+
+    const { plan } = CoordinatorAgent.createPlan({
+      orchestrationId,
+      userGoal,
+      provider,
+      model,
+      projectPath,
+      mode
+    });
+
+    databaseService.saveAutonomousPlan(plan, projectId);
+    return plan;
+  }
+
+  /**
+   * Retrieves a saved AutonomousPlan for an orchestration.
+   */
+  public getPlan(orchestrationId: string): AutonomousPlan | null {
+    return databaseService.getAutonomousPlan(orchestrationId);
+  }
+
+  /**
    * Starts a new multi-agent orchestration.
    */
   public async startOrchestration(params: StartOrchestrationParams): Promise<OrchestrationRecord> {
     const { projectId, projectPath, userGoal, mode, provider, model } = params;
     const orchestrationId = `orch-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 
-    // 1. Coordinator plans tasks DAG
-    const tasks = CoordinatorAgent.plan({
+    // 1. Coordinator plans tasks DAG & AutonomousPlan
+    const { plan, tasks } = CoordinatorAgent.createPlan({
       orchestrationId,
       userGoal,
       provider,
-      model
+      model,
+      projectPath,
+      mode
     });
+
+    databaseService.saveAutonomousPlan(plan, projectId);
 
     // 2. Persist initial Orchestration record in SQLite
     const record: OrchestrationRecord = {
@@ -60,6 +92,7 @@ export class AgentOrchestrator extends EventEmitter {
       mode,
       status: 'running',
       tasks,
+      plan,
       createdAt: Date.now(),
       startedAt: Date.now(),
       durationMs: 0,
@@ -239,6 +272,20 @@ export class AgentOrchestrator extends EventEmitter {
         }
       }
     } catch {}
+  }
+
+  /**
+   * Gracefully shuts down all active schedulers, halting running workers and processes.
+   */
+  public shutdown(): void {
+    for (const [id, scheduler] of this.activeSchedulers.entries()) {
+      try {
+        scheduler.cancel();
+      } catch (err: any) {
+        console.error(`[AgentOrchestrator] Error cancelling scheduler ${id} during shutdown:`, err.message);
+      }
+    }
+    this.activeSchedulers.clear();
   }
 }
 

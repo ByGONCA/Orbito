@@ -3,6 +3,28 @@ import type { CLIProvider } from './cli';
 
 export type OptimizationMode = 'balanced' | 'cost_efficient' | 'max_quality';
 
+export type RoutingMode = 'manual' | 'adaptive' | 'advanced';
+
+export interface AdaptiveRoutingDecision {
+  selectedModelId: string;
+  officialModelId: string;
+  selectedProvider: CLIProvider;
+  displayName: string;
+  taskCategory: TaskCategory;
+  routingMode: RoutingMode;
+  reason: string;
+  confidence: number;
+  isAirGapEnforced: boolean;
+  estimatedCostRateUsd: { inRate: number; outRate: number };
+  fallbackModelIds: string[];
+  capabilitiesSummary: {
+    reasoning: number;
+    coding: number;
+    toolUse: number;
+    latencyMs: number;
+  };
+}
+
 export type TaskCategory =
   | 'classification'
   | 'summarization'
@@ -10,6 +32,7 @@ export type TaskCategory =
   | 'deep_reasoning'
   | 'architecture'
   | 'security_review'
+  | 'research'
   | 'large_context'
   | 'general';
 

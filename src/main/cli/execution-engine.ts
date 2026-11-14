@@ -168,6 +168,7 @@ export class ExecutionEngine extends EventEmitter {
     enableContext?: boolean;
     enableSkills?: boolean;
     maxContextTokens?: number;
+    targetModel?: string;
   }): Promise<{ sessionId: string }> {
     const {
       sessionId,
@@ -180,7 +181,8 @@ export class ExecutionEngine extends EventEmitter {
       resumeSessionId,
       enableContext = true,
       enableSkills = true,
-      maxContextTokens = 4000
+      maxContextTokens = 4000,
+      targetModel
     } = params;
 
     // 0. Air-gap provider routing
@@ -354,7 +356,8 @@ export class ExecutionEngine extends EventEmitter {
           projectId,
           timeoutSeconds,
           effectiveProvider,
-          now
+          now,
+          model: targetModel
         });
       }
     }
@@ -383,7 +386,7 @@ export class ExecutionEngine extends EventEmitter {
         throw new Error(`Cannot execute: ${effectiveProvider} CLI is not installed on this system.`);
       }
 
-      const cmdSpec = adapter.buildCommand(finalPrompt, canonicalWorkDir, resumeSessionId);
+      const cmdSpec = adapter.buildCommand(finalPrompt, canonicalWorkDir, resumeSessionId, targetModel);
       executable = detection.resolvedPath || cmdSpec.executable;
       args = cmdSpec.args;
       if (cmdSpec.env) {
@@ -547,8 +550,9 @@ export class ExecutionEngine extends EventEmitter {
     timeoutSeconds: number;
     effectiveProvider: CLIProvider;
     now: number;
+    model?: string;
   }): Promise<{ sessionId: string }> {
-    const { sessionId, prompt, timeoutSeconds, effectiveProvider, now } = params;
+    const { sessionId, prompt, timeoutSeconds, effectiveProvider, now, model } = params;
 
     const activeSession: ActiveSession = {
       id: sessionId,
@@ -568,7 +572,7 @@ export class ExecutionEngine extends EventEmitter {
 
     const httpHandle = ollamaAdapter.executeHttpStream({
       prompt,
-      model: ollamaAdapter.getModel(),
+      model: model || ollamaAdapter.getModel(),
       timeoutSeconds,
       onChunk: (chunk: string) => {
         activeSession.outputLength += chunk.length;
@@ -648,6 +652,20 @@ export class ExecutionEngine extends EventEmitter {
     });
 
     return true;
+  }
+
+  /**
+   * Immediately terminates all active CLI sessions and child processes during app shutdown.
+   */
+  public async killAll(): Promise<void> {
+    const sessionIds = Array.from(this.activeSessions.keys());
+    await Promise.all(
+      sessionIds.map(async (id) => {
+        try {
+          await this.cancel(id);
+        } catch {}
+      })
+    );
   }
 
   private async killProcessTree(pid: number): Promise<void> {

@@ -145,9 +145,15 @@ export class GeminiAdapter implements ICLIAdapter {
     };
   }
 
-  public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string): CommandSpec {
+  public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string, model?: string): CommandSpec {
     // Correct official syntax: gemini -p "<prompt>" --output-format stream-json
-    const args: string[] = ['-p', prompt, '--output-format', 'stream-json'];
+    const args: string[] = [];
+
+    if (model && model.trim()) {
+      args.push('--model', model.trim());
+    }
+
+    args.push('-p', prompt, '--output-format', 'stream-json');
 
     // Official resume syntax: --resume latest or --resume <SESSION_ID/INDEX>
     if (resumeSessionId) {

@@ -17,6 +17,8 @@ Core system design, security models, intelligence engine, and execution specific
 - [Skills Engine Specification](./architecture/SKILLS_ENGINE.md) — Domain skill contracts, AST schema parsers, and execution hooks.
 - [Workflow Execution Engine](./architecture/WORKFLOW_ENGINE.md) — DAG graph execution, node evaluation, and error handling.
 - [Flow Builder Architecture](./architecture/FLOW_BUILDER.md) — Visual automation canvas, node connections, and UX principles.
+- [Centralized MCP Infrastructure](./architecture/MCP_INFRASTRUCTURE.md) — Centralized Model Context Protocol servers, credential vault, agent adapters, and runtime gateway.
+- [Adaptive Intelligence Engine Specification](./architecture/ADAPTIVE_INTELLIGENCE.md) — Dynamic model routing, cognitive capabilities, in-flight switching, and multi-model collaboration.
 
 ---
 
@@ -103,6 +105,23 @@ Historical and verification reports across all development phases:
 - [Multi-Agent Real-World Stress Test & Performance Benchmark Report](./audits/MULTI_AGENT_BENCHMARK_REPORT.md)
 - [Post-Benchmark Findings, Security Hardening & Implementation Report](./audits/POST_BENCHMARK_IMPLEMENTATION_REPORT.md)
 - [Distributed Multi-Worktree, Multi-AI & Hierarchical Sub-Agent Orchestration Report](./audits/DISTRIBUTED_MULTI_WORKTREE_ORCHESTRATION_REPORT.md)
+- [Centralized MCP Infrastructure End-to-End Operational Validation Report](./audits/MCP_E2E_AUTOMATED_VALIDATION_REPORT.md)
+- [Centralized MCP Observability & Performance Monitoring Implementation Report](./audits/MCP_OBSERVABILITY_IMPLEMENTATION_REPORT.md)
+- [Distributed AI Agent Orchestration & Developer Experience Integration Report](./audits/ECOSYSTEM_ORCHESTRATION_INTEGRATION_REPORT.md)
+- [Adaptive Intelligence Architecture Audit](./audits/ADAPTIVE_INTELLIGENCE_ARCHITECTURE_AUDIT.md)
+- [Adaptive Intelligence Implementation Progress](./audits/ADAPTIVE_INTELLIGENCE_PROGRESS.md)
+- [Adaptive Intelligence Model Registry Implementation Report](./audits/ADAPTIVE_INTELLIGENCE_MODEL_REGISTRY_REPORT.md)
+- [Adaptive Intelligence Task Analysis & Capability Report](./audits/ADAPTIVE_INTELLIGENCE_TASK_ANALYSIS_REPORT.md)
+- [Adaptive Model Routing Implementation Report](./audits/ADAPTIVE_INTELLIGENCE_ROUTING_REPORT.md)
+- [Adaptive Context Handoff & Model Switching Implementation Report](./audits/ADAPTIVE_INTELLIGENCE_HANDOFF_REPORT.md)
+- [Adaptive Evaluation & Cost Intelligence Implementation Report](./audits/ADAPTIVE_INTELLIGENCE_EVALUATION_REPORT.md)
+- [Adaptive Intelligence UX & CLI Implementation Report](./audits/ADAPTIVE_INTELLIGENCE_UX_REPORT.md)
+- [Multi-Model Collaboration Implementation Report](./audits/ADAPTIVE_INTELLIGENCE_COLLABORATION_REPORT.md)
+- [Adaptive Intelligence Production Readiness & Final Verification Report](./audits/ADAPTIVE_INTELLIGENCE_FINAL_REPORT.md)
+- [Orbito Pre-Production Engineering Initiative Report](./audits/ORBITO_PRE_PRODUCTION_ENGINEERING.md)
+- [Orbito Automated Quality Assurance & Release Infrastructure Report](./audits/ORBITO_AUTOMATED_QUALITY_RELEASE.md)
+- [Orbito Project Intelligence Engine Implementation Report](./audits/ORBITO_PROJECT_INTELLIGENCE.md)
+- [Orbito Autonomous Engineering Intelligence Implementation Report](./audits/ORBITO_AUTONOMOUS_ENGINEERING_INTELLIGENCE.md)
 
 ---
 

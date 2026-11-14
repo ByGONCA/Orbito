@@ -48,6 +48,7 @@ const PERMITTED_ROOT_FILES = new Set([
   'tsconfig.json',
   'tsconfig.node.json',
   'tsconfig.web.json',
+  'electron-builder.json',
   'vitest.config.ts',
   'skills-lock.json',
   '.gitignore',

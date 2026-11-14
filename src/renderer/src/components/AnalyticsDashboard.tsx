@@ -19,9 +19,14 @@ import type {
   AuditLogEntry,
   AuditSeverity
 } from '../../../shared/analytics';
+import { MCPDiagnosticsView } from './MCPDiagnosticsView';
+import { AgentDiagnosticsView } from './AgentDiagnosticsView';
+import { WorktreeDiagnosticsView } from './WorktreeDiagnosticsView';
+import { TaskTracingView } from './TaskTracingView';
+import { ProjectIntelligenceView } from './ProjectIntelligenceView';
 
 export const AnalyticsDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'audit'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'intelligence' | 'agents' | 'worktrees' | 'mcp' | 'traces' | 'audit'>('overview');
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [providerMetrics, setProviderMetrics] = useState<ProviderCostMetrics[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
@@ -103,41 +108,92 @@ export const AnalyticsDashboard: React.FC = () => {
 
         <div className="flex items-center gap-2">
           {/* View switch */}
-          <div className="flex bg-secondary p-0.5 rounded-md border border-border text-xs">
+          <div className="flex bg-white/[0.04] p-0.5 rounded-lg text-xs border-0">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-3 py-1 font-medium rounded ${
-                activeTab === 'overview' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground'
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'overview' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Overview & Costs
             </button>
             <button
-              onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1 font-medium rounded ${
-                activeTab === 'audit' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground'
+              onClick={() => setActiveTab('intelligence')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'intelligence' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Security Audit Logs
+              Project Intelligence
+            </button>
+            <button
+              onClick={() => setActiveTab('agents')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'agents' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Agents
+            </button>
+            <button
+              onClick={() => setActiveTab('worktrees')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'worktrees' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Worktrees
+            </button>
+            <button
+              onClick={() => setActiveTab('mcp')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'mcp' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              MCP Diagnostics
+            </button>
+            <button
+              onClick={() => setActiveTab('traces')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'traces' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Task Traces
+            </button>
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`px-3 py-1 font-medium rounded-md transition-colors border-0 ${
+                activeTab === 'audit' ? 'bg-white/[0.08] text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Security Audit
             </button>
           </div>
 
           <button
             onClick={loadData}
             disabled={isLoading}
-            className="p-1.5 rounded border border-border bg-card hover:bg-secondary text-muted-foreground hover:text-foreground"
+            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors border-0"
             title="Refresh"
+            aria-label="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {activeTab === 'overview' ? (
+      {activeTab === 'intelligence' ? (
+        <ProjectIntelligenceView />
+      ) : activeTab === 'agents' ? (
+        <AgentDiagnosticsView />
+      ) : activeTab === 'worktrees' ? (
+        <WorktreeDiagnosticsView />
+      ) : activeTab === 'mcp' ? (
+        <MCPDiagnosticsView />
+      ) : activeTab === 'traces' ? (
+        <TaskTracingView />
+      ) : activeTab === 'overview' ? (
         <>
           {/* Key Metric KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+            <div className="p-4 rounded-lg border-0 bg-white/[0.03] shadow-xs">
               <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Total Invocations</span>
                 <Cpu className="w-4 h-4 text-[#A4A8AF]" />
@@ -146,7 +202,7 @@ export const AnalyticsDashboard: React.FC = () => {
               <div className="text-[11px] text-[#747982] mt-1">Across CLI, Workflows, Agents</div>
             </div>
 
-            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+            <div className="p-4 rounded-lg border-0 bg-white/[0.03] shadow-xs">
               <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Total Tokens (In / Out)</span>
                 <FileText className="w-4 h-4 text-[#A4A8AF]" />
@@ -159,7 +215,7 @@ export const AnalyticsDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+            <div className="p-4 rounded-lg border-0 bg-white/[0.03] shadow-xs">
               <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Total Estimated Cost</span>
                 <DollarSign className="w-4 h-4 text-[#A4A8AF]" />
@@ -168,7 +224,7 @@ export const AnalyticsDashboard: React.FC = () => {
               <div className="text-[11px] text-[#747982] mt-1">Local models (Ollama) = $0.00</div>
             </div>
 
-            <div className="p-4 rounded-lg border border-white/[0.08] bg-white/[0.03] shadow-xs">
+            <div className="p-4 rounded-lg border-0 bg-white/[0.03] shadow-xs">
               <div className="flex items-center justify-between text-[#A4A8AF] text-xs">
                 <span>Latency (Avg / p95)</span>
                 <Clock className="w-4 h-4 text-[#A4A8AF]" />
@@ -183,8 +239,8 @@ export const AnalyticsDashboard: React.FC = () => {
           </div>
 
           {/* Provider & Model Comparison Table */}
-          <div className="border border-border rounded-lg bg-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-secondary/30">
+          <div className="border-0 rounded-lg bg-white/[0.02] overflow-hidden">
+            <div className="px-4 py-3 flex items-center justify-between bg-white/[0.02]">
               <h2 className="text-sm font-semibold flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-primary" />
                 <span>Model & Provider Breakdown</span>
@@ -193,14 +249,18 @@ export const AnalyticsDashboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleExportAnalytics('csv')}
-                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-secondary"
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border-0 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-foreground transition-colors cursor-pointer"
+                  title="Export CSV"
+                  aria-label="Export CSV"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>CSV</span>
                 </button>
                 <button
                   onClick={() => handleExportAnalytics('json')}
-                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-secondary"
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border-0 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-foreground transition-colors cursor-pointer"
+                  title="Export JSON"
+                  aria-label="Export JSON"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>JSON</span>
@@ -210,7 +270,7 @@ export const AnalyticsDashboard: React.FC = () => {
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-secondary/50 text-muted-foreground uppercase font-mono text-[10px] border-b border-border">
+                <thead className="bg-white/[0.02] text-muted-foreground uppercase font-mono text-[10px]">
                   <tr>
                     <th className="px-4 py-2.5">Provider</th>
                     <th className="px-4 py-2.5">Model</th>
@@ -222,7 +282,7 @@ export const AnalyticsDashboard: React.FC = () => {
                     <th className="px-4 py-2.5 text-right">Estimated Cost</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border font-mono">
+                <tbody className="font-mono">
                   {providerMetrics.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground font-sans">
@@ -262,7 +322,7 @@ export const AnalyticsDashboard: React.FC = () => {
         </>
       ) : (
         /* Security Audit Log View */
-        <div className="border border-border rounded-lg bg-card overflow-hidden space-y-3 p-4">
+        <div className="border-0 rounded-lg bg-white/[0.02] overflow-hidden space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -272,7 +332,7 @@ export const AnalyticsDashboard: React.FC = () => {
                   placeholder="Filter logs by event, actor, or action..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded w-72 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="pl-8 pr-3 py-1.5 text-xs bg-white/[0.04] border-0 rounded-md w-72 focus:outline-none text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
@@ -282,10 +342,10 @@ export const AnalyticsDashboard: React.FC = () => {
                   <button
                     key={sev}
                     onClick={() => setSelectedSeverity(sev)}
-                    className={`px-2 py-1 rounded capitalize text-[11px] ${
+                    className={`px-2 py-1 rounded-md capitalize text-[11px] border-0 transition-colors cursor-pointer ${
                       selectedSeverity === sev
-                        ? 'bg-primary text-primary-foreground font-semibold'
-                        : 'border border-border hover:bg-secondary'
+                        ? 'bg-white/[0.12] text-foreground font-semibold'
+                        : 'bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground'
                     }`}
                   >
                     {sev}
@@ -297,14 +357,18 @@ export const AnalyticsDashboard: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleExportAudit('csv')}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-secondary"
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border-0 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-foreground transition-colors cursor-pointer"
+                title="Export CSV"
+                aria-label="Export CSV"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export CSV</span>
               </button>
               <button
                 onClick={() => handleExportAudit('json')}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-secondary"
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border-0 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-foreground transition-colors cursor-pointer"
+                title="Export JSON"
+                aria-label="Export JSON"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export JSON</span>
@@ -312,9 +376,9 @@ export const AnalyticsDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-border rounded">
+          <div className="overflow-x-auto border-0 rounded-md bg-white/[0.01]">
             <table className="w-full text-xs text-left">
-              <thead className="bg-secondary/50 text-muted-foreground uppercase font-mono text-[10px] border-b border-border">
+              <thead className="bg-white/[0.03] text-muted-foreground uppercase font-mono text-[10px]">
                 <tr>
                   <th className="px-3 py-2">Timestamp</th>
                   <th className="px-3 py-2">Severity</th>
@@ -325,7 +389,7 @@ export const AnalyticsDashboard: React.FC = () => {
                   <th className="px-3 py-2">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border font-mono text-[11px]">
+              <tbody className="font-mono text-[11px]">
                 {filteredLogs.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground font-sans">

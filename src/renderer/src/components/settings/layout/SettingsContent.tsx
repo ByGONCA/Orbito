@@ -13,6 +13,7 @@ import { PluginsPage } from '../pages/PluginsPage';
 import { AboutPage } from '../pages/AboutPage';
 import { OrchestrationPage } from '../pages/OrchestrationPage';
 import { MemoryPage } from '../pages/MemoryPage';
+import { AdaptiveIntelligencePage } from '../pages/AdaptiveIntelligencePage';
 
 interface SettingsContentProps {
   activeSection: SettingsSectionId;
@@ -35,6 +36,7 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
         {activeSection === 'devices' && <DevicesPage />}
         {(activeSection === 'providers' || activeSection === 'agents') && <AgentsPage />}
         {activeSection === 'orchestration' && <OrchestrationPage />}
+        {activeSection === 'adaptive-intelligence' && <AdaptiveIntelligencePage />}
         {activeSection === 'memory' && <MemoryPage />}
         {activeSection === 'plugins' && <PluginsPage onCloseSettings={onCloseSettings} />}
         {activeSection === 'integrations' && <IntegrationsPage />}

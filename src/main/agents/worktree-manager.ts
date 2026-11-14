@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import type { WorktreeConflictCheck } from '../../shared/agents';
 
 const execFileAsync = promisify(execFile);
 
@@ -10,6 +11,7 @@ export interface WorktreeInfo {
   branchName: string;
   worktreePath: string;
   createdAt: number;
+  plannedFiles?: string[];
 }
 
 export interface OverlapCheckResult {
@@ -18,6 +20,7 @@ export interface OverlapCheckResult {
 }
 
 export class WorktreeManager {
+  private static activeWorktreeRegistry: Map<string, WorktreeInfo> = new Map();
   /**
    * Executes a git command safely in the target repository directory.
    */
@@ -113,14 +116,17 @@ export class WorktreeManager {
       }
     }
 
+    const worktree: WorktreeInfo = {
+      taskId,
+      branchName,
+      worktreePath,
+      createdAt: Date.now()
+    };
+    this.activeWorktreeRegistry.set(taskId, worktree);
+
     return {
       success: true,
-      worktree: {
-        taskId,
-        branchName,
-        worktreePath,
-        createdAt: Date.now()
-      }
+      worktree
     };
   }
 
@@ -291,7 +297,160 @@ export class WorktreeManager {
       await this.runGit(['branch', '-D', branchName], projectPath);
     }
 
+    for (const [tId, wt] of this.activeWorktreeRegistry.entries()) {
+      if (wt.worktreePath === worktreePath) {
+        this.activeWorktreeRegistry.delete(tId);
+      }
+    }
+
     return true;
+  }
+
+  /**
+   * Simulates a merge between current HEAD and target branch without modifying worktree or staging.
+   * Uses git merge-tree to proactively detect conflicts.
+   */
+  public static async simulateMerge(
+    projectPath: string,
+    branchName: string
+  ): Promise<{ clean: boolean; conflicts: string[]; error?: string }> {
+    const isRepo = await this.isGitRepo(projectPath);
+    if (!isRepo || branchName === 'none') {
+      return { clean: true, conflicts: [] };
+    }
+
+    // git merge-tree HEAD <branchName>
+    const res = await this.runGit(['merge-tree', 'HEAD', branchName], projectPath);
+    if (res.exitCode !== 0) {
+      return { clean: false, conflicts: [branchName], error: res.stderr || 'Merge simulation failed' };
+    }
+
+    // If merge-tree stdout contains conflict indicators: "<<<<<<<" or "changed in both"
+    const hasConflict = res.stdout.includes('<<<<<<<') || res.stdout.includes('changed in both');
+    const conflicts: string[] = [];
+
+    if (hasConflict) {
+      const lines = res.stdout.split('\n');
+      for (const line of lines) {
+        if (line.includes('changed in both') || line.includes('conflict in')) {
+          conflicts.push(line.trim());
+        }
+      }
+      return { clean: false, conflicts: conflicts.length > 0 ? conflicts : ['Merge conflict detected'] };
+    }
+
+    return { clean: true, conflicts: [] };
+  }
+
+  /**
+   * Checks planned/modified files of a task against all currently running tasks to prevent collision.
+   */
+  public static async checkTaskFileConflicts(
+    taskId: string,
+    targetFiles: string[]
+  ): Promise<WorktreeConflictCheck> {
+    const conflictingTaskIds: string[] = [];
+    const conflictingFiles: string[] = [];
+
+    const targetSet = new Set(targetFiles.map((f) => f.replace(/\\/g, '/')));
+
+    for (const [otherTaskId, info] of this.activeWorktreeRegistry.entries()) {
+      if (otherTaskId === taskId) continue;
+
+      let otherFiles: string[] = [];
+      if (info.plannedFiles && info.plannedFiles.length > 0) {
+        otherFiles = [...info.plannedFiles];
+      } else {
+        otherFiles = await this.getChangedFiles(info.worktreePath);
+      }
+      for (const f of otherFiles) {
+        const norm = f.replace(/\\/g, '/');
+        if (targetSet.has(norm)) {
+          if (!conflictingTaskIds.includes(otherTaskId)) {
+            conflictingTaskIds.push(otherTaskId);
+          }
+          if (!conflictingFiles.includes(norm)) {
+            conflictingFiles.push(norm);
+          }
+        }
+      }
+    }
+
+    return {
+      taskId,
+      plannedFiles: targetFiles,
+      conflictingTaskIds,
+      conflictingFiles,
+      canRunParallel: conflictingFiles.length === 0
+    };
+  }
+
+  /**
+   * Saves a safe patch snapshot of uncommitted/staged work in an active worktree.
+   */
+  public static async saveWorktreeSnapshot(worktreePath: string): Promise<string | null> {
+    if (!fs.existsSync(worktreePath)) return null;
+    const diff = await this.getDiff(worktreePath);
+    if (!diff) return null;
+
+    try {
+      const snapshotPath = path.join(worktreePath, `.snapshot-${Date.now()}.patch`);
+      fs.writeFileSync(snapshotPath, diff, 'utf8');
+      return snapshotPath;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Directly registers an active task worktree (used for tracking and testing).
+   */
+  public static registerActiveTaskWorktree(worktree: WorktreeInfo): void {
+    this.activeWorktreeRegistry.set(worktree.taskId, worktree);
+  }
+
+  /**
+   * Unregisters an active task worktree.
+   */
+  public static unregisterActiveTaskWorktree(taskId: string): void {
+    this.activeWorktreeRegistry.delete(taskId);
+  }
+
+  /**
+   * Clears all active worktree registrations.
+   */
+  public static clearActiveTaskWorktrees(): void {
+    this.activeWorktreeRegistry.clear();
+  }
+
+  /**
+   * Lists all active task worktrees tracked by the coordinator.
+   */
+  public static async listActiveTaskWorktrees(
+    projectPath?: string
+  ): Promise<Array<{ taskId: string; branchName: string; worktreePath: string; createdAt: number; isMain: boolean; changedFilesCount: number }>> {
+    const results: Array<{ taskId: string; branchName: string; worktreePath: string; createdAt: number; isMain: boolean; changedFilesCount: number }> = [];
+
+    for (const [taskId, wt] of this.activeWorktreeRegistry.entries()) {
+      if (projectPath && !wt.worktreePath.startsWith(projectPath)) continue;
+
+      let changedCount = 0;
+      try {
+        const files = await this.getChangedFiles(wt.worktreePath);
+        changedCount = files.length;
+      } catch {}
+
+      results.push({
+        taskId,
+        branchName: wt.branchName,
+        worktreePath: wt.worktreePath,
+        createdAt: wt.createdAt,
+        isMain: projectPath ? path.resolve(wt.worktreePath) === path.resolve(projectPath) : false,
+        changedFilesCount: changedCount
+      });
+    }
+
+    return results;
   }
 
   /**

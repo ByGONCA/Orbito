@@ -19,7 +19,11 @@
     "test": "node scripts/run-electron-tests.js run",
     "test:host": "vitest run",
     "validate:coordination": "node scripts/validate-coordination.js",
-    "validate:structure": "node scripts/validate-structure.js"
+    "validate:structure": "node scripts/validate-structure.js",
+    "validate:security": "node scripts/validate-security-and-licenses.js",
+    "validate:packaging": "node scripts/validate-packaging.js",
+    "validate:release": "node scripts/validate-release.js",
+    "validate:all": "npm run validate:structure && npm run validate:security && npm run validate:packaging && npm run typecheck"
   },
   "dependencies": {
     "@glass-sdk/liquid-glass": "^0.0.2",

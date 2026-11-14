@@ -1,0 +1,58 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.orbito.workspace",
+  "productName": "Orbito",
+  "copyright": "Copyright © 2026 Orbito Core Team",
+  "directories": {
+    "output": "dist",
+    "buildResources": "resources"
+  },
+  "files": [
+    "out/**/*",
+    "bin/**/*",
+    "resources/**/*",
+    "package.json",
+    "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+    "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+    "!**/node_modules/*.d.ts",
+    "!**/node_modules/.bin",
+    "!**/*.{o,h,c,cc,cpp,hex}",
+    "!src/**/*",
+    "!tests/**/*",
+    "!docs/**/*",
+    "!.ai-workspace-data/**/*"
+  ],
+  "extraMetadata": {
+    "main": "./out/main/index.js"
+  },
+  "asar": true,
+  "asarUnpack": [
+    "**/node_modules/better-sqlite3/**",
+    "**/node_modules/node-pty/**"
+  ],
+  "win": {
+    "executableName": "Orbito",
+    "icon": "resources/icon.ico",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false,
+    "createDesktopShortcut": "always",
+    "createStartMenuShortcut": true,
+    "shortcutName": "Orbito"
+  },
+  "portable": {
+    "artifactName": "${productName}-Portable-${version}.${ext}"
+  }
+}

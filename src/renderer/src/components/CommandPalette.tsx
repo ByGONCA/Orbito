@@ -13,7 +13,10 @@ import {
   CheckSquare,
   PanelRight,
   Settings,
-  X
+  X,
+  Server,
+  GitBranch,
+  GitCommit
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspace.store';
 import { Badge } from './ui/Badge';
@@ -76,6 +79,10 @@ export const CommandPalette: React.FC = () => {
     { id: 'tab-context', label: 'Go to Context & Knowledge Graph', icon: BrainCircuit, category: 'Navigation', execute: () => setActiveSection('context') },
     { id: 'tab-providers', label: 'Go to AI Providers & Local Models', icon: Cpu, category: 'Navigation', execute: () => setActiveSection('providers') },
     { id: 'tab-analytics', label: 'Go to Analytics & Telemetry', icon: BarChart3, category: 'Navigation', execute: () => setActiveSection('analytics') },
+    { id: 'diag-agents', label: 'Open Agent Diagnostics', icon: Bot, category: 'Diagnostics', execute: () => setActiveSection('analytics') },
+    { id: 'diag-worktrees', label: 'Open Worktree Diagnostics', icon: GitBranch, category: 'Diagnostics', execute: () => setActiveSection('analytics') },
+    { id: 'diag-mcp', label: 'Open MCP Diagnostics', icon: Server, category: 'Diagnostics', execute: () => setActiveSection('analytics') },
+    { id: 'diag-traces', label: 'Open Task Traces', icon: GitCommit, category: 'Diagnostics', execute: () => setActiveSection('analytics') },
     { id: 'tab-extensions', label: 'Go to Extensions & Sandboxing', icon: Blocks, category: 'Navigation', execute: () => setActiveSection('extensions') },
     { id: 'toggle-explorer', label: 'Toggle Right Explorer Panel', icon: PanelRight, category: 'Layout', execute: () => toggleExplorer() },
     { id: 'open-settings', label: 'Open Settings & API Keys', icon: Settings, category: 'Preferences', execute: () => toggleSettings(true) },

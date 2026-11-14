@@ -1,0 +1,97 @@
+name: Orbito Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-release:
+    name: Build, Package & Publish Release (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Repository with Tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Rebuild Native Modules (Electron ABI)
+        run: npm run postinstall
+
+      - name: Comprehensive Pre-Release Quality Gate
+        run: |
+          $tag = if ("${{ github.ref_name }}") { "${{ github.ref_name }}" } else { "${{ github.event.inputs.tag_name }}" }
+          node scripts/validate-release.js --tag $tag
+
+      - name: Execute Full Test Suite
+        run: npm test
+
+      - name: Build Production Desktop Bundle
+        run: npm run build
+
+      - name: Package Windows Installer & Portable Executable
+        run: npx electron-builder --win --config electron-builder.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SHA-256 Checksums
+        run: |
+          cd dist
+          Get-FileHash -Algorithm SHA256 *.exe | ForEach-Object { "$($_.Hash)  $($_.Path | Split-Path -Leaf)" } | Out-File -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+
+      - name: Generate Release Notes & Changelog
+        id: release_notes
+        run: |
+          $prevTag = git describe --tags --abbrev=0 HEAD^ 2>$null
+          if ($prevTag) {
+            $log = git log "$prevTag..HEAD" --oneline --no-merges
+          } else {
+            $log = git log -n 20 --oneline --no-merges
+          }
+          $notes = @"
+          ## Orbito Release ${{ github.ref_name || github.event.inputs.tag_name }}
+          
+          ### Verified Quality Gates
+          - Complete automated test suite passed.
+          - Windows-first native module ABI verification (`better-sqlite3`, `node-pty`).
+          - SHA-256 cryptographic integrity hashes generated.
+          - ASAR archive security and isolation enforced.
+          
+          ### Changes in this Release
+          $log
+          "@
+          $notes | Out-File -Encoding utf8 RELEASE_NOTES.md
+
+      - name: Create Draft GitHub Release with Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          body_path: RELEASE_NOTES.md
+          files: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+            dist/latest.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

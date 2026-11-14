@@ -69,12 +69,52 @@ import {
   SaveGitProviderConfigSchema,
   DisconnectGitProviderSchema,
   FetchRemoteReposSchema,
-  CloneRemoteRepoSchema
+  CloneRemoteRepoSchema,
+  ListMCPServersSchema,
+  GetMCPServerSchema,
+  DeleteMCPServerSchema,
+  ToggleMCPServerSchema,
+  TestMCPConnectionSchema,
+  ListMCPToolsSchema,
+  SyncMCPAgentsSchema,
+  ListMCPAuditLogsSchema,
+  GetMCPObservabilitySummarySchema,
+  GetMCPConnectionMetricsSchema,
+  GetMCPConnectionEventsSchema,
+  PruneMCPLogsSchema,
+  GetAgentCapabilitiesSchema,
+  GetTaskTraceSchema,
+  ListTaskTracesSchema,
+  GetActiveWorktreesSchema,
+  CheckForUpdatesSchema,
+  DownloadUpdateSchema,
+  InstallUpdateSchema,
+  InspectProjectSchema,
+  AnalyzeProjectSchema,
+  GetProjectArchitectureSchema,
+  GetProjectHealthSchema,
+  GetProjectKnowledgeSchema,
+  UpsertKnowledgeEntrySchema,
+  AssembleRoleContextSchema
 } from '../../shared/ipc';
+import { autoUpdateService } from '../services/auto-update.service';
+import { projectIntelligenceService } from '../intelligence/project-intelligence.service';
+import {
+  SaveMCPServerInputSchema,
+  MCPToolCallRequestSchema,
+  MCPAuditLogFilterSchema
+} from '../../shared/mcp';
+import { mcpRegistry } from '../mcp/mcp-registry';
+import { mcpRuntime } from '../mcp/mcp-runtime';
+import { mcpGateway } from '../mcp/mcp-gateway';
+import { mcpAgentAdapterManager } from '../mcp/adapters/agent-adapter-manager';
+import { mcpMetricsCollector } from '../mcp/observability/mcp-metrics-collector';
 import { gitProvidersService } from '../services/git-providers.service';
 import { projectExecutionService } from '../services/project-execution.service';
 import { codeReviewService } from '../services/code-review.service';
 import { WorktreeManager } from '../agents/worktree-manager';
+import { agentCapabilityRegistry } from '../agents/agent-capability-registry';
+import { traceService } from '../services/trace-service';
 import { discordRpcService } from '../services/discord/discord-rpc.service';
 import { setWindowMaterial } from '../services/window-material';
 import { detectProjectGitRemote } from '../services/git-remote-resolver';
@@ -112,6 +152,7 @@ import {
 } from '../../shared/skills';
 import {
   StartOrchestrationSchema,
+  PlanAutonomousTaskSchema,
   CancelOrchestrationSchema,
   ResolveApprovalSchema,
   GetOrchestrationSchema,
@@ -119,6 +160,7 @@ import {
   RetryTaskSchema,
   GetWorktreeDiffSchema
 } from '../../shared/agents';
+import { CoordinatorAgent } from '../agents/coordinator-agent';
 import { workspaceService } from '../services/workspace.service';
 import { databaseService } from '../db/database.service';
 import { safeStorageService } from '../services/safe-storage.service';
@@ -828,7 +870,28 @@ export function registerIpcHandlers(): void {
     return databaseService.listSkillExecutions(projectId);
   });
 
-  // 9. Multi-Agent Orchestration (Phase 5)
+  // 9. Multi-Agent Orchestration & Autonomous Engineering Intelligence
+  ipcMain.handle('orchestration:plan', async (_, args) => {
+    const validated = PlanAutonomousTaskSchema.parse(args);
+    const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
+    return await agentOrchestrator.planTask({
+      projectId: validated.projectId || 'default',
+      projectPath: canonical,
+      userGoal: validated.userGoal,
+      mode: validated.mode,
+      provider: validated.provider,
+      model: validated.model
+    });
+  });
+
+  ipcMain.handle('orchestration:getPlan', (_, orchestrationId: string) => {
+    return agentOrchestrator.getPlan(orchestrationId);
+  });
+
+  ipcMain.handle('orchestration:explainPlan', (_, plan: any) => {
+    return CoordinatorAgent.explainPlan(plan);
+  });
+
   ipcMain.handle('orchestration:start', async (_, args) => {
     const validated = StartOrchestrationSchema.parse(args);
     const canonical = securityService.assertWithinWorkspace(validated.projectPath, validated.projectPath);
@@ -1262,5 +1325,254 @@ export function registerIpcHandlers(): void {
       stagedFiles: [],
       uncommittedFiles: status.changedFiles.map((f) => f.path)
     };
+  });
+
+  // ==========================================
+  // Centralized MCP Infrastructure Handlers
+  // ==========================================
+
+  mcpRuntime.onStatusChange((data) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('mcp:statusChange', data);
+      }
+    }
+  });
+
+  ipcMain.handle('mcp:listServers', async (_, args) => {
+    const validated = ListMCPServersSchema.parse(args || {});
+    return mcpRegistry.listServers(validated.projectId);
+  });
+
+  ipcMain.handle('mcp:getServer', async (_, args) => {
+    const validated = GetMCPServerSchema.parse(args);
+    return mcpRegistry.getServer(validated.serverId);
+  });
+
+  ipcMain.handle('mcp:saveServer', async (_, args) => {
+    const validated = SaveMCPServerInputSchema.parse(args);
+    const saved = mcpRegistry.saveServer(validated);
+
+    // Auto-sync active agents with the updated server configuration
+    try {
+      const allServers = mcpRegistry.listServers();
+      await mcpAgentAdapterManager.syncAllAgents(allServers);
+    } catch (err: any) {
+      console.warn('[IPC:mcp:saveServer] Auto-sync agents failed:', err.message);
+    }
+
+    return saved;
+  });
+
+  ipcMain.handle('mcp:deleteServer', async (_, args) => {
+    const validated = DeleteMCPServerSchema.parse(args);
+    await mcpRuntime.disconnectServer(validated.serverId);
+    const success = mcpRegistry.deleteServer(validated.serverId);
+
+    try {
+      const allServers = mcpRegistry.listServers();
+      await mcpAgentAdapterManager.syncAllAgents(allServers);
+    } catch {}
+
+    return { success };
+  });
+
+  ipcMain.handle('mcp:toggleServer', async (_, args) => {
+    const validated = ToggleMCPServerSchema.parse(args);
+    const server = mcpRegistry.toggleServer(validated.serverId, validated.enabled);
+
+    if (validated.enabled) {
+      mcpRuntime.connectServer(server).catch(() => {});
+    } else {
+      await mcpRuntime.disconnectServer(validated.serverId);
+    }
+
+    try {
+      const allServers = mcpRegistry.listServers();
+      await mcpAgentAdapterManager.syncAllAgents(allServers);
+    } catch {}
+
+    return server;
+  });
+
+  ipcMain.handle('mcp:testConnection', async (_, args) => {
+    const validated = TestMCPConnectionSchema.parse(args || {});
+    let serverConfig = validated.config ? SaveMCPServerInputSchema.parse(validated.config) : null;
+
+    if (!serverConfig && validated.serverId) {
+      const existing = mcpRegistry.getServer(validated.serverId);
+      if (existing) {
+        serverConfig = existing as any;
+      }
+    }
+
+    if (!serverConfig) {
+      throw new Error('Either serverId or config must be provided to test connection.');
+    }
+
+    return mcpRuntime.testServer(serverConfig as any, (serverConfig as any).authToken, (serverConfig as any).env);
+  });
+
+  ipcMain.handle('mcp:callTool', async (_, args) => {
+    const validated = MCPToolCallRequestSchema.parse(args);
+    return mcpGateway.executeTool(validated);
+  });
+
+  ipcMain.handle('mcp:listTools', async (_, args) => {
+    const validated = ListMCPToolsSchema.parse(args || {});
+    return mcpRuntime.listTools(validated.serverId, validated.projectId);
+  });
+
+  ipcMain.handle('mcp:syncAgentConfigs', async (_, args) => {
+    const validated = SyncMCPAgentsSchema.parse(args || {});
+    const servers = mcpRegistry.listServers();
+    return mcpAgentAdapterManager.syncAllAgents(servers, validated.agentIds);
+  });
+
+  ipcMain.handle('mcp:getAgentStatuses', async () => {
+    return mcpAgentAdapterManager.getAllAgentStatuses();
+  });
+
+  ipcMain.handle('mcp:listAuditLogs', async (_, args) => {
+    const validated = ListMCPAuditLogsSchema.parse(args || {});
+    return databaseService.listMCPAuditLogs(validated.serverId, validated.limit);
+  });
+
+  ipcMain.handle('mcp:queryAuditLogs', async (_, args) => {
+    const validated = MCPAuditLogFilterSchema.parse(args || {});
+    return databaseService.queryMCPAuditLogs(validated);
+  });
+
+  ipcMain.handle('mcp:getObservabilitySummary', async (_, args) => {
+    const validated = GetMCPObservabilitySummarySchema.parse(args || {});
+    return mcpMetricsCollector.getObservabilitySummary(validated.fromTimestamp);
+  });
+
+  ipcMain.handle('mcp:getConnectionMetrics', async (_, args) => {
+    const validated = GetMCPConnectionMetricsSchema.parse(args || {});
+    return mcpMetricsCollector.getConnectionMetrics(validated.serverId);
+  });
+
+  ipcMain.handle('mcp:getConnectionEvents', async (_, args) => {
+    const validated = GetMCPConnectionEventsSchema.parse(args || {});
+    return databaseService.listMCPConnectionEvents(validated.serverId, validated.limit);
+  });
+
+  ipcMain.handle('mcp:pruneLogs', async (_, args) => {
+    const validated = PruneMCPLogsSchema.parse(args || {});
+    return { deleted: databaseService.pruneMCPAuditLogs(validated.retentionDays, validated.maxRows) };
+  });
+
+  // Distributed Orchestration & Tracing
+  ipcMain.handle('agents:getCapabilities', async (_, args) => {
+    const validated = GetAgentCapabilitiesSchema.parse(args || {});
+    return agentCapabilityRegistry.getAgentCapabilities(validated.projectPath);
+  });
+
+  ipcMain.handle('tracing:getTaskTrace', async (_, args) => {
+    const validated = GetTaskTraceSchema.parse(args || {});
+    return traceService.getTrace(validated.taskId);
+  });
+
+  ipcMain.handle('tracing:listTaskTraces', async (_, args) => {
+    const validated = ListTaskTracesSchema.parse(args || {});
+    return traceService.listTraces(validated.orchestrationId, validated.limit);
+  });
+
+  ipcMain.handle('worktrees:getActiveTaskWorktrees', async (_, args) => {
+    const validated = GetActiveWorktreesSchema.parse(args || {});
+    return WorktreeManager.listActiveTaskWorktrees(validated.projectPath);
+  });
+
+  // Auto-Update Infrastructure
+  ipcMain.handle('update:checkForUpdates', async (_, args) => {
+    const validated = CheckForUpdatesSchema.parse(args || {});
+    return autoUpdateService.checkForUpdates(validated.channel);
+  });
+
+  ipcMain.handle('update:downloadUpdate', async (event, args) => {
+    const validated = DownloadUpdateSchema.parse(args || {});
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return autoUpdateService.downloadUpdate(
+      {
+        version: validated.version,
+        channel: 'stable',
+        downloadUrl: validated.downloadUrl,
+        sha256: validated.sha256,
+        fileName: validated.fileName
+      },
+      (progress) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('update:progress', progress);
+        }
+      }
+    );
+  });
+
+  ipcMain.handle('update:installUpdate', async (_, args) => {
+    const validated = InstallUpdateSchema.parse(args || {});
+    return autoUpdateService.installUpdate(validated);
+  });
+
+  ipcMain.handle('update:getState', async () => {
+    return autoUpdateService.getState();
+  });
+
+  ipcMain.handle('update:getStagedUpdate', async () => {
+    return autoUpdateService.getStagedUpdate();
+  });
+
+  // Project Intelligence & Architecture Engine
+  ipcMain.handle('intelligence:inspectProject', async (_, args) => {
+    const validated = InspectProjectSchema.parse(args || {});
+    return projectIntelligenceService.getProjectIntelligence(validated.projectPath);
+  });
+
+  ipcMain.handle('intelligence:analyzeProject', async (_, args) => {
+    const validated = AnalyzeProjectSchema.parse(args || {});
+    return projectIntelligenceService.analyzeProject(validated.projectPath, {
+      forceRefresh: validated.forceRefresh,
+      projectId: validated.projectId
+    });
+  });
+
+  ipcMain.handle('intelligence:getArchitecture', async (_, args) => {
+    const validated = GetProjectArchitectureSchema.parse(args || {});
+    return projectIntelligenceService.getArchitecture(validated.projectPath);
+  });
+
+  ipcMain.handle('intelligence:getHealth', async (_, args) => {
+    const validated = GetProjectHealthSchema.parse(args || {});
+    return projectIntelligenceService.getHealth(validated.projectPath);
+  });
+
+  ipcMain.handle('intelligence:getKnowledge', async (_, args) => {
+    const validated = GetProjectKnowledgeSchema.parse(args || {});
+    return projectIntelligenceService.getKnowledge(validated.projectPath, validated.category);
+  });
+
+  ipcMain.handle('intelligence:addKnowledgeEntry', async (_, args) => {
+    const validated = UpsertKnowledgeEntrySchema.parse(args || {});
+    return projectIntelligenceService.addKnowledgeEntry(validated);
+  });
+
+  ipcMain.handle('intelligence:assembleRoleContext', async (_, args) => {
+    const validated = AssembleRoleContextSchema.parse(args || {});
+    return projectIntelligenceService.assembleContextForRole(
+      validated.projectPath,
+      validated.role,
+      validated.taskDescription,
+      validated.maxTokens
+    );
+  });
+
+  projectIntelligenceService.on('analyzed', (data) => {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('intelligence:projectChanged', data);
+      }
+    }
   });
 }

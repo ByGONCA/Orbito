@@ -112,5 +112,6 @@ export const AssembleContextSchema = z.object({
   taskDescription: z.string().min(1),
   activeFilePath: z.string().optional(),
   maxTokens: z.number().int().min(100).max(200000).optional().default(8000),
-  modelTarget: z.enum(['claude', 'codex', 'gemini', 'ollama']).optional().default('claude')
+  modelTarget: z.enum(['claude', 'codex', 'gemini', 'ollama']).optional().default('claude'),
+  role: z.enum(['architect', 'frontend', 'backend', 'security', 'reviewer', 'tester', 'general']).optional()
 });

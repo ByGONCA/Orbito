@@ -26,7 +26,7 @@ export interface ICLIAdapter {
   readonly installCommand?: string;
   detect(customPath?: string): Promise<CLIInstallationStatus>;
   checkAuth(resolvedPath: string): Promise<CLIAuthStatus>;
-  buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string): CommandSpec;
+  buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string, model?: string): CommandSpec;
   getInteractiveLaunchSpec?(options: {
     workingDirectory: string;
     customPath?: string;

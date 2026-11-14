@@ -78,7 +78,14 @@ import {
   GetOrchestrationSchema,
   ListOrchestrationsSchema,
   RetryTaskSchema,
-  GetWorktreeDiffSchema
+  GetWorktreeDiffSchema,
+  GetAgentCapabilitiesSchema,
+  GetTaskTraceSchema,
+  ListTaskTracesSchema,
+  GetActiveWorktreesSchema,
+  type AgentCapability,
+  type TaskExecutionTrace,
+  type WorktreeConflictCheck
 } from './agents';
 import type {
   WorkflowRecord,
@@ -100,6 +107,73 @@ import type {
   AuditLogFilter,
   AirGapConfig
 } from './analytics';
+import type {
+  MCPServerConfig,
+  MCPToolDefinition,
+  MCPServerTestResult,
+  MCPAgentIntegrationStatus,
+  MCPAuditLogEntry,
+  MCPToolCallResponse,
+  MCPObservabilitySummary,
+  MCPServerConnectionMetrics,
+  MCPConnectionEvent,
+  MCPAuditLogFilter
+} from './mcp';
+import {
+  SaveMCPServerInputSchema,
+  MCPToolCallRequestSchema,
+  MCPAuditLogFilterSchema
+} from './mcp';
+export {
+  CheckForUpdatesSchema,
+  DownloadUpdateSchema,
+  InstallUpdateSchema,
+  type ReleaseChannel,
+  type UpdateState,
+  type UpdateInfo,
+  type UpdateProgress,
+  type CheckUpdateResult,
+  type InstallUpdateResult
+} from './update';
+import {
+  CheckForUpdatesSchema,
+  DownloadUpdateSchema,
+  InstallUpdateSchema
+} from './update';
+export {
+  InspectProjectSchema,
+  AnalyzeProjectSchema,
+  GetProjectArchitectureSchema,
+  GetProjectHealthSchema,
+  GetProjectKnowledgeSchema,
+  UpsertKnowledgeEntrySchema,
+  AssembleRoleContextSchema,
+  type ProjectIntelligenceData,
+  type TechStackInfo,
+  type LanguageStat,
+  type MonorepoInfo,
+  type MonorepoPackage,
+  type ProjectModule,
+  type ArchitecturalOverview,
+  type ProjectKnowledgeEntry,
+  type KnowledgeCategory,
+  type KnowledgeSource,
+  type GitIntelligence,
+  type HealthFinding,
+  type HealthSeverity,
+  type ProjectHealthReport,
+  type AgentRoleType,
+  type RoleContextPackage
+} from './project-intelligence';
+import {
+  InspectProjectSchema,
+  AnalyzeProjectSchema,
+  GetProjectArchitectureSchema,
+  GetProjectHealthSchema,
+  GetProjectKnowledgeSchema,
+  UpsertKnowledgeEntrySchema,
+  AssembleRoleContextSchema
+} from './project-intelligence';
 
 // ==========================================
 // Zod Schemas for Runtime IPC Validation
@@ -424,7 +498,7 @@ export const ListLocalModelsSchema = z.object({}).optional();
 
 export const RouteIntelligenceTaskSchema = z.object({
   taskDescription: z.string(),
-  category: z.enum(['classification', 'summarization', 'code_generation', 'deep_reasoning', 'architecture', 'security_review', 'large_context', 'general']).optional(),
+  category: z.enum(['classification', 'summarization', 'code_generation', 'deep_reasoning', 'architecture', 'security_review', 'research', 'large_context', 'general']).optional(),
   estimatedInputTokens: z.number().optional(),
   requiresModifications: z.boolean().optional(),
   requiresReasoning: z.boolean().optional(),
@@ -519,6 +593,72 @@ export const RunAICodeReviewSchema = z.object({
 
 export const GetProjectGitDetailsSchema = z.object({
   projectPath: z.string().min(1)
+});
+
+// Distributed Multi-Agent Orchestration & Traceability Schemas
+export {
+  GetAgentCapabilitiesSchema,
+  GetTaskTraceSchema,
+  ListTaskTracesSchema,
+  GetActiveWorktreesSchema,
+  type AgentCapability,
+  type TaskExecutionTrace,
+  type WorktreeConflictCheck
+};
+
+// Centralized MCP Infrastructure Schemas
+export const ListMCPServersSchema = z.object({
+  projectId: z.string().optional()
+});
+
+export const GetMCPServerSchema = z.object({
+  serverId: z.string().min(1)
+});
+
+export const DeleteMCPServerSchema = z.object({
+  serverId: z.string().min(1)
+});
+
+export const ToggleMCPServerSchema = z.object({
+  serverId: z.string().min(1),
+  enabled: z.boolean()
+});
+
+export const TestMCPConnectionSchema = z.object({
+  serverId: z.string().optional(),
+  config: SaveMCPServerInputSchema.optional()
+});
+
+export const ListMCPToolsSchema = z.object({
+  serverId: z.string().optional(),
+  projectId: z.string().optional()
+});
+
+export const SyncMCPAgentsSchema = z.object({
+  agentIds: z.array(z.string()).optional()
+});
+
+export const ListMCPAuditLogsSchema = z.object({
+  serverId: z.string().optional(),
+  limit: z.number().int().optional().default(50)
+});
+
+export const GetMCPObservabilitySummarySchema = z.object({
+  fromTimestamp: z.number().optional()
+});
+
+export const GetMCPConnectionMetricsSchema = z.object({
+  serverId: z.string().optional()
+});
+
+export const GetMCPConnectionEventsSchema = z.object({
+  serverId: z.string().optional(),
+  limit: z.number().int().optional().default(50)
+});
+
+export const PruneMCPLogsSchema = z.object({
+  retentionDays: z.number().int().optional().default(30),
+  maxRows: z.number().int().optional().default(10000)
 });
 
 // ==========================================
@@ -641,7 +781,12 @@ export interface IElectronAPI {
   retryOrchestrationTask: (params: z.input<typeof RetryTaskSchema>) => Promise<{ success: boolean }>;
   getWorktreeDiff: (params: z.input<typeof GetWorktreeDiffSchema>) => Promise<string>;
   getPendingApprovals: (orchestrationId?: string) => Promise<ApprovalRequest[]>;
+  getAgentCapabilities: (params?: z.input<typeof GetAgentCapabilitiesSchema>) => Promise<AgentCapability[]>;
+  getTaskTrace: (params: z.input<typeof GetTaskTraceSchema>) => Promise<TaskExecutionTrace | null>;
+  listTaskTraces: (params?: z.input<typeof ListTaskTracesSchema>) => Promise<TaskExecutionTrace[]>;
+  getActiveTaskWorktrees: (params?: z.input<typeof GetActiveWorktreesSchema>) => Promise<Array<{ taskId: string; branchName: string; worktreePath: string; createdAt: number; isMain: boolean; changedFilesCount: number }>>;
   onOrchestrationEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
+  onTaskTraceUpdate?: (callback: (trace: TaskExecutionTrace) => void) => () => void;
 
   // Visual Automation & Workflows (Phase 6)
   listWorkflows: (params?: z.input<typeof ListWorkflowsSchema>) => Promise<WorkflowRecord[]>;
@@ -723,4 +868,41 @@ export interface IElectronAPI {
   resolveReviewComment: (params: z.input<typeof ResolveReviewCommentSchema>) => Promise<{ success: boolean }>;
   runAICodeReview: (params: z.input<typeof RunAICodeReviewSchema>) => Promise<import('./review').AIFinding[]>;
   getProjectGitDetails: (params: z.input<typeof GetProjectGitDetailsSchema>) => Promise<import('./review').ProjectGitDetails>;
+
+  // Centralized MCP Infrastructure (Phase 1)
+  listMCPServers: (params?: z.input<typeof ListMCPServersSchema>) => Promise<MCPServerConfig[]>;
+  getMCPServer: (params: z.input<typeof GetMCPServerSchema>) => Promise<MCPServerConfig | null>;
+  saveMCPServer: (params: z.input<typeof SaveMCPServerInputSchema>) => Promise<MCPServerConfig>;
+  deleteMCPServer: (params: z.input<typeof DeleteMCPServerSchema>) => Promise<{ success: boolean }>;
+  toggleMCPServer: (params: z.input<typeof ToggleMCPServerSchema>) => Promise<MCPServerConfig>;
+  testMCPConnection: (params: z.input<typeof TestMCPConnectionSchema>) => Promise<MCPServerTestResult>;
+  callMCPTool: (params: z.input<typeof MCPToolCallRequestSchema>) => Promise<MCPToolCallResponse>;
+  listMCPTools: (params?: z.input<typeof ListMCPToolsSchema>) => Promise<MCPToolDefinition[]>;
+  syncMCPAgentConfigs: (params?: z.input<typeof SyncMCPAgentsSchema>) => Promise<MCPAgentIntegrationStatus[]>;
+  getMCPAgentStatuses: () => Promise<MCPAgentIntegrationStatus[]>;
+  listMCPAuditLogs: (params?: z.input<typeof ListMCPAuditLogsSchema>) => Promise<MCPAuditLogEntry[]>;
+  queryMCPAuditLogs: (filter?: z.input<typeof MCPAuditLogFilterSchema>) => Promise<{ logs: MCPAuditLogEntry[]; total: number }>;
+  getMCPObservabilitySummary: (params?: z.input<typeof GetMCPObservabilitySummarySchema>) => Promise<MCPObservabilitySummary>;
+  getMCPConnectionMetrics: (params?: z.input<typeof GetMCPConnectionMetricsSchema>) => Promise<MCPServerConnectionMetrics[]>;
+  getMCPConnectionEvents: (params?: z.input<typeof GetMCPConnectionEventsSchema>) => Promise<MCPConnectionEvent[]>;
+  pruneMCPLogs: (params?: z.input<typeof PruneMCPLogsSchema>) => Promise<{ deletedCount: number }>;
+  onMCPServerStatusChange?: (callback: (data: { serverId: string; status: import('./mcp').MCPServerStatus; errorMessage?: string }) => void) => () => void;
+
+  // Auto-Update Infrastructure
+  checkForUpdates: (params?: z.input<typeof CheckForUpdatesSchema>) => Promise<import('./update').CheckUpdateResult>;
+  downloadUpdate: (params: z.input<typeof DownloadUpdateSchema>) => Promise<{ success: boolean; stagedPath?: string; error?: string }>;
+  installUpdate: (params?: z.input<typeof InstallUpdateSchema>) => Promise<import('./update').InstallUpdateResult>;
+  getUpdateState: () => Promise<import('./update').UpdateState>;
+  getStagedUpdate: () => Promise<{ path: string | null; info: import('./update').UpdateInfo | null }>;
+  onUpdateProgress?: (callback: (progress: import('./update').UpdateProgress) => void) => () => void;
+
+  // Project Intelligence & Architecture Engine
+  inspectProject: (params: z.input<typeof InspectProjectSchema>) => Promise<import('./project-intelligence').ProjectIntelligenceData>;
+  analyzeProject: (params: z.input<typeof AnalyzeProjectSchema>) => Promise<import('./project-intelligence').ProjectIntelligenceData>;
+  getProjectArchitecture: (params: z.input<typeof GetProjectArchitectureSchema>) => Promise<import('./project-intelligence').ArchitecturalOverview>;
+  getProjectHealth: (params: z.input<typeof GetProjectHealthSchema>) => Promise<import('./project-intelligence').ProjectHealthReport>;
+  getProjectKnowledge: (params: z.input<typeof GetProjectKnowledgeSchema>) => Promise<import('./project-intelligence').ProjectKnowledgeEntry[]>;
+  upsertKnowledgeEntry: (params: z.input<typeof UpsertKnowledgeEntrySchema>) => Promise<import('./project-intelligence').ProjectKnowledgeEntry>;
+  assembleRoleContext: (params: z.input<typeof AssembleRoleContextSchema>) => Promise<import('./project-intelligence').RoleContextPackage>;
+  onProjectIntelligenceChange?: (callback: (data: import('./project-intelligence').ProjectIntelligenceData) => void) => () => void;
 }

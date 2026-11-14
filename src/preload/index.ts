@@ -242,7 +242,75 @@ const api: IElectronAPI = {
   listReviewComments: (params) => ipcRenderer.invoke('review:listComments', params),
   resolveReviewComment: (params) => ipcRenderer.invoke('review:resolveComment', params),
   runAICodeReview: (params) => ipcRenderer.invoke('review:runAICodeReview', params),
-  getProjectGitDetails: (params) => ipcRenderer.invoke('project:getGitDetails', params)
+  getProjectGitDetails: (params) => ipcRenderer.invoke('project:getGitDetails', params),
+
+  // Centralized MCP Infrastructure
+  listMCPServers: (params) => ipcRenderer.invoke('mcp:listServers', params),
+  getMCPServer: (params) => ipcRenderer.invoke('mcp:getServer', params),
+  saveMCPServer: (params) => ipcRenderer.invoke('mcp:saveServer', params),
+  deleteMCPServer: (params) => ipcRenderer.invoke('mcp:deleteServer', params),
+  toggleMCPServer: (params) => ipcRenderer.invoke('mcp:toggleServer', params),
+  testMCPConnection: (params) => ipcRenderer.invoke('mcp:testConnection', params),
+  callMCPTool: (params) => ipcRenderer.invoke('mcp:callTool', params),
+  listMCPTools: (params) => ipcRenderer.invoke('mcp:listTools', params),
+  syncMCPAgentConfigs: (params) => ipcRenderer.invoke('mcp:syncAgentConfigs', params),
+  getMCPAgentStatuses: () => ipcRenderer.invoke('mcp:getAgentStatuses'),
+  listMCPAuditLogs: (params) => ipcRenderer.invoke('mcp:listAuditLogs', params),
+  queryMCPAuditLogs: (filter) => ipcRenderer.invoke('mcp:queryAuditLogs', filter),
+  getMCPObservabilitySummary: (params) => ipcRenderer.invoke('mcp:getObservabilitySummary', params),
+  getMCPConnectionMetrics: (params) => ipcRenderer.invoke('mcp:getConnectionMetrics', params),
+  getMCPConnectionEvents: (params) => ipcRenderer.invoke('mcp:getConnectionEvents', params),
+  pruneMCPLogs: (params) => ipcRenderer.invoke('mcp:pruneLogs', params),
+  onMCPServerStatusChange: (callback) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('mcp:statusChange', handler);
+    return () => {
+      ipcRenderer.removeListener('mcp:statusChange', handler);
+    };
+  },
+
+  // Distributed Orchestration & Tracing
+  getAgentCapabilities: (params) => ipcRenderer.invoke('agents:getCapabilities', params),
+  getTaskTrace: (params) => ipcRenderer.invoke('tracing:getTaskTrace', params),
+  listTaskTraces: (params) => ipcRenderer.invoke('tracing:listTaskTraces', params),
+  getActiveTaskWorktrees: (params) => ipcRenderer.invoke('worktrees:getActiveTaskWorktrees', params),
+  onTaskTraceUpdate: (callback: (trace: any) => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('tracing:task-trace', handler);
+    return () => {
+      ipcRenderer.removeListener('tracing:task-trace', handler);
+    };
+  },
+
+  // Auto-Update Infrastructure
+  checkForUpdates: (params?: any) => ipcRenderer.invoke('update:checkForUpdates', params),
+  downloadUpdate: (params: any) => ipcRenderer.invoke('update:downloadUpdate', params),
+  installUpdate: (params?: any) => ipcRenderer.invoke('update:installUpdate', params),
+  getUpdateState: () => ipcRenderer.invoke('update:getState'),
+  getStagedUpdate: () => ipcRenderer.invoke('update:getStagedUpdate'),
+  onUpdateProgress: (callback: (progress: any) => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('update:progress', handler);
+    return () => {
+      ipcRenderer.removeListener('update:progress', handler);
+    };
+  },
+
+  // Project Intelligence & Architecture Engine
+  inspectProject: (params: any) => ipcRenderer.invoke('intelligence:inspectProject', params),
+  analyzeProject: (params: any) => ipcRenderer.invoke('intelligence:analyzeProject', params),
+  getProjectArchitecture: (params: any) => ipcRenderer.invoke('intelligence:getArchitecture', params),
+  getProjectHealth: (params: any) => ipcRenderer.invoke('intelligence:getHealth', params),
+  getProjectKnowledge: (params: any) => ipcRenderer.invoke('intelligence:getKnowledge', params),
+  upsertKnowledgeEntry: (params: any) => ipcRenderer.invoke('intelligence:addKnowledgeEntry', params),
+  assembleRoleContext: (params: any) => ipcRenderer.invoke('intelligence:assembleRoleContext', params),
+  onProjectIntelligenceChange: (callback: (data: any) => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on('intelligence:projectChanged', handler);
+    return () => {
+      ipcRenderer.removeListener('intelligence:projectChanged', handler);
+    };
+  }
 };
 
 contextBridge.exposeInMainWorld('api', api);

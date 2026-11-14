@@ -151,8 +151,13 @@ export class ClaudeCodeAdapter implements ICLIAdapter {
     };
   }
 
-  public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string): CommandSpec {
+  public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string, model?: string): CommandSpec {
     const args: string[] = [];
+
+    // Model selection flag
+    if (model && model.trim()) {
+      args.push('--model', model.trim());
+    }
 
     // Use non-interactive print mode for programmatic execution
     args.push('-p', prompt);

@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { incrementalIndexer } from './incremental-indexer';
 import { databaseService } from '../../db/database.service';
+import { projectIntelligenceService } from '../../intelligence/project-intelligence.service';
 
 export class FileWatcher extends EventEmitter {
   private watcher: FSWatcher | null = null;
@@ -81,6 +82,10 @@ export class FileWatcher extends EventEmitter {
 
       for (const relPath of batch) {
         await incrementalIndexer.indexSingleFile(this.currentProjectPath, relPath);
+      }
+
+      if (this.currentProjectPath) {
+        projectIntelligenceService.notifyFileChanged(this.currentProjectPath, batch[0]);
       }
 
       this.emit('change', { type: 'batch', count: batch.length });

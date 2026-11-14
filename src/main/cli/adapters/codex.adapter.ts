@@ -146,8 +146,12 @@ export class CodexAdapter implements ICLIAdapter {
     };
   }
 
-  public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string): CommandSpec {
+  public buildCommand(prompt: string, workingDirectory: string, resumeSessionId?: string, model?: string): CommandSpec {
     const args: string[] = ['exec'];
+
+    if (model && model.trim()) {
+      args.push('--model', model.trim());
+    }
 
     if (resumeSessionId) {
       args.push('resume');
