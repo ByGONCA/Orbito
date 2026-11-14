@@ -1,24 +1,24 @@
 # Graph Report - Orbito  (2026-11-14)
 
 ## Corpus Check
-- 569 files · ~573,766 words
+- 598 files · ~620,036 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 61 file(s) not represented in the graph (top: .csv 35, (none) 22, .css 3)
 
 ## Summary
-- 5348 nodes · 10706 edges · 326 communities (301 shown, 25 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 548 edges (avg confidence: 0.95)
+- 5710 nodes · 11660 edges · 342 communities (314 shown, 28 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 614 edges (avg confidence: 0.95)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `63f71185`
+- Built from commit: `c5d71316`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Discord Rich Presence Integration Report — Orbito
-- TerminalWorkspace.tsx
+- discord-rpc.service.ts
 - database.service.ts
+- ref_node_path
 - design_system.py
 - CLIProvider
 - SecurityViolationException
@@ -54,7 +54,7 @@
 - Custom Extension SDK & Plugin Architecture — AI Workspace
 - autoUpdateService
 - System Architecture Specification — AI Workspace
-- Phase 6: System Hardening & Integration Wiring Report
+- 2. Itemized Verification of Defects & Implemented Fixes
 - node-executors.ts
 - ast-parser.service.ts
 - context-engine.service.ts
@@ -83,12 +83,12 @@
 - Frontend Design Pro
 - SwiftUI
 - INTEGRATION_QUEUE.json
-- execution-engine.ts
+- skill-registry.ts
 - ORBITO — Multi-Agent System Finalization & Wave 1 Activation Report
 - ORB-BACK-001.json
 - Visual Verdict — Screenshot QA Skill
 - core.py
-- project-intelligence.ts
+- projectIntelligenceService
 - workflows.ts
 - Glassmorphism Design System Skill (Universal)
 - Full Integration & Reliability Audit — AI Workspace (Phase 5)
@@ -105,7 +105,7 @@
 - git-providers.service.ts
 - 3. Approved Staging Manifest (40 Files)
 - validate-coordination.js
-- SkillCompositionService
+- token-optimization-pipeline.test.ts
 - Pre-Delivery Checklist (canonical — the only one)
 - Surgical Bug Fixer Guidelines
 - Bug Investigator & Diagnostics Guidelines
@@ -126,17 +126,17 @@
 - agent-orchestrator.ts
 - ORB-BACK-002.json
 - Transparent Glass UI
-- .getIndexDb
+- Orbito Engineering Intelligence: Validation, Calibration & Benchmarking Report
 - validate-security-and-licenses.js
 - ORB-FRONT-002.json
 - Orbito — Automated Quality & Release Infrastructure Report
 - LiquidGlassDirective
-- LeftSidebar.tsx
+- SecretRedactor
 - 2. Layer-by-Layer Verification & Mitigations
-- lucide-react
+- react
 - ADAPTIVE_INTELLIGENCE_PROGRESS.md
 - ORBITO — Post-Implementation Verification & Architecture Audit Report
-- generate_design_system
+- ORBITO — Operational Resilience Gap Closure & Recovery Validation
 - ORBITO — Central Multi-Agent Coordination System
 - fileWatcher
 - REGISTRY.json
@@ -154,11 +154,11 @@
 - Multi-Agent Orchestration Architecture & Implementation — AI Workspace
 - auditService
 - AI Workspace — Comprehensive Security Audit Report
-- NewProjectModal.tsx
-- AgentsSettingsTab.tsx
+- review.ts
+- lifecycleCoordinatorService
 - mcp.ts
 - ORBITO — Repository Structure Refactor, Documentation Centralisation & Permanent Governance Report
-- 2. Itemized Verification of Defects & Implemented Fixes
+- .getProject
 - Distributed Multi-Worktree, Multi-AI & Hierarchical Sub-Agent Orchestration Report
 - AI Workspace — Open-Source Production Release Guide
 - ORBITO
@@ -168,7 +168,7 @@
 - main/index.ts
 - Liquid Glass — the material system
 - Hierarchy Tools
-- validate-release.js
+- Discord Rich Presence Integration Report — Orbito
 - Phase 8: Real Usage, UX Refinement & Stability Report
 - 1. Comprehensive Subsystem Audit Findings
 - 2. Evidence Checkpoints & Verification Results
@@ -192,7 +192,7 @@
 - AI Workspace — Phase 8 Completion Report: Intelligence & Token Optimization Engine
 - 2. Key Accomplishments
 - Orbito — Development Guide & Engineering Knowledge Base
-- ollamaAdapter
+- lifecycle.ts
 - Architectural Decision Record (ADR)
 - HeroBand.tsx
 - Layout & Composition — break the grid on purpose
@@ -212,7 +212,7 @@
 - Orbito — Phase 1.4: Glass Material Foundation & Preparation Report
 - Orbito — Phase 3: Glassmorphism Transparency & Layer Diagnosis Report
 - Orbito — Phase 4: Glassmorphism Material Polish & Bugfix Report
-- main/index.ts
+- skill-resolver.ts
 - AI Workspace — Project Context & Engineering Architecture
 - Orbito — Permanent Repository Organisation Policy & Governance
 - Orbito — Documentation Index
@@ -264,7 +264,7 @@
 - Rule: Git Safety & Worktree Discipline
 - Workflow: Branch Integration and Merge Protocol
 - WorkflowExecutionRecord
-- Testing Strategy & Quality Assurance Architecture — AI Workspace
+- ORBITO — Operational Resilience Certification & Edge-Case Closure
 - Orbito — Plugin Developer Guide & CLI Reference
 - Centralized Model Context Protocol (MCP) Infrastructure
 - Orbito Multi-Agent Engineering Roster
@@ -286,14 +286,14 @@
 - 2. Implemented Subsystems & Services
 - 2.3 Logic Nodes
 - Software Architecture Specialist
-- Product & Engineering Roadmap — AI Workspace
+- workspace.service.ts
 - Critical Thinking & Problem-Solving Specialist
 - Product Strategy & UX Research Specialist
 - UI/UX & Design Systems Specialist
 - build-logos.js
 - mcpCredentialsVault
 - Continuous & Proactive Multi-Agent Orchestration Protocol
-- token-optimization-pipeline.test.ts
+- IntelligenceRouter
 - traceService
 - 2.4 Input and Output Nodes
 - 2.1 AI Nodes
@@ -307,48 +307,64 @@
 - modelContextHandoffManager
 - 2.1 Core Architecture & Shared Contracts
 - 4. Context Engine Reliability & Hybrid Retrieval
-- Phase 2 Deliverable: Task Intelligence & Capability Evaluation Engines
+- ORBITO — Production Hardening & Operational Resilience
 - Autonomous Development Mission Report: AI Workspace
-- ExtensionHostWorker
+- .checkTaskFileConflicts
 - MCPServersPage.tsx
 - Extension Isolation Security Remediation Report: Replacing node:vm with Process-Level Isolation
-- projectExecutionService
-- 15. Prioritized Remediation Roadmap
-- ProjectExecution
-- AirGapViolationException
-- MockCLIAdapter
+- project-execution.service.ts
+- worktree-manager.ts
+- architecturalIntelligenceService
+- airGapManager
+- resourceGovernorService
 - .initialize
 - 1. Audit Findings & Implemented Hardening
-- antigravityAdapter
+- Centralized MCP Infrastructure — Automated End-to-End Operational Validation Report
 - mcpMetricsCollector
-- SettingInput.tsx
+- persistent-workspace-phase4.test.ts
 - workspaceService
 - Orbito — Project Intelligence Engine Implementation Report
 - analytics.service.ts
 - ClaudeStreamParser
 - CHANGELOG.md
-- 7. Performance Engineering & Empirical Validation
+- manifest-validator.ts
+- Core Optimization Mechanisms
 - CodexStreamParser
 - MemoryRecord
 - WorkspaceConfig
-- intelligence.ts
-- airGapManager
+- adaptive-model-router.ts
+- skillRegistry
+- .executeTask
+- LifecycleHealthStatus
+- 9. Multi-Agent Orchestration Architecture (Phase 5 Completed)
 - multiModelCollaborationManager
+- Phase 5 Deliverable: Deterministic Evaluation & Cost Engine
 - OrchestrationRecord
-- 10. Visual Automation & Flow Builder Architecture (Phase 6 Completed)
-- Phase 6.1: Security Verification & Integration Validation Report
+- safeStorageService
+- Token Optimization Benchmarks & Quality Evaluation
+- AnalysisRunRecord
+- 10. Complete Test Suite Execution Results
+- ProjectWorkspaceState
+- 3. SQLite Architecture & Worker Thread Concurrency
+- D. SQLite Database Salvage, Integrity & Rollback
+- 2. Repository Audit Findings (Phases 1–6)
+- 4. Core User Journey Validation
+- skill-execution-engine.ts
+- F. Universal IPC Security & Origin Architecture
+- G.1 Architecture & Invariants
+- 11. Typecheck & Production Build Verification
 
 ## God Nodes (most connected - your core abstractions)
-1. `databaseService` - 222 edges
-2. `useWorkspaceStore` - 115 edges
-3. `CLIProvider` - 105 edges
-4. `IElectronAPI` - 105 edges
-5. `react` - 99 edges
-6. `vitest` - 78 edges
-7. `lucide-react` - 77 edges
+1. `databaseService` - 270 edges
+2. `IElectronAPI` - 119 edges
+3. `useWorkspaceStore` - 115 edges
+4. `CLIProvider` - 107 edges
+5. `react` - 101 edges
+6. `vitest` - 84 edges
+7. `lucide-react` - 79 edges
 8. `BaseCLIAdapter` - 67 edges
-9. `OfficialLogoRenderer()` - 54 edges
-10. `WorktreeManager` - 39 edges
+9. `WorktreeManager` - 56 edges
+10. `OfficialLogoRenderer()` - 54 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `CI Pipeline (`.github/workflows/ci.yml`)` --references--> `main()`  [INFERRED]
@@ -365,46 +381,46 @@
 ## Import Cycles
 - None detected.
 
-## Communities (326 total, 25 thin omitted)
+## Communities (342 total, 28 thin omitted)
 
-### Community 0 - "Discord Rich Presence Integration Report — Orbito"
+### Community 0 - "discord-rpc.service.ts"
+Cohesion: 0.08
+Nodes (20): 12. Modified Files & Reasons, @xhayper/discord-rpc, RFC-1918, ExtensionHostWorker, path, DEFAULT_DISCORD_CLIENT_ID, DISCORD_BADGE_URLS, DiscordActivitySnapshot (+12 more)
+
+### Community 1 - "database.service.ts"
+Cohesion: 0.06
+Nodes (52): agentPerformanceIntelligenceService, ProjectFixtureGenerator, performanceBenchmarkHarness, continuousCodeIntelligenceService, circCount(), continuousIntelligenceCoordinator, debtCount(), performanceIntelligenceService (+44 more)
+
+### Community 2 - "ref_node_path"
 Cohesion: 0.09
-Nodes (20): 10. Manual Discord Desktop Validation, 11. Known Limitations, 12. Modified Files & Reasons, 13. Preserved Uncommitted Changes Confirmation, 14. Protected Terminal UI Confirmation, 1. Architecture Implemented, 2. Discord RPC Library & Compatibility, 4. Per-Project Settings Implementation (+12 more)
-
-### Community 1 - "TerminalWorkspace.tsx"
-Cohesion: 0.11
-Nodes (21): 2.1. Tracked Modified Files (40 Files), CodeEditor(), CodeEditorProps, extractLocalSymbols(), HighlightedLine, JS_TS_KEYWORDS, LineToken, MEMBER_SUGGESTIONS (+13 more)
-
-### Community 2 - "database.service.ts"
-Cohesion: 0.09
-Nodes (20): vitest, DEFAULT_SERVER_URLS, PROVIDER_NAMES, ProviderMetadata, safeStorageService, securityService, SecurityViolationException, DEFAULT_IGNORED_DIRS (+12 more)
+Nodes (19): vitest, ReviewResult, FileScannerOptions, ScannedFileInfo, FixtureProfileType, GeneratedFixture, syntheticFixtureGenerator, gitIntelligenceService (+11 more)
 
 ### Community 3 - "design_system.py"
 Cohesion: 0.17
 Nodes (6): format_output(), _check_file(), main(), _read_rows(), 7. Permission Tiers & Human-in-the-Loop Safeguards, 2.2 Architectural Intelligence (`ArchitecturalIntelligenceService`)
 
 ### Community 4 - "CLIProvider"
-Cohesion: 0.12
-Nodes (17): CommandSpec, ICLIAdapter, InteractiveLaunchSpec, claudeCodeAdapter, codexAdapter, geminiAdapter, findExecutableOnPath(), isVersionAtLeast() (+9 more)
+Cohesion: 0.09
+Nodes (17): 9. Provider Authentication Compatibility & Environment Isolation, CommandSpec, InteractiveLaunchSpec, claudeCodeAdapter, codexAdapter, geminiAdapter, ollamaAdapter, findExecutableOnPath() (+9 more)
 
 ### Community 5 - "SecurityViolationException"
-Cohesion: 0.30
-Nodes (9): [HIGH] SEC-02: TOCTOU Symlink / Path Traversal Race in Filesystem Operations, 12. Modified Files & Justifications, 1. Executive Summary, 2. Findings from the Security Review, 3. Vulnerabilities Confirmed & Fixed, 6. Filesystem Security Adversarial Test Results, 8. SafeStorage Legacy Migration Test Results, 2.6 P1 (SEC-02) — Atomic Filesystem Operations & TOCTOU Protection (+1 more)
+Cohesion: 0.19
+Nodes (15): [HIGH] SEC-02: TOCTOU Symlink / Path Traversal Race in Filesystem Operations, 12. Modified Files & Justifications, 13. Protected File & Repository Safety Confirmation, 14. Conclusion & Readiness, 1. Executive Summary, 2. Findings from the Security Review, 3. Vulnerabilities Confirmed & Fixed, 4. Documented Architectural Limitations (+7 more)
 
 ### Community 7 - "react"
 Cohesion: 0.12
-Nodes (38): Section C: Git File Indicators (Tertiary), react, SettingRow(), SettingRowProps, SettingSection(), SettingSectionProps, SettingToggle(), SettingToggleProps (+30 more)
+Nodes (36): Section C: Git File Indicators (Tertiary), SettingRow(), SettingRowProps, SettingSection(), SettingSectionProps, SettingToggle(), SettingToggleProps, SettingsContent() (+28 more)
 
 ### Community 8 - "register.ts"
-Cohesion: 0.04
-Nodes (89): COMMON_DEV_PORTS, AddReviewCommentSchema, AssemblePromptSchema, CancelWorkflowSchema, ClearCacheSchema, CloneProjectSchema, CloneRemoteRepoSchema, ComposeSkillsSchema (+81 more)
+Cohesion: 0.05
+Nodes (84): COMMON_DEV_PORTS, AddReviewCommentSchema, AssemblePromptSchema, CancelWorkflowSchema, ClearCacheSchema, CloneProjectSchema, CloneRemoteRepoSchema, ComposeSkillsSchema (+76 more)
 
 ### Community 9 - "ExtensionRecord"
-Cohesion: 0.15
-Nodes (7): OFFICIAL_PLUGIN_CATALOG, PLUGIN_CODE_TEMPLATES, ExtensionHostInstance, ExtensionLoader, extensionRegistry, CatalogPluginItem, ExtensionRecord
+Cohesion: 0.09
+Nodes (23): Core Files Updated for Phase 7 Integration, OFFICIAL_PLUGIN_CATALOG, PLUGIN_CODE_TEMPLATES, ExtensionHostInstance, ExtensionLoader, extensionRegistry, OSPlatform, OSSandboxCapabilities (+15 more)
 
 ### Community 10 - "parsers/index.ts"
-Cohesion: 0.22
+Cohesion: 0.23
 Nodes (6): ClaudeStreamParser, GeminiStreamParser, createStreamParser(), OllamaStreamParser, IStreamParser, NormalizedStreamChunk
 
 ### Community 11 - "DesignSystemGenerator"
@@ -416,8 +432,8 @@ Cohesion: 0.18
 Nodes (8): 1. Model & Provider Context Calibration, 10. `get_project_info`, 11. `build_context`, 2.2 Context Nodes, 7. `search_workspace`, 8. `read_file`, 9. `search_files`, tokenCounterService
 
 ### Community 13 - "ToolOutputNormalizer"
-Cohesion: 0.19
-Nodes (10): 5. Tool Output Normalization & Balanced Multi-File Diffs, 1. Code Explanation, 2. Bug Investigation (Verbose Terminal Logs), 3. Multi-Skill Code Generation, 4. Deterministic Response Caching, 5. Large Git Diff Review, Detailed Task Breakdown, 1.5 Tool Output Normalization & Raw Audit Trail (+2 more)
+Cohesion: 0.11
+Nodes (19): 5. Tool Output Normalization & Balanced Multi-File Diffs, 1. Code Explanation, 2. Bug Investigation (Verbose Terminal Logs), 3. Multi-Skill Code Generation, 4. Deterministic Response Caching, 5. Large Git Diff Review, Detailed Task Breakdown, 1.5 Tool Output Normalization & Raw Audit Trail (+11 more)
 
 ### Community 14 - "compilerOptions"
 Cohesion: 0.08
@@ -425,7 +441,7 @@ Nodes (25): compilerOptions, allowImportingTsExtensions, baseUrl, composite, iso
 
 ### Community 15 - "package.json"
 Cohesion: 0.07
-Nodes (28): author, bin, orbito, description, license, main, name, version (+20 more)
+Nodes (29): author, bin, orbito, description, license, main, name, version (+21 more)
 
 ### Community 16 - "bug-fixing/manifest.json"
 Cohesion: 0.08
@@ -472,8 +488,8 @@ Cohesion: 0.14
 Nodes (8): 4. Multi-Tier Intelligent Caching & Security Boundary, Cache Invalidation, Workspace Isolation & Safety, 1.2 Deterministic Response Cache Safety & Isolation Boundary, CacheEntry, CacheStats, LRUCache, ModelResponseKeyParams, MultiTierCacheService
 
 ### Community 27 - "WorktreeManager"
-Cohesion: 0.08
-Nodes (20): 2.2 Agent Infrastructure & Multi-Agent Execution, 6. Intelligent Task Distribution (Phase 6), D. Intelligent Worktree Orchestration & Collision Prevention (`WorktreeManager`), 4.3 AI Execution, Context & Skills (Journey C), 4.4 Multi-Agent Orchestration (Journey D), 4.5 Persistence & Layout Recovery (Journey E), 4. Core User Journey Validation, execAsync (+12 more)
+Cohesion: 0.14
+Nodes (8): I. Chaos Matrix (42 Certified Resilience Scenarios), 12. Chaos Testing Coverage Matrix (42 Planned Scenarios), 6.1 Cross-Process Atomic Locking (`acquireCrossProcessLock`), 6.2 Pre-Merge Safety & Dirty Worktree Protection, 6. Git & Worktree Concurrency Hardening, WorktreeManager, registerIpcHandlers(), TEST_DIR
 
 ### Community 28 - "compilerOptions"
 Cohesion: 0.11
@@ -508,24 +524,24 @@ Cohesion: 0.13
 Nodes (12): 6. Auto-Update & Distribution Infrastructure, AutoUpdateConfig, autoUpdateService, CheckForUpdatesSchema, CheckUpdateResult, DownloadUpdateSchema, InstallUpdateResult, InstallUpdateSchema (+4 more)
 
 ### Community 37 - "System Architecture Specification — AI Workspace"
-Cohesion: 0.10
-Nodes (20): 1. System Topology & Process Boundary Model, 2. Dependency Stability & Compatibility Matrix, 3.1 Split Database Architecture: `app.sqlite` vs `index.sqlite`, 3.2 WAL Configuration, Transactions & Concurrency Control, 3.3 Transaction Batching & Crash Recovery, 3. SQLite Architecture & Worker Thread Concurrency, 5.1 Filesystem Runtime Enforcement & Symlink Defense, 5.2 Terminal, Command Chaining & Indirect Execution Guard (+12 more)
+Cohesion: 0.11
+Nodes (18): 10.1 System Architecture, 10.2 Node Architecture & Categories, 10.3 Execution Semantics & Data Mapping, 10. Visual Automation & Flow Builder Architecture (Phase 6 Completed), 1. System Topology & Process Boundary Model, 2. Dependency Stability & Compatibility Matrix, 5.1 Filesystem Runtime Enforcement & Symlink Defense, 5.2 Terminal, Command Chaining & Indirect Execution Guard (+10 more)
 
-### Community 38 - "Phase 6: System Hardening & Integration Wiring Report"
-Cohesion: 0.33
-Nodes (5): 1. Executive Summary, 3. Test Suite Execution Summary, 4. Repository Integrity Confirmation, Phase 6: System Hardening & Integration Wiring Report, TypeScript Compilation & Production Build
+### Community 38 - "2. Itemized Verification of Defects & Implemented Fixes"
+Cohesion: 0.17
+Nodes (11): 1. Executive Summary, 2.10 SEC-04 — Environment Variable Isolation for Child Processes, 2.4 P1 (CRIT-04) — SQLite CLI Session Recovery on Startup, 2.5 P1 (CRIT-05) — SQLite Test Environment Isolation, 2.7 CRIT-07 — Project Graph State Alignment (Removal of Mock Data), 2.8 CRIT-08 — Genuine Memory Cleanup Measurement, 2. Itemized Verification of Defects & Implemented Fixes, 3. Test Suite Execution Summary (+3 more)
 
 ### Community 39 - "node-executors.ts"
-Cohesion: 0.17
-Nodes (8): ADR-013: Sandboxed Restricted Grammar for Expression Evaluation, 4.2 Safe Workflow Expression Evaluation, EvaluationContext, ExpressionEvaluator, execFileAsync, NodeExecutionHandler, NodeExecutionOutput, runChildProcess()
+Cohesion: 0.24
+Nodes (4): 4.2 Safe Workflow Expression Evaluation, EvaluationContext, ExpressionEvaluator, TEST_DIR
 
 ### Community 40 - "ast-parser.service.ts"
-Cohesion: 0.12
-Nodes (14): 5. Summary of Modified & Created Files, contextEngineService, astParserService, ParseResult, AssembleContextSchema, CancelIndexingSchema, CodeChunk, ContextAssemblyResult (+6 more)
+Cohesion: 0.22
+Nodes (6): IndexingProgressCallback, astParserService, ParseResult, CodeChunk, FileSymbol, SymbolKind
 
 ### Community 41 - "context-engine.service.ts"
-Cohesion: 0.11
-Nodes (12): 2. Race-Condition-Free Live Disk Reads, AssemblyOptions, contextAssemblyService, incrementalIndexer, IndexingProgressCallback, contextRetrievalService, RetrievalOptions, hybridSearchService (+4 more)
+Cohesion: 0.10
+Nodes (21): 2. Race-Condition-Free Live Disk Reads, P1 — High (Core Integration Gaps & Test Infrastructure), 5. Summary of Modified & Created Files, AssemblyOptions, contextAssemblyService, contextEngineService, contextRetrievalService, RetrievalOptions (+13 more)
 
 ### Community 42 - "scripts"
 Cohesion: 0.12
@@ -533,35 +549,35 @@ Nodes (16): scripts, build, dev, format, lint, postinstall, start, test (+8 more
 
 ### Community 43 - "IElectronAPI"
 Cohesion: 0.05
-Nodes (54): api, Window, Window, AgentCapability, ApprovalType, CancelOrchestrationSchema, ExecuteAutonomousPlanSchema, ExplainTaskSchema (+46 more)
+Nodes (56): api, Window, Window, AgentCapability, ApprovalType, CancelOrchestrationSchema, ExecuteAutonomousPlanSchema, ExplainTaskSchema (+48 more)
 
 ### Community 44 - ".error"
-Cohesion: 0.15
-Nodes (12): 6.3 Seven Normalized Authentication States, 2. Shared Data Models & Contracts (`src/shared/mcp.ts`), Server Status Lifecycle, Transport Types, 3. Global Settings Implementation, 24. `run_tests`, 25. `run_typecheck`, 26. `run_build` (+4 more)
+Cohesion: 0.29
+Nodes (7): 24. `run_tests`, 25. `run_typecheck`, 26. `run_build`, 27. `git_status`, 28. `git_diff`, 29. `create_git_commit`, 2.5 Development Nodes
 
 ### Community 45 - "ORBITO — Baseline Commit Readiness Review"
 Cohesion: 0.07
-Nodes (28): 10. Operational Execution Commands (Post-Approval), 11. Final Verdict, 1. Executive Summary, 2. Complete Inventory of Pending Changes, 3. Classification by Functional Domain, 4.1. Files Safe to Include in the Baseline, 4.2. Candidate Files for Human Exclusion Decision, 4. Safety & Inclusion Analysis (+20 more)
+Nodes (29): 10. Operational Execution Commands (Post-Approval), 11. Final Verdict, 1. Executive Summary, 2. Complete Inventory of Pending Changes, 3. Classification by Functional Domain, 4.1. Files Safe to Include in the Baseline, 4.2. Candidate Files for Human Exclusion Decision, 4. Safety & Inclusion Analysis (+21 more)
 
 ### Community 46 - "docs/README.md"
-Cohesion: 0.07
-Nodes (19): Architecture Diagram, Intelligence Engine Architecture — AI Workspace, Progressive Skill Composition & Conflict Resolution, Security Boundaries & Safety Guarantees, System Overview, 1. Security Philosophy: Local-First Zero-Trust, Security Model & Defense-in-Depth — AI Workspace, Overview (+11 more)
+Cohesion: 0.09
+Nodes (11): 1. Security Philosophy: Local-First Zero-Trust, Security Model & Defense-in-Depth — AI Workspace, 1. Executive Summary, 2. Refinements Implemented, 3. Verification Artifacts, Phase 6: Final Glassmorphism Polish Verification Report, 1. Testing Philosophy & Quality Principles, 2. Test Suite Hierarchy (+3 more)
 
 ### Community 47 - "allowScripts"
 Cohesion: 0.29
 Nodes (7): allowScripts, better-sqlite3@11.10.0, electron@34.5.8, esbuild@0.18.20, esbuild@0.19.12, esbuild@0.25.12, node-pty@1.1.0
 
 ### Community 48 - "workspace.store.ts"
-Cohesion: 0.08
-Nodes (34): 2.2. Untracked Files & Directory Sets (34 Files), codeReviewService, execFileAsync, COLOR_PRESETS, PRESET_ICONS, ResourceManagerPopoverProps, AppSection, FileSymbolItem (+26 more)
+Cohesion: 0.07
+Nodes (53): 4.1 Project Lifecycle (Journey A), LeftSidebar(), AzureDevOpsIcon(), BitbucketIcon(), CursorIcon(), ForgejoIcon(), GitCafeIcon(), GitHubIcon() (+45 more)
 
 ### Community 49 - "persistent-workspace-phase4.test.ts"
 Cohesion: 0.12
 Nodes (7): electron-vite, @vitejs/plugin-react, adapterConfigs, adaptersDir, fs, path, dbTables
 
 ### Community 50 - "Centralized MCP Observability & Performance Monitoring Implementation Report"
-Cohesion: 0.12
-Nodes (16): 1. Executive Summary, 2. Architecture & Design Principles, 3. Data Structures & Shared Contracts, 4.1 Persistence Layer (`src/main/db/database.service.ts`), 4.3 Runtime & Gateway Integration (`mcp-runtime.ts` & `mcp-gateway.ts`), 4.4 Presentation Layer, 4. Subsystem Implementations, 5.1 Test Suite Results (+8 more)
+Cohesion: 0.18
+Nodes (10): 1. Executive Summary, 2. Architecture & Design Principles, 3. Data Structures & Shared Contracts, 5.1 Test Suite Results, 5.2 Verification Scope Covered, 5.3 Static Analysis & Governance Verification, 5. Automated Verification & Quality Assurance, 6. Conclusion (+2 more)
 
 ### Community 51 - "MCPServerConfig"
 Cohesion: 0.14
@@ -569,19 +585,19 @@ Nodes (8): IMCPAgentAdapter, mcpAgentAdapterManager, antigravityMCPAdapter, clau
 
 ### Community 52 - "Primary Engineering Outcomes"
 Cohesion: 0.10
-Nodes (10): Workstream C — Testing & Simulation Infrastructure, adaptiveModelRouter, MockAIProvider, MockAIProviderOptions, MockMCPServer, MockMCPServerOptions, ValidationRecord, ValidationRegistry (+2 more)
+Nodes (12): 1. Executive Summary, ADR-02: Multi-Layer Graceful Shutdown Barrier, Primary Engineering Outcomes, Workstream C — Testing & Simulation Infrastructure, MockAIProvider, MockAIProviderOptions, MockMCPServer, MockMCPServerOptions (+4 more)
 
 ### Community 53 - "electron-builder.json"
 Cohesion: 0.08
 Nodes (25): appId, asar, asarUnpack, copyright, directories, buildResources, output, extraMetadata (+17 more)
 
 ### Community 54 - "adaptive-model-router.ts"
-Cohesion: 0.06
-Nodes (34): 1. Overview, 2. Files Created & Modified, 3. Verification, Phase 3 Deliverable: Adaptive Model Router, SpecialistDefinition, RouteOperationOptions, CapabilityMatchResult, modelCapabilityEngine (+26 more)
+Cohesion: 0.10
+Nodes (14): CANONICAL_MODEL_CATALOG, modelRegistry, ModelAuthMethod, ModelAvailabilityStatus, ModelCognitiveCapabilities, ModelCognitiveCapabilitiesSchema, ModelDiscoveryResult, ModelExecutionInterface (+6 more)
 
 ### Community 55 - "Phase 7 Completion Report: Ecosystem & Enterprise Hardening"
-Cohesion: 0.13
-Nodes (12): 10. Conclusion & Project Milestone, 2. Repository Audit Findings (Phases 1–6), 3. Implemented Architecture, 4. New Components and Modified Files, 5. Integrations with Previous Phases, 6. Security Measures, 7.1 Automated Quality Gates, 7. Quality Assurance & Verification Results (+4 more)
+Cohesion: 0.14
+Nodes (13): 10. Conclusion & Project Milestone, 1. Original Phase 7 Objectives & Work Packages, 3. Implemented Architecture, 4. New Components and Modified Files, 5. Integrations with Previous Phases, 6. Security Measures, 7.1 Automated Quality Gates, 7. Quality Assurance & Verification Results (+5 more)
 
 ### Community 57 - "Recipes"
 Cohesion: 0.07
@@ -604,12 +620,12 @@ Cohesion: 0.08
 Nodes (24): Accessibility Verification with DevTools, Available Tools, Browser Testing with DevTools, Clean Console Standard, Common Rationalizations, Console Analysis Patterns, Content Boundary Markers, For Network Issues (+16 more)
 
 ### Community 64 - "useWorkspaceStore"
-Cohesion: 0.10
-Nodes (36): 1. Executive Summary, AgentsWorkspace(), ROLE_COLORS, CenterArea(), CLIConsole(), ContextInspector(), DetachedTabWindow(), DetachedTabWindowProps (+28 more)
+Cohesion: 0.07
+Nodes (57): 2.1. Tracked Modified Files (40 Files), 1. Executive Summary, AgentsWorkspace(), ROLE_COLORS, CenterArea(), CLIConsole(), CodeEditor(), CodeEditorProps (+49 more)
 
 ### Community 65 - "mcpRuntime"
-Cohesion: 0.13
-Nodes (6): HttpTransport, ActiveSession, mcpRuntime, StdioTransport, MCPServerStatus, MCPToolDefinition
+Cohesion: 0.09
+Nodes (12): 5. Universal MCP Integration (Phase 5), 4.1 Persistence Layer (`src/main/db/database.service.ts`), 4.3 Runtime & Gateway Integration (`mcp-runtime.ts` & `mcp-gateway.ts`), 4.4 Presentation Layer, 4. Subsystem Implementations, Developer Mode Diagnostics (`src/renderer/src/components/MCPDiagnosticsView.tsx` & `AnalyticsDashboard.tsx`), Settings UI (`src/renderer/src/components/settings/mcp/MCPServersPage.tsx`), HttpTransport (+4 more)
 
 ### Community 66 - "Frontend Design Pro"
 Cohesion: 0.11
@@ -623,9 +639,9 @@ Nodes (24): Android XR / Compose Glimmer, Design Tokens, Expo Blur Alternative, 
 Cohesion: 0.09
 Nodes (22): description, command, criteria, name, command, criteria, name, command (+14 more)
 
-### Community 69 - "execution-engine.ts"
-Cohesion: 0.09
-Nodes (27): A. Executive Summary, 2.3 P1 (CRIT-03) — Interactive AI Execution Context & Skills Wiring, 2.1 Development vs. Production Startup, ActiveSession, CustomSkillsService, ImportCustomSkillResult, ManifestValidator, ValidationResult (+19 more)
+### Community 69 - "skill-registry.ts"
+Cohesion: 0.24
+Nodes (9): CustomSkillsService, ImportCustomSkillResult, BUILTIN_OPERATIONAL_SUMMARIES, SkillDiscovery, SkillLoader, SkillDetails, SkillMetadata, TEST_CUSTOM_SRC (+1 more)
 
 ### Community 70 - "ORBITO — Multi-Agent System Finalization & Wave 1 Activation Report"
 Cohesion: 0.09
@@ -643,9 +659,9 @@ Nodes (21): Color Comparison Method, Common Visual Bugs Caught, Dimension Weight
 Cohesion: 0.12
 Nodes (9): _domain_keywords(), _load_csv(), _load_product_keywords(), _normalize(), search(), _search_csv(), search_stack(), _suggest_terms() (+1 more)
 
-### Community 74 - "project-intelligence.ts"
-Cohesion: 0.08
-Nodes (24): architecturalIntelligenceService, gitIntelligenceService, projectHealthService, projectIntelligenceService, roleContextAssemblerService, AgentRoleType, AnalyzeProjectSchema, ArchitecturalOverview (+16 more)
+### Community 74 - "projectIntelligenceService"
+Cohesion: 0.17
+Nodes (5): projectIntelligenceService, roleContextAssemblerService, AgentRoleType, KnowledgeCategory, RoleContextPackage
 
 ### Community 75 - "workflows.ts"
 Cohesion: 0.12
@@ -656,16 +672,16 @@ Cohesion: 0.09
 Nodes (21): Accessibility, Brand, Colors, Component Rule Expectations, DESIGN.md (TypeUI â€” design tokens), Example Constraint Language, Expected Behavior, Glassmorphism (+13 more)
 
 ### Community 77 - "Full Integration & Reliability Audit — AI Workspace (Phase 5)"
-Cohesion: 0.09
-Nodes (23): 12. UI and UX Findings, 13. Test Coverage Analysis, 16. Recommended Next Development Phase, 17. Verification Results, 18. Limitations and Unverified Areas, 1. Executive Summary, 2. Actual Architecture Overview, 6. Agent and Orchestration Audit (+15 more)
+Cohesion: 0.08
+Nodes (25): 13. Test Coverage Analysis, 15. Prioritized Remediation Roadmap, 16. Recommended Next Development Phase, 17. Verification Results, 18. Limitations and Unverified Areas, 1. Executive Summary, 2. Actual Architecture Overview, 6. Agent and Orchestration Audit (+17 more)
 
 ### Community 78 - "BM25"
 Cohesion: 0.18
 Nodes (3): BM25, _get_bm25(), TestTokenizer
 
 ### Community 79 - "OfficialLogoRenderer"
-Cohesion: 0.09
-Nodes (44): ALL_AGENTS, ArcLauncherModal(), ArcLauncherModalProps, MenuItem, AiderLogo(), AmpLogo(), AnteLogo(), AntigravityLogo() (+36 more)
+Cohesion: 0.06
+Nodes (57): 3. Issues Discovered & Remediation During Audit, @xterm/addon-fit, @xterm/xterm, ALL_AGENTS, ArcLauncherModal(), ArcLauncherModalProps, MenuItem, AiderLogo() (+49 more)
 
 ### Community 80 - "AI Coding Agent Instructions — Orc AI Workspace"
 Cohesion: 0.22
@@ -676,28 +692,32 @@ Cohesion: 0.20
 Nodes (17): SettingsContentProps, SettingsHeader(), SettingsHeaderProps, SettingsSidebar(), SettingsSidebarProps, normalizeSettingsSection(), SearchResult, searchSettingsRegistry() (+9 more)
 
 ### Community 82 - "MCPServerConfig"
-Cohesion: 0.17
-Nodes (13): HttpTransportOptions, mcpGateway, mcpRegistry, mcpPermissionManager, PermissionCheckResult, KNOWN_SECRET_PATTERNS, SecretRedactor, JSONRPCRequest (+5 more)
+Cohesion: 0.19
+Nodes (11): mcpGateway, mcpRegistry, ActiveSession, mcpRuntime, ServerRuntimeState, mcpPermissionManager, PermissionCheckResult, KNOWN_SECRET_PATTERNS (+3 more)
 
 ### Community 83 - "BaseCLIAdapter"
-Cohesion: 0.05
-Nodes (30): aiderAdapter, ampAdapter, anteAdapter, auggieAdapter, clineAdapter, codebuddyAdapter, codebuffAdapter, continueAdapter (+22 more)
+Cohesion: 0.04
+Nodes (31): aiderAdapter, ampAdapter, anteAdapter, antigravityAdapter, auggieAdapter, clineAdapter, codebuddyAdapter, codebuffAdapter (+23 more)
 
 ### Community 84 - "validate-packaging.js"
 Cohesion: 0.10
 Nodes (16): args, builderConfigPath, cliScript, fs, hasPtyUnpack, hasSqliteUnpack, mainOut, outDir (+8 more)
 
 ### Community 85 - "PromptAssemblyService"
-Cohesion: 0.11
-Nodes (16): 1. XML Tags (`providerFormat: 'xml_tags'`), 2. Structured Markdown (`providerFormat: 'markdown'`), Canonical 8-Section Hierarchy, Centralized Prompt Engineering & Assembly Specification, Deterministic Fingerprinting & Caching, Overview, Provider-Specific Formatting, Semantic Whitespace Compression (+8 more)
+Cohesion: 0.12
+Nodes (15): 1. XML Tags (`providerFormat: 'xml_tags'`), 2. Structured Markdown (`providerFormat: 'markdown'`), Canonical 8-Section Hierarchy, Centralized Prompt Engineering & Assembly Specification, Deterministic Fingerprinting & Caching, Overview, Provider-Specific Formatting, Semantic Whitespace Compression (+7 more)
 
 ### Community 86 - "RightPanel.tsx"
-Cohesion: 0.12
-Nodes (28): @tanstack/react-virtual, ChangesTab(), DiffViewer(), DiffViewerProps, ParsedDiffLine, FilesTab(), matchesFilter(), sortNodes() (+20 more)
+Cohesion: 0.09
+Nodes (43): lucide-react, @tanstack/react-virtual, BottomPanel(), CommandPalette(), ChangesTab(), DiffViewer(), ParsedDiffLine, FilesTab() (+35 more)
 
 ### Community 87 - "Ponytail"
 Cohesion: 0.33
 Nodes (5): Bug Fixes, Ponytail, Quality and Security Non-Negotiables, Rules, The Ladder
+
+### Community 88 - "git-providers.service.ts"
+Cohesion: 0.24
+Nodes (7): DEFAULT_SERVER_URLS, gitProvidersService, PROVIDER_NAMES, ProviderMetadata, SourceItemDef, GitProviderSourceId, RemoteGitRepo
 
 ### Community 89 - "3. Approved Staging Manifest (40 Files)"
 Cohesion: 0.10
@@ -707,9 +727,9 @@ Nodes (20): 1. Executive Summary, 2.1 Branch & Commit Anchor, 2.2 Tracked File D
 Cohesion: 0.10
 Nodes (16): allTasks, coreFiles, { execSync }, fs, ownershipPath, path, primaryCoordExists, queuePath (+8 more)
 
-### Community 91 - "SkillCompositionService"
-Cohesion: 0.12
-Nodes (14): 12.1 Canonical Prompt Assembly (`PromptAssemblyService`), 12.2 Progressive Skill Composition (`SkillCompositionService`), 12.3 Multi-Tier Intelligent Caching (`MultiTierCacheService`), 12.4 Intelligent Model & Provider Routing (`IntelligenceRouter`), 12.5 Tool Output Normalization (`ToolOutputNormalizer`), 12. Phase 8 Architecture: Intelligence & Token Optimization Engine, 1. Semantic Whitespace & Formatting Compression, 2. Progressive Skill Loading (3 Levels) (+6 more)
+### Community 91 - "token-optimization-pipeline.test.ts"
+Cohesion: 0.18
+Nodes (9): 1.4 Skill Composition Quality & Conflict Resolution, 1. Roadmap Overview & Strategic Phases, 2. Phase Execution Status & Work Packages, 4. Technical Risk Register, 5. Summary of Roadmap Phases (Phases 2 to 7), Product & Engineering Roadmap — AI Workspace, SkillCompositionService, ComposedSkillInstructions (+1 more)
 
 ### Community 92 - "Pre-Delivery Checklist (canonical — the only one)"
 Cohesion: 0.15
@@ -773,7 +793,7 @@ Nodes (15): 1. Executive Summary & Vision, 2. Agent Roster & Capability Matrix, 
 
 ### Community 109 - "agent-orchestrator.ts"
 Cohesion: 0.17
-Nodes (12): ADR-009: Directed Acyclic Graph (DAG) with Topological Concurrency Scheduling, B. Autonomous Planning Engine (`CoordinatorAgent.createPlan`), StartOrchestrationParams, SchedulerOptions, CoordinatorAgent, PlanOptions, DAGValidationResult, DAGValidator (+4 more)
+Nodes (15): ADR-009: Directed Acyclic Graph (DAG) with Topological Concurrency Scheduling, B. Autonomous Planning Engine (`CoordinatorAgent.createPlan`), StartOrchestrationParams, SchedulerOptions, CoordinatorAgent, PlanOptions, DAGValidationResult, DAGValidator (+7 more)
 
 ### Community 110 - "ORB-BACK-002.json"
 Cohesion: 0.07
@@ -782,6 +802,10 @@ Nodes (26): acceptance_criteria, assigned_agent, branch, context, created_at, de
 ### Community 111 - "Transparent Glass UI"
 Cohesion: 0.10
 Nodes (19): 1. Dark Surfaces, Bright Content, 2. Additive Color Model, 3. Typography for Glanceability, 4. Depth Through Shadow, Not Elevation, 5. Motion: Graceful, Not Grabby, 6. Focus Rings and Interaction Feedback, Accessibility, Anti-Patterns (What NOT to Do) (+11 more)
+
+### Community 112 - "Orbito Engineering Intelligence: Validation, Calibration & Benchmarking Report"
+Cohesion: 0.06
+Nodes (34): 10. Security Intelligence Validation, 11. UI/UX Conformance and Anti-Boxiness Invariant Verification, 12. CLI Command Suite Reference, 13. Comprehensive Evidence Classification Table, 14. Discrepancies, Limitations and Edge Cases, 15. Architectural Debt and Pruned Concepts, 16. Quality & Security Standard Compliance, 17. Automated Verification Protocol (+26 more)
 
 ### Community 113 - "validate-security-and-licenses.js"
 Cohesion: 0.12
@@ -799,29 +823,29 @@ Nodes (12): 1. Automated GitHub Actions Infrastructure, 2. Quality Gates & Merge
 Cohesion: 0.16
 Nodes (7): buildDisplacementMap(), clampByte(), FilterEntry, GLASS_PRESET, LiquidGlassConfig, LiquidGlassDirective, resolveRadius()
 
-### Community 117 - "LeftSidebar.tsx"
-Cohesion: 0.11
-Nodes (30): 4.1 Project Lifecycle (Journey A), BottomPanel(), CommandPalette(), GraphCanvas(), GraphCanvasProps, SimNode, GraphControls(), GraphControlsProps (+22 more)
+### Community 117 - "SecretRedactor"
+Cohesion: 0.07
+Nodes (30): 10.1 Automated Test Execution Summary, 10.2 Evidence-Based Status Matrix (15 Simulation Scenarios), 10. Test and Simulation Evidence, 11. Performance Observations, 12. Known Limitations, 13. Outstanding Risks, 14. Production Readiness, 15. Future Real-World Validation Requirements (+22 more)
 
 ### Community 118 - "2. Layer-by-Layer Verification & Mitigations"
 Cohesion: 0.20
 Nodes (10): 2.10 Custom Extension Security 2.0: OS-Level Sandboxing & Capability Gate, 2.1 Electron Renderer Sandbox, 2.3 Shell Injection Immunity, 2.4 Token Exfiltration & Keyring Safeguards, 2.5 Skills Engine Permissions, 2.6 Git Worktree Isolation & Host Protection, 2.7 Human-in-the-Loop Multi-Agent Execution Modes, 2.8 Visual Workflow & Expression Evaluation Security Guardrails (+2 more)
 
-### Community 119 - "lucide-react"
-Cohesion: 0.13
-Nodes (16): lucide-react, react-dom, AgentDiagnosticsView(), AnalyticsDashboard(), formatRelativeTime(), MCPDiagnosticsView(), PluginManagerModalProps, ProjectIntelligenceView() (+8 more)
+### Community 119 - "react"
+Cohesion: 0.20
+Nodes (11): react, AgentDiagnosticsView(), AnalyticsDashboard(), EngineeringIntelligenceView(), OperationalHealthView(), ProjectIntelligenceView(), SettingInputProps, LAYER_ICONS (+3 more)
 
 ### Community 120 - "ADAPTIVE_INTELLIGENCE_PROGRESS.md"
 Cohesion: 0.06
-Nodes (28): 1. Overview, 2. Files Created & Modified, 3. Verification, Adaptive Evaluation & Cost Intelligence Implementation Report, Phase 5 Deliverable: Deterministic Evaluation & Cost Engine, 1. Executive Summary, 3. End-to-End Validation Across All 10 Scenarios, 4. Final Quality & Governance Certification (+20 more)
+Nodes (28): 1. Executive Summary, 3. End-to-End Validation Across All 10 Scenarios, 4. Final Quality & Governance Certification, Adaptive Intelligence Production Readiness & Final Verification Report, 1. Overview, 3. Verification, Adaptive Context Handoff & Model Switching Implementation Report, Phase 4 Deliverable: In-Flight Model Switching & Context Handoff (+20 more)
 
 ### Community 121 - "ORBITO — Post-Implementation Verification & Architecture Audit Report"
 Cohesion: 0.09
-Nodes (21): 2. Threat Model for Malicious Extensions, 11. Performance and Reliability Findings, D. Editor, 1. Audit Matrix & Classifications, 2.1 Typing Buffer Mechanics & Keystroke Latency Reality, 2.2 Data-Loss Scenarios & Applied Fixes, 2. Editor Performance & Architecture Audit, 3.1 Implemented Capabilities vs Reality (+13 more)
+Nodes (19): 2. Threat Model for Malicious Extensions, 11. Performance and Reliability Findings, D. Editor, 1. Audit Matrix & Classifications, 2.1 Typing Buffer Mechanics & Keystroke Latency Reality, 2.2 Data-Loss Scenarios & Applied Fixes, 2. Editor Performance & Architecture Audit, 4.1 Process Sandboxing & Permissions Enforcement (+11 more)
 
-### Community 122 - "generate_design_system"
-Cohesion: 0.33
-Nodes (3): format_markdown(), generate_design_system(), TestPersistence
+### Community 122 - "ORBITO — Operational Resilience Gap Closure & Recovery Validation"
+Cohesion: 0.09
+Nodes (23): B. Baseline Audit & Gap Matrix, 11. Release, Update & Windows Operational Validation, 13.1 Desktop UI: Operational Health & Recovery Center, 13.2 CLI Commands (`bin/orbito.js`), 13. CLI & Desktop UI Improvements, 14. Full Test Results, 15. Remaining Risks & External Validation Requirements, 16. Final Readiness Assessment (+15 more)
 
 ### Community 123 - "ORBITO — Central Multi-Agent Coordination System"
 Cohesion: 0.11
@@ -840,36 +864,36 @@ Cohesion: 0.11
 Nodes (18): 1. Current Git Repository Status, 2.1 Substantial Ongoing Developments Identified, 2.2 Unfinished Features & Potential Collisions, 2. Protect Existing Work, 3. Orca Environment Verification, 4. Architecture Validation, 5. Baseline Strategy, 6. Exact First Worktree Configuration (+10 more)
 
 ### Community 128 - "Phase 7: Real-World Validation & Product Readiness Report"
-Cohesion: 0.17
-Nodes (11): 10. Repository Safety & Integrity Confirmation, 11. Conclusion, 1. Executive Summary, 2.2 Database Initialization & Migrations, 2.4 Missing or Corrupted Configuration & Missing Project Directories, 2. Application Startup & Runtime Lifecycle Results, 5. UI/UX Consistency Audit, 6. Performance & Resource Footprint Findings (+3 more)
+Cohesion: 0.22
+Nodes (8): 10. Repository Safety & Integrity Confirmation, 11. Conclusion, 1. Executive Summary, 5. UI/UX Consistency Audit, 6. Performance & Resource Footprint Findings, 7. Known Limitations & Honest Product State, 8. Automated Test Suite Results, Phase 7: Real-World Validation & Product Readiness Report
 
 ### Community 129 - "CLIProvider"
-Cohesion: 0.08
-Nodes (21): node-pty, BudgetPolicy, CostMeasurementMethod, modelCostEngine, TaskCostRecord, CompetingCandidate, CompetitionResult, ConsensusAnalysisResult (+13 more)
+Cohesion: 0.07
+Nodes (25): Workstream F — Developer Experience & Extensibility, BudgetPolicy, CostMeasurementMethod, modelCostEngine, TaskCostRecord, CompetingCandidate, CompetitionResult, ConsensusAnalysisResult (+17 more)
 
 ### Community 130 - "project-discovery.service.ts"
-Cohesion: 0.22
-Nodes (7): EXTENSION_TO_LANG, IGNORED_DIRS, projectDiscoveryService, LanguageStat, MonorepoInfo, MonorepoPackage, TechStackInfo
+Cohesion: 0.11
+Nodes (19): EXTENSION_TO_LANG, IGNORED_DIRS, projectDiscoveryService, AnalyzeProjectSchema, AssembleRoleContextSchema, GetProjectArchitectureSchema, GetProjectHealthSchema, GetProjectKnowledgeSchema (+11 more)
 
 ### Community 131 - "AI Workspace — Empirical Performance & Scalability Audit Report"
 Cohesion: 0.11
 Nodes (17): 1.1 Process Memory Footprint, 1.2 Resource Separation, 1. Measured Resource Footprint, 2.1 Benchmark Results, 2. Storage & SQLite Database Performance, 3.1 Workspace Indexing Throughput, 3.2 Context Assembly Latency, 3. Context Intelligence Engine Benchmarks (+9 more)
 
 ### Community 132 - "workflow-engine.ts"
-Cohesion: 0.20
-Nodes (15): 3. Natural Language Workflow Generation, NODE_EXECUTORS, NodeExecutionContext, WorkflowGenerator, buildTemplate(), WORKFLOW_TEMPLATES, WorkflowValidationResult, WorkflowValidator (+7 more)
+Cohesion: 0.23
+Nodes (13): 3. Natural Language Workflow Generation, WorkflowGenerator, buildTemplate(), WORKFLOW_TEMPLATES, WorkflowValidationResult, WorkflowValidator, createNodeData(), NODE_REGISTRY (+5 more)
 
 ### Community 133 - "Primary Engineering Outcomes"
-Cohesion: 0.10
-Nodes (22): K. Persistence and Recovery, 1. Executive Summary, 2. Initial Architecture Audit, 3. Workstream Progress & Implemented Changes, 4. Architectural Decisions (ADRs), 5. Modified and Created Files, 6. Validation Results & Evidence, 7. Known Limitations & Outstanding Risks (+14 more)
+Cohesion: 0.08
+Nodes (18): High-Level Verdict:, K. Persistence and Recovery, 2. Initial Architecture Audit, 3. Workstream Progress & Implemented Changes, 4. Architectural Decisions (ADRs), 5. Modified and Created Files, 6. Validation Results & Evidence, 7. Known Limitations & Outstanding Risks (+10 more)
 
 ### Community 134 - "validate-structure.js"
 Cohesion: 0.12
 Nodes (16): args, auditPatterns, checkDirectoryForMisplacedAudits(), docsDir, fail(), fs, indexFile, path (+8 more)
 
 ### Community 135 - "executionEngine"
-Cohesion: 0.31
-Nodes (5): 5. Security & Sensitive Configuration Audit, 2.2 P0 (CRIT-01) — Ollama Execution Architecture & Daemon Fallback, buildSanitizedCLIEnv(), executionEngine, activeSession
+Cohesion: 0.30
+Nodes (5): Workstream B — Security & Reliability, 2.2 P0 (CRIT-01) — Ollama Execution Architecture & Daemon Fallback, executionEngine, activeSession, CLIStreamEvent
 
 ### Community 136 - "validate-agents.js"
 Cohesion: 0.15
@@ -880,32 +904,28 @@ Cohesion: 0.12
 Nodes (15): 10.1 Invocations (`window.api`), 10.2 Live Broadcast Events (`agents:event`), 10. IPC API & Event Contracts, 11. Verification & Automated Test Coverage, 1. Vision & Core Problem Statement, 2. High-Level Orchestration Architecture, 3.1 Node Structure, 3.2 Topological Scheduling (+7 more)
 
 ### Community 138 - "auditService"
-Cohesion: 0.19
-Nodes (10): zod, auditService, AirGapConfigSchema, AnalyticsFeature, AnalyticsStatus, AuditLogEntry, AuditLogFilter, AuditSeverity (+2 more)
+Cohesion: 0.24
+Nodes (7): 3.1 Implemented Capabilities vs Reality, 3.2 Target Language Server Architecture (LSP), 3. IntelliSense Audit, auditService, AuditLogEntry, AuditLogFilter, AuditSeverity
 
 ### Community 139 - "AI Workspace — Comprehensive Security Audit Report"
-Cohesion: 0.10
-Nodes (19): 2.1 Critical Vulnerability Finding: Insecurity of node:vm, 2.2 Implemented OS-Level Sandboxing Architecture (Extension Security 2.0), 2. Extension SDK & Untrusted Code Execution Boundary, 3.1 BrowserWindow Security Configuration, 3.2 External Navigation & Protocol Restraints, 3.3 Strict Content Security Policy (CSP), 3.4 IPC Contract & Input Validation, 3. Electron, WebContents & IPC Hardening (+11 more)
+Cohesion: 0.12
+Nodes (16): 2.1 Critical Vulnerability Finding: Insecurity of node:vm, 2.2 Implemented OS-Level Sandboxing Architecture (Extension Security 2.0), 2. Extension SDK & Untrusted Code Execution Boundary, 3.1 BrowserWindow Security Configuration, 3.2 External Navigation & Protocol Restraints, 3.3 Strict Content Security Policy (CSP), 3.4 IPC Contract & Input Validation, 3. Electron, WebContents & IPC Hardening (+8 more)
 
-### Community 140 - "NewProjectModal.tsx"
-Cohesion: 0.17
-Nodes (16): AzureDevOpsIcon(), BitbucketIcon(), CursorIcon(), ForgejoIcon(), GitCafeIcon(), GitHubIcon(), GitLabIcon(), ModalView (+8 more)
+### Community 140 - "review.ts"
+Cohesion: 0.15
+Nodes (8): 2.2. Untracked Files & Directory Sets (34 Files), codeReviewService, DiffViewerProps, AIFinding, CodeReview, ExecutionStatus, ReviewComment, ReviewStatus
 
-### Community 141 - "AgentsSettingsTab.tsx"
-Cohesion: 0.18
-Nodes (12): 3. Issues Discovered & Remediation During Audit, @xterm/addon-fit, @xterm/xterm, AgentInstallModal(), AgentInstallModalProps, AgentItemToInstall, AgentsSettingsTab(), ALL_AGENTS (+4 more)
+### Community 141 - "lifecycleCoordinatorService"
+Cohesion: 0.11
+Nodes (3): lifecycleCoordinatorService, AppLifecycleState, RecoveryIncident
 
 ### Community 142 - "mcp.ts"
-Cohesion: 0.11
-Nodes (23): 5. Universal MCP Integration (Phase 5), Core Schemas (`src/shared/mcp.ts`), ServerRuntimeState, MCPAgentPermissions, MCPAgentPermissionsSchema, MCPAuditLogEntry, MCPAuditLogFilter, MCPAuthConfig (+15 more)
+Cohesion: 0.09
+Nodes (26): Core Schemas (`src/shared/mcp.ts`), formatRelativeTime(), MCPDiagnosticsView(), MCPAgentPermissions, MCPAgentPermissionsSchema, MCPAuditLogEntry, MCPAuditLogFilter, MCPAuditLogFilterSchema (+18 more)
 
 ### Community 143 - "ORBITO — Repository Structure Refactor, Documentation Centralisation & Permanent Governance Report"
 Cohesion: 0.12
 Nodes (16): 1. Executive Summary, 2.1 Original Root Structure (Pre-Refactor), 2.2 New Root Structure (Post-Refactor), 2. Before & After Repository Root Structure, 3. Inventory of Relocated Documents, 4. Retained Root Files & Justification, 5. Generated Directories & Persistent Data Governance, 6.1 Policy Specification (+8 more)
-
-### Community 144 - "2. Itemized Verification of Defects & Implemented Fixes"
-Cohesion: 0.22
-Nodes (6): 2.10 SEC-04 — Environment Variable Isolation for Child Processes, 2.1 P0 (SEC-01) — Enforce Project Permission Tiers on Shell Execution, 2.5 P1 (CRIT-05) — SQLite Test Environment Isolation, 2.7 CRIT-07 — Project Graph State Alignment (Removal of Mock Data), 2.8 CRIT-08 — Genuine Memory Cleanup Measurement, 2. Itemized Verification of Defects & Implemented Fixes
 
 ### Community 145 - "Distributed Multi-Worktree, Multi-AI & Hierarchical Sub-Agent Orchestration Report"
 Cohesion: 0.08
@@ -932,8 +952,8 @@ Cohesion: 0.14
 Nodes (13): Common Skill Categories, Find Skills, How to Help Users Find Skills, Step 1: Understand What They Need, Step 2: Check the Leaderboard First, Step 3: Search for Skills, Step 4: Verify Quality Before Recommending, Step 5: Present Options to the User (+5 more)
 
 ### Community 151 - "main/index.ts"
-Cohesion: 0.11
-Nodes (28): args, CANONICAL_MODELS, checkProviderAuth(), cleanArgs, computeDirChecksum(), crypto, DATA_DIR, DISCOVER_CATALOG (+20 more)
+Cohesion: 0.06
+Nodes (45): args, CANONICAL_MODELS, checkProviderAuth(), cleanArgs, computeDirChecksum(), crypto, DATA_DIR, DISCOVER_CATALOG (+37 more)
 
 ### Community 152 - "Liquid Glass — the material system"
 Cohesion: 0.15
@@ -943,9 +963,9 @@ Nodes (12): A complete glass card, Buttons: `.glass-btn` and variants, `.glass-i
 Cohesion: 0.15
 Nodes (12): Best Practices, Color and Contrast, Common Patterns, Density, Hierarchy Levels, Hierarchy Tools, Position, Size (+4 more)
 
-### Community 154 - "validate-release.js"
-Cohesion: 0.20
-Nodes (8): args, { execSync }, failedStages, fs, packageJson, path, rootDir, tagIndex
+### Community 154 - "Discord Rich Presence Integration Report — Orbito"
+Cohesion: 0.10
+Nodes (19): 10. Manual Discord Desktop Validation, 11. Known Limitations, 13. Preserved Uncommitted Changes Confirmation, 14. Protected Terminal UI Confirmation, 1. Architecture Implemented, 2. Discord RPC Library & Compatibility, 3. Global Settings Implementation, 4. Per-Project Settings Implementation (+11 more)
 
 ### Community 155 - "Phase 8: Real Usage, UX Refinement & Stability Report"
 Cohesion: 0.10
@@ -956,8 +976,8 @@ Cohesion: 0.10
 Nodes (20): 1.10 Air-Gap Isolation Engine, 1.11 Sandboxed Extension SDK (Extension Security 2.0), 1.12 Analytics & Audit Kernel, 1.1 Electron Main, Preload & Renderer Architecture, 1.2 IPC Contracts & Validation, 1.3 Dual SQLite Persistence & Crash Recovery, 1.4 CLI Engine & Provider Adapters, 1.5 Context Intelligence Engine (+12 more)
 
 ### Community 157 - "2. Evidence Checkpoints & Verification Results"
-Cohesion: 0.07
-Nodes (23): 1. Executive Summary, 2. Test Execution & Evidence Matrix, 3.1. CLI Tooling & Binary Compatibility, 3.2. Real MCP Protocol & Gateway Execution, 3.3. Security & Keychain Verification, 3.4. External AI Coding Agent Status, 3. Detailed Operational Findings, 4. Verification Suite Summary (+15 more)
+Cohesion: 0.15
+Nodes (12): 1. Executive Summary, 2. Evidence Checkpoints & Verification Results, 4. Design System Compliance Evaluation, 5. Final Decision, Checkpoint 1: 12 Settings Sections Live Screenshots, Checkpoint 2: Dual Theme Evidence (Glassmorphism vs Solid Dark), Checkpoint 3: Zero Navigation Routing Collisions, Checkpoint 4: Settings Persistence Across Cold Application Restart (+4 more)
 
 ### Community 158 - "2. Current Architecture: Lightweight Editing Surface"
 Cohesion: 0.15
@@ -966,10 +986,6 @@ Nodes (12): 1. Executive Summary, 2.1 Component Overview, 2.2 Syntax Highlightin
 ### Community 159 - "Orbito Post-Benchmark Findings, Prioritization & Controlled Implementation Report"
 Cohesion: 0.09
 Nodes (22): 1.1 The TS2322 Typecheck Error, 1.2 Root Cause & Resolution, 1. Resolution of QA Finding (Phase 1), 2.1 Perimeter Hardening Implemented, 2.2 Security Findings Matrix & Prioritization, 2. Security Assessment & Immediate Hardening (Phase 2 & Phase 5), 3. Architecture Refactoring Roadmap: Dissolving the IPC Monolith (Phase 2), 4.1 Windows Process-Tree Termination (+14 more)
-
-### Community 160 - "fileScanner"
-Cohesion: 0.36
-Nodes (3): fileScanner, FileScannerOptions, ScannedFileInfo
 
 ### Community 161 - "Workflow Execution Engine Specification — AI Workspace"
 Cohesion: 0.20
@@ -1016,20 +1032,20 @@ Cohesion: 0.18
 Nodes (10): Animated backgrounds (the "living gradient"), Micro-interactions, Motion — animations that feel alive, Page-load orchestration (staggered reveal), Priority order, Reduced motion, Scroll parallax, Scroll-triggered reveals (+2 more)
 
 ### Community 172 - "Skills Engine Specification & Architecture — AI Workspace"
-Cohesion: 0.15
-Nodes (13): 1. Executive Summary & Vision, 2. Skills Engine Architecture Diagram, 3. Skill Manifest Specification (`manifest.json`), 4. Built-in Skills Catalog, 5. Security & Permission Enforcement Model, 6. Custom Skills Import Lifecycle, Core Architecture Principles, Policy Tiers: (+5 more)
+Cohesion: 0.13
+Nodes (16): 1. Executive Summary & Vision, 2. Skills Engine Architecture Diagram, 3. Skill Manifest Specification (`manifest.json`), 4. Built-in Skills Catalog, 5. Security & Permission Enforcement Model, 6. Custom Skills Import Lifecycle, Core Architecture Principles, Policy Tiers: (+8 more)
 
 ### Community 173 - "Appearance Settings UX Redesign & Complete Light Theme Implementation Report"
-Cohesion: 0.17
-Nodes (11): 1. Executive Summary, 2. Architecture & Data Flow, 3. Appearance Page UX Overhaul, 4. Light Theme Token Specifications, 5. Files Modified, 6. Migration & Persistence Verification, 7. Real Electron Screenshot Evidence, 8. Final Verdict (+3 more)
+Cohesion: 0.18
+Nodes (10): 1. Executive Summary, 2. Architecture & Data Flow, 3. Appearance Page UX Overhaul, 4. Light Theme Token Specifications, 6. Migration & Persistence Verification, 7. Real Electron Screenshot Evidence, 8. Final Verdict, Appearance Settings UX Redesign & Complete Light Theme Implementation Report (+2 more)
 
 ### Community 174 - "Orbito — Phase 2.1: Glass Material Refinement & Refraction Verification Report"
 Cohesion: 0.18
 Nodes (10): 1. Investigation of Missing Refraction in Phase 2, 2. Implementation of Actual Optical Refraction (Phase 2.1), 3. Refined Glass Material Properties, 4. Visual Evidence & Real Windows 11 Desktop Screenshots, 5. Independent QA Scoring (`visual-verdict` 6-Dimension Score), A. Shared SVG Optical Refraction Filter, B. Production CSS Binding in [`src/renderer/src/index.css`](file:///C:/Users/gonca/OneDrive/Documents/Projects/Orbito/Orbito/src/renderer/src/index.css#L162-L175), C. Empirical Proof of Optical Bending (+2 more)
 
 ### Community 175 - "AI Workspace — Phase 8 Completion Report: Intelligence & Token Optimization Engine"
-Cohesion: 0.18
-Nodes (11): 1. Executive Summary, 2. Key Optimization Results & Benchmarks, 3.1 Centralized Prompt Assembly, 3.2 Progressive Skill Loading, 3.3 Multi-Tier Intelligent Caching, 3.4 Capability & Cost Model Routing, 3.5 Tool & Diff Normalization, 3. Architecture & Service Implementations (+3 more)
+Cohesion: 0.17
+Nodes (12): 1. Executive Summary, 2. Key Optimization Results & Benchmarks, 3.1 Centralized Prompt Assembly, 3.2 Progressive Skill Loading, 3.3 Multi-Tier Intelligent Caching, 3.4 Capability & Cost Model Routing, 3.5 Tool & Diff Normalization, 3. Architecture & Service Implementations (+4 more)
 
 ### Community 176 - "2. Key Accomplishments"
 Cohesion: 0.18
@@ -1038,6 +1054,10 @@ Nodes (10): 1. Executive Summary, 2.1 Navigation Collision Resolution (Root Caus
 ### Community 177 - "Orbito — Development Guide & Engineering Knowledge Base"
 Cohesion: 0.18
 Nodes (11): 1. Project Overview & Architecture, 2. Agent Responsibilities & Multi-Agent Development System, 3. Core Development Conventions, 4. Key Technical Decisions & Dependencies, 5. Security Requirements & Boundaries, 6. Testing & Validation Conventions, 7. Known Constraints & Limitations, A. Simplicity-First Engineering (Ponytail Ladder) (+3 more)
+
+### Community 178 - "lifecycle.ts"
+Cohesion: 0.12
+Nodes (17): CreateDatabaseBackupInput, CreateDatabaseBackupSchema, DatabaseBackupInfo, DatabaseHealthStatus, GetWorktreeHealthInput, GetWorktreeHealthSchema, RecoverCorruptedDatabaseInput, RecoverCorruptedDatabaseSchema (+9 more)
 
 ### Community 179 - "Architectural Decision Record (ADR)"
 Cohesion: 0.20
@@ -1060,8 +1080,8 @@ Cohesion: 0.20
 Nodes (9): 1. Executive Summary, 2. Technical Verification of the Chromium / Electron Pipeline, 3. Implementation Code Diffs, 4. Empirical Pixel & Color Measurements, 5. Visual Evidence (Real Windows 11 Desktop Screenshots), 6. Independent QA Scoring (`visual-verdict` 6-Dimension Score), A. Material Tokens & Rules in [`src/renderer/src/index.css`](file:///C:/Users/gonca/OneDrive/Documents/Projects/Orbito/Orbito/src/renderer/src/index.css), B. Component Wiring in [`TerminalWorkspace.tsx`](file:///C:/Users/gonca/OneDrive/Documents/Projects/Orbito/Orbito/src/renderer/src/components/TerminalWorkspace.tsx) & [`CodeEditor.tsx`](file:///C:/Users/gonca/OneDrive/Documents/Projects/Orbito/Orbito/src/renderer/src/components/CodeEditor.tsx) (+1 more)
 
 ### Community 184 - "extensions.ts"
-Cohesion: 0.14
-Nodes (19): 5.2 SDK and Example Plugin Status, RFC-1918, ExtensionHostWorker, ExtensionContext, ExtensionContributions, ExtensionContributionSchema, ExtensionHostRpcMessage, ExtensionManifest (+11 more)
+Cohesion: 0.21
+Nodes (11): 5.2 SDK and Example Plugin Status, RFC-1918, ExtensionHostWorker, OSSandboxSpawnOptions, ExtensionContext, ExtensionHostRpcMessage, ExtensionManifest, ExtensionPermissions (+3 more)
 
 ### Community 185 - "2. The Four Quality Gates"
 Cohesion: 0.22
@@ -1115,9 +1135,9 @@ Nodes (8): 1. Deep Layer Diagnosis: Why the Interface Looked Opaque, 2.1 CSS Lay
 Cohesion: 0.22
 Nodes (8): 1. Root Cause Analysis & Bug Fixes, 2. Darker Obsidian Color Calibration & Increased Transparency, 3. Empirical Measurements on Windows 11 Desktop, 4. Visual Evidence Manifest, 5. Acceptance Criteria Checklist, Bug: Background Starts Semi-Transparent and Suddenly Turns Solid, Executive Summary, Orbito — Phase 4: Glassmorphism Material Polish & Bugfix Report
 
-### Community 198 - "main/index.ts"
-Cohesion: 0.08
-Nodes (31): electron, @xhayper/discord-rpc, electronExecutable, path, result, { spawnSync }, vitestArgs, vitestEntry (+23 more)
+### Community 198 - "skill-resolver.ts"
+Cohesion: 0.27
+Nodes (6): 2.3 P1 (CRIT-03) — Interactive AI Execution Context & Skills Wiring, checkPortOpen(), SKILL_RULES, SkillKeywordsRule, SkillResolver, SkillResolutionResult
 
 ### Community 199 - "AI Workspace — Project Context & Engineering Architecture"
 Cohesion: 0.22
@@ -1144,8 +1164,8 @@ Cohesion: 0.12
 Nodes (16): 1. Identity & Operating Philosophy, 2. Specialist Roster & Domain Mapping, 3. Dynamic Delegation Protocol, 4. Parallel Wave Execution & Barrier Synchronization, 5. Proactive Usage Patterns, 6. Standard Delegation Brief Contract, A. Software Engineering & Infrastructure, B. Architecture, Quality & Security (+8 more)
 
 ### Community 205 - "os-sandbox-policy.ts"
-Cohesion: 0.09
-Nodes (13): 1. Executive Summary, 2.1 Backpressured Stream Manager (`BackpressuredPtyStream`), 2.2 Hardened Windows Tree Termination (`terminateProcessTree`), 2.3 Proposed IPC Channel Additions, 2. Key Architecture Deliverables & Specifications, 3. Boundary Verification Evidence, Formal Task Handoff: ORB-BACK-002, Sub-Agent Delegations: (+5 more)
+Cohesion: 0.12
+Nodes (9): 1. Executive Summary, 2.1 Backpressured Stream Manager (`BackpressuredPtyStream`), 2.2 Hardened Windows Tree Termination (`terminateProcessTree`), 2.3 Proposed IPC Channel Additions, 2. Key Architecture Deliverables & Specifications, 3. Boundary Verification Evidence, Formal Task Handoff: ORB-BACK-002, Sub-Agent Delegations: (+1 more)
 
 ### Community 206 - "Formal Task Handoff: ORB-FRONT-002"
 Cohesion: 0.25
@@ -1172,16 +1192,16 @@ Cohesion: 0.25
 Nodes (7): 1. Overview & Vision, 2.1 Central Infinite Canvas, 2.2 Node Library, 2.3 Dual Experience: Simple Mode vs. Advanced Mode, 2. Interface Topology & Visual Components, 4. Built-in Production Templates, Flow Builder Architecture & User Experience — AI Workspace
 
 ### Community 212 - "6. CLI Engine Architecture & Robust Integration"
-Cohesion: 0.33
-Nodes (6): 6.1 Unified Adapter Interface (`ICLIAdapter`), 6.2 Provider Capability & Reality Matrix, 6.4 Stream Parser Architecture & Deduplication, 6.5 Process Lifecycle & Clean Tree Termination, 6.6 Session Management & Local Persistence, 6. CLI Engine Architecture & Robust Integration
+Cohesion: 0.29
+Nodes (7): 6.1 Unified Adapter Interface (`ICLIAdapter`), 6.2 Provider Capability & Reality Matrix, 6.3 Seven Normalized Authentication States, 6.4 Stream Parser Architecture & Deduplication, 6.5 Process Lifecycle & Clean Tree Termination, 6.6 Session Management & Local Persistence, 6. CLI Engine Architecture & Robust Integration
 
 ### Community 213 - "Phase 5: Material Reliability & DWM Stability Report"
 Cohesion: 0.25
 Nodes (7): 1. Executive Summary, 2. Root Cause Analysis, 3. Implementation Details, 4. Empirical Verification (5-Launch Automated Test Suite), Conflict: `transparent: true` vs Native DWM `backgroundMaterial`, Phase 5: Material Reliability & DWM Stability Report, Upstream Confirmation:
 
 ### Community 214 - "ptyService"
-Cohesion: 0.20
-Nodes (6): 1. Context & Problem Statement, 2. Decision & Cross-Team Architecture, 3. Consequences & Invariants, Architectural Decision Record: ADR-004, Native Terminal Stream Flow-Control & 16ms HUD Architecture, ptyService
+Cohesion: 0.12
+Nodes (13): 1. Context & Problem Statement, 2. Decision & Cross-Team Architecture, 3. Consequences & Invariants, Architectural Decision Record: ADR-004, Native Terminal Stream Flow-Control & 16ms HUD Architecture, electron, createWindow(), gotTheLock (+5 more)
 
 ### Community 215 - "Conflict / Incident Report"
 Cohesion: 0.29
@@ -1323,17 +1343,17 @@ Nodes (5): Integration Execution Steps (Lead Architect with Human Authorization)
 Cohesion: 0.20
 Nodes (3): NodeExecutionRecord, WorkflowExecutionRecord, TEST_DB_DIR
 
-### Community 250 - "Testing Strategy & Quality Assurance Architecture — AI Workspace"
-Cohesion: 0.33
-Nodes (5): 1. Testing Philosophy & Quality Principles, 2. Test Suite Hierarchy, 3. Automated Quality Gates, 4. Empirical Performance Benchmarks Summary, Testing Strategy & Quality Assurance Architecture — AI Workspace
+### Community 250 - "ORBITO — Operational Resilience Certification & Edge-Case Closure"
+Cohesion: 0.12
+Nodes (16): A. Executive Summary, C.1 Canonical Repository Identity, C.2 Ownership & Liveness Semantics, C. Git Multi-Worktree Concurrency & Lock Ownership, Certification Outcome, `CONDITIONALLY CERTIFIED — EXPLICIT LIMITATIONS`, Consolidated Engineering Architecture, Invariant Verification, Edge-Case Hardening & Final Certification Report, E.1 Full State Worktree Snapshots (+8 more)
 
 ### Community 251 - "Orbito — Plugin Developer Guide & CLI Reference"
 Cohesion: 0.33
 Nodes (6): 1. Overview, 2.1 Manifest Specification (`extension.json`), 2. Plugin Anatomy, 3. Orbito CLI Plugin Commands, 4. Example Plugins, Orbito — Plugin Developer Guide & CLI Reference
 
 ### Community 252 - "Centralized Model Context Protocol (MCP) Infrastructure"
-Cohesion: 0.14
-Nodes (13): 1. Overview & Core Objective, 3. Database Schema (`src/main/db/database.service.ts`), 4. Security Architecture & Credential Vault, 5. Agent Delivery & Universal CLI Bridge, 6. User Experience & Design Compliance, Authorization & Scope Boundaries (`src/main/mcp/security/mcp-permission-manager.ts`), Centralized Model Context Protocol (MCP) Infrastructure, Fail-Closed OS Keychain Encryption (+5 more)
+Cohesion: 0.12
+Nodes (16): 1. Overview & Core Objective, 2. Shared Data Models & Contracts (`src/shared/mcp.ts`), 3. Database Schema (`src/main/db/database.service.ts`), 4. Security Architecture & Credential Vault, 5. Agent Delivery & Universal CLI Bridge, 6. User Experience & Design Compliance, Authorization & Scope Boundaries (`src/main/mcp/security/mcp-permission-manager.ts`), Centralized Model Context Protocol (MCP) Infrastructure (+8 more)
 
 ### Community 253 - "Orbito Multi-Agent Engineering Roster"
 Cohesion: 0.40
@@ -1360,28 +1380,28 @@ Cohesion: 0.40
 Nodes (4): Handoff Preparation, Purpose, Specialist Pre-Submission Checklist, Workflow: Specialist Handoff Submission
 
 ### Community 259 - "App.tsx"
-Cohesion: 0.10
-Nodes (15): App(), AppLoadingScreen(), AppLoadingScreenProps, BottomStatusBar(), ErrorBoundary, Props, State, ResourceManagerPopover() (+7 more)
+Cohesion: 0.09
+Nodes (17): App(), AppLoadingScreen(), AppLoadingScreenProps, BottomStatusBar(), ErrorBoundary, Props, State, ResourceManagerPopover() (+9 more)
 
 ### Community 260 - "Strict Invariant: Zero White Borders (Anti-Boxiness & Clean Layout)"
 Cohesion: 0.50
 Nodes (3): Detailed Standards, Strict Invariant: Zero White Borders (Anti-Boxiness & Clean Layout), The Rule
 
 ### Community 261 - "design_system.py"
-Cohesion: 0.10
-Nodes (10): ansi_ljust(), _detect_page_type(), format_ascii_box(), format_master_md(), format_page_override_md(), _generate_intelligent_overrides(), hex_to_ansi(), persist_design_system() (+2 more)
+Cohesion: 0.09
+Nodes (13): ansi_ljust(), _detect_page_type(), format_ascii_box(), format_markdown(), format_master_md(), format_page_override_md(), generate_design_system(), _generate_intelligent_overrides() (+5 more)
 
 ### Community 262 - "Workflow: Distributed Multi-Worktree Orchestration"
 Cohesion: 0.13
 Nodes (14): 1. Overview & Architectural Hierarchy, 2. Phase 2 — MAIN Central Orchestrator Responsibilities, 3. Phase 4 — The 5-Level Hierarchical Delegation Protocol, 4. Phase 5 — Parallel Execution Engine & Barrier Synchronization, 5. Phase 6 — Inter-Team Communication Protocols, 6. Phase 7 & 8 — Resource Optimization & Daily Operating Defaults, Barrier Sync Rules:, Level 1: MAIN Task Dispatch (+6 more)
 
 ### Community 263 - "AgentScheduler"
-Cohesion: 0.13
-Nodes (9): 1. Architecture & Operating Lifecycle, 3. Developer CLI Integration (`bin/orbito.js`), 4. Verification Evidence, Executive Summary, Orbito — Autonomous Engineering Intelligence Implementation Report, Test Suites Executed, agentOrchestrator, AgentScheduler (+1 more)
+Cohesion: 0.19
+Nodes (3): agentOrchestrator, AgentScheduler, OrchestrationEvent
 
 ### Community 265 - "HelpAndResourcesMenu.tsx"
-Cohesion: 0.39
-Nodes (8): DiscordIcon(), FeedbackModal(), GithubIcon(), HelpAndResourcesMenu(), ModalProps, OnboardingModal(), WhatsNewModal(), XIcon()
+Cohesion: 0.16
+Nodes (14): react-dom, DiscordIcon(), FeedbackModal(), GithubIcon(), HelpAndResourcesMenu(), ModalProps, OnboardingModal(), WhatsNewModal() (+6 more)
 
 ### Community 266 - "traceService"
 Cohesion: 0.24
@@ -1392,24 +1412,24 @@ Cohesion: 0.39
 Nodes (3): workflowTriggerManager, WorkflowRecord, WorkflowTriggerConfig
 
 ### Community 269 - "agent-worker.ts"
-Cohesion: 0.13
-Nodes (17): 9. Implemented Component Inventory, 9. End-to-End Integration Findings, Workflow 1 — Project to AI Execution, Workflow 2 — Multi-Agent Execution, Workflow 3 — File Changes, Workflow 4 — Restart Recovery, Workflow 5 — Skills and Context, 2. Core Subsystems & Technical Implementation (+9 more)
+Cohesion: 0.14
+Nodes (16): 9. Implemented Component Inventory, 9. End-to-End Integration Findings, Workflow 1 — Project to AI Execution, Workflow 2 — Multi-Agent Execution, Workflow 3 — File Changes, Workflow 4 — Restart Recovery, Workflow 5 — Skills and Context, C. Extended Task State Lifecycle (`AgentScheduler` & `AgentWorker`) (+8 more)
 
 ### Community 271 - "2. Implemented Subsystems & Services"
 Cohesion: 0.29
-Nodes (6): 2.11 Immutable Enterprise Audit Logging, 2.1 Repository & Technology Stack Discovery (`ProjectDiscoveryService`), 2.3 Git & Worktree Intelligence (`GitIntelligenceService`), 2.4 Evidence-Based Project Health Engine (`ProjectHealthService`), 2.5 Persistent Knowledge Base (`databaseService` Migration 007), 2. Implemented Subsystems & Services
+Nodes (7): 2.1 Repository & Technology Stack Discovery (`ProjectDiscoveryService`), 2.3 Git & Worktree Intelligence (`GitIntelligenceService`), 2.4 Evidence-Based Project Health Engine (`ProjectHealthService`), 2.5 Persistent Knowledge Base (`databaseService` Migration 007), 2.6 Adaptive Role Context Assembly (`RoleContextAssemblerService`), 2.7 Background Updates & File Watcher Integration, 2. Implemented Subsystems & Services
 
 ### Community 273 - "2.3 Logic Nodes"
-Cohesion: 0.29
-Nodes (7): 12. `condition`, 13. `switch`, 14. `merge`, 15. `loop`, 16. `delay`, 17. `parallel`, 2.3 Logic Nodes
+Cohesion: 0.18
+Nodes (10): 12. `condition`, 13. `switch`, 14. `merge`, 15. `loop`, 16. `delay`, 17. `parallel`, 1. Category Summary, 2.3 Logic Nodes (+2 more)
 
 ### Community 274 - "Software Architecture Specialist"
 Cohesion: 0.33
 Nodes (5): 1. Identity & Expertise, 2. Core Responsibilities, 3. Strict Operating Rules & Boundaries, 4. Expected Inputs & Outputs, Software Architecture Specialist
 
-### Community 275 - "Product & Engineering Roadmap — AI Workspace"
-Cohesion: 0.22
-Nodes (9): 1. Roadmap Overview & Strategic Phases, 2. Phase Execution Status & Work Packages, 3.1 Cross-Platform Matrix, 3.2 Mandatory Functional & Security Gates (Release Blockers), 3.3 Empirical Performance Targets (Reference Hardware: 4C/8T, 16GB RAM, NVMe), 3. Objective Acceptance Tests for Phase 1, 4. Technical Risk Register, 5. Summary of Roadmap Phases (Phases 2 to 7) (+1 more)
+### Community 275 - "workspace.service.ts"
+Cohesion: 0.17
+Nodes (12): 3.1 Cross-Platform Matrix, 3.2 Mandatory Functional & Security Gates (Release Blockers), 3.3 Empirical Performance Targets (Reference Hardware: 4C/8T, 16GB RAM, NVMe), 3. Objective Acceptance Tests for Phase 1, securityService, SecurityViolationException, DEFAULT_IGNORED_DIRS, PermissionLevel (+4 more)
 
 ### Community 276 - "Critical Thinking & Problem-Solving Specialist"
 Cohesion: 0.33
@@ -1431,17 +1451,17 @@ Nodes (6): cleanSvg(), fs, getIcon(), iconDir, lobehubIcons, path
 Cohesion: 0.40
 Nodes (4): 1. Proactive Trigger Matrix, 2. Dynamic Decision Tree for Incoming Tasks, 3. Recurring Review Protocols, Continuous & Proactive Multi-Agent Orchestration Protocol
 
-### Community 282 - "token-optimization-pipeline.test.ts"
-Cohesion: 0.27
-Nodes (7): 1. Task Classification Matrix, 2. Optimization Modes, 3. Strict Air-Gap Isolation Override, Intelligence Routing & Model Selection, 1.6 Model Routing & Air-Gap Integrity, IntelligenceRouter, ModelRoutingDecision
+### Community 282 - "IntelligenceRouter"
+Cohesion: 0.12
+Nodes (18): 12.1 Canonical Prompt Assembly (`PromptAssemblyService`), 12.2 Progressive Skill Composition (`SkillCompositionService`), 12.3 Multi-Tier Intelligent Caching (`MultiTierCacheService`), 12.4 Intelligent Model & Provider Routing (`IntelligenceRouter`), 12.5 Tool Output Normalization (`ToolOutputNormalizer`), 12. Phase 8 Architecture: Intelligence & Token Optimization Engine, 1. Task Classification Matrix, 2. Optimization Modes (+10 more)
 
 ### Community 283 - "traceService"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (15): 10. Performance Benchmarking & Optimization (Phase 10), 11. Verification & Compliance Summary (Phases 11 & 12), 12. Conclusion, 1. Architectural Architecture & Dependency Map (Phase 1), 2. Centralized Orchestration Layer (Phase 2), 3. Distributed Worktree Management & Master Coordination (Phase 3), 4. Orbito CLI & Core Integration (Phase 4), 7. Developer Experience: Unified Developer Mode & Command Palette (Phase 7) (+7 more)
 
 ### Community 284 - "2.4 Input and Output Nodes"
-Cohesion: 0.18
-Nodes (10): 18. `manual_trigger`, 19. `text_input`, 1. Category Summary, 20. `file_input`, 21. `variable`, 22. `output`, 23. `notification`, 2.4 Input and Output Nodes (+2 more)
+Cohesion: 0.29
+Nodes (7): 18. `manual_trigger`, 19. `text_input`, 20. `file_input`, 21. `variable`, 22. `output`, 23. `notification`, 2.4 Input and Output Nodes
 
 ### Community 285 - "2.1 AI Nodes"
 Cohesion: 0.29
@@ -1487,49 +1507,65 @@ Nodes (9): 1. Executive Summary & Objective, 2.3 CLI Infrastructure & Provider A
 Cohesion: 0.33
 Nodes (6): 4.1 Incremental Indexing & Fast Hashing, 4.2 Handling Unindexed Files, Modified Files & Interrupted Indexing, 4.3 Structural Code Intelligence with Tree-sitter (WASM Runtime), 4.4 Token Optimization & Precise Budgeting, 4.5 Context Inspector UI, 4. Context Engine Reliability & Hybrid Retrieval
 
-### Community 296 - "Phase 2 Deliverable: Task Intelligence & Capability Evaluation Engines"
-Cohesion: 0.33
-Nodes (5): 1. Overview, 2. Files Created & Modified, 3. Verification, Adaptive Intelligence Task Analysis & Capability Report, Phase 2 Deliverable: Task Intelligence & Capability Evaluation Engines
+### Community 296 - "ORBITO — Production Hardening & Operational Resilience"
+Cohesion: 0.12
+Nodes (16): 1. Executive Summary & Verification Taxonomy, 2. Architectural Governance & Single-Authority Principle, 3. Architecture Audit & Existing Subsystem Integration, 4.1 Process & Application Lifecycle Reliability, 4.3 Git & Worktree Concurrency Safety, 4.4 Agent Execution Reliability & Transient Backpressure, 4.5 Resource Governor & Memory Backpressure, 4. Subsystem Hardening Implementations (+8 more)
 
 ### Community 297 - "Autonomous Development Mission Report: AI Workspace"
-Cohesion: 0.15
-Nodes (12): 1. Engine Architecture & Components, 2. Built-in Skills Catalog, 3. Empirical Scale Benchmarks, 3. Skills Manager UI, Automated Quality Gates, Autonomous Development Mission Report: AI Workspace, B. Phase 3 Audit & Technical Hardening, C. Phase 4 Implementation Details: Skills Engine (+4 more)
+Cohesion: 0.14
+Nodes (13): 1. Engine Architecture & Components, 2. Built-in Skills Catalog, 3. Empirical Scale Benchmarks, 3. Skills Manager UI, A. Executive Summary, Automated Quality Gates, Autonomous Development Mission Report: AI Workspace, B. Phase 3 Audit & Technical Hardening (+5 more)
 
-### Community 298 - "ExtensionHostWorker"
-Cohesion: 0.27
-Nodes (3): RFC-1918, ExtensionHostWorker, path
+### Community 298 - ".checkTaskFileConflicts"
+Cohesion: 0.14
+Nodes (12): 6. Intelligent Task Distribution (Phase 6), 1. Architecture & Operating Lifecycle, 2. Core Subsystems & Technical Implementation, 3. Developer CLI Integration (`bin/orbito.js`), 4. Verification Evidence, A. Autonomous Task Understanding (`TaskIntelligenceEngine`), D. Intelligent Worktree Orchestration & Collision Prevention (`WorktreeManager`), E. Persistent Engineering Memory (`DatabaseService` Migration 008) (+4 more)
 
 ### Community 299 - "MCPServersPage.tsx"
-Cohesion: 0.43
-Nodes (5): AddEditMCPServerModal(), AddEditMCPServerModalProps, formatRelativeTime(), MCPServersPage(), MCPServerTestResult
+Cohesion: 0.53
+Nodes (4): AddEditMCPServerModal(), AddEditMCPServerModalProps, formatRelativeTime(), MCPServersPage()
 
 ### Community 300 - "Extension Isolation Security Remediation Report: Replacing node:vm with Process-Level Isolation"
 Cohesion: 0.10
 Nodes (20): 1.1 The Vulnerability of `node:vm`, 1.2 Remediated Architecture, 1. Executive Summary & Root Cause Analysis, 3.1 Child Process Isolation Boundaries, 3. Process-Level Isolation Architecture, 4.1 Capability Specification, 4.2 Server-Side Authorization Rules in Main Process, 4. Capability-Based Extension API (+12 more)
 
-### Community 302 - "15. Prioritized Remediation Roadmap"
-Cohesion: 0.40
-Nodes (5): 15. Prioritized Remediation Roadmap, P0 — Critical (Security & Blocker Fixes), P1 — High (Core Integration Gaps & Test Infrastructure), P2 — Medium (Usability & Mock Removal), P3 — Low (Polish & Optimization)
-
-### Community 304 - "AirGapViolationException"
+### Community 301 - "project-execution.service.ts"
 Cohesion: 0.16
-Nodes (11): 11.1 Local Model & Air-Gap Isolation Engine, 11.2 Custom Extension SDK & Sandboxed Lifecycle Engine, 11.3 Advanced Analytics, Cost Attribution & Enterprise Audit, 11. Phase 7 Architecture: Ecosystem, Air-Gap & Enterprise Hardening, ADR-015: Local Model (Ollama) Air-Gap Isolation Architecture, 2. Security Audit Summary, 1.1 Architecture & Enforced Controls, 1.2 Loopback Allowlisting Verification (+3 more)
+Nodes (6): execFileAsync, ExecutionSnapshot, projectExecutionService, ExecutionFileChange, FileChangeType, ProjectExecution
+
+### Community 302 - "worktree-manager.ts"
+Cohesion: 0.17
+Nodes (6): CrossProcessLockData, execFileAsync, OverlapCheckResult, WorktreeInfo, modelEvaluationEngine, QualityEvaluationResult
+
+### Community 304 - "airGapManager"
+Cohesion: 0.10
+Nodes (20): 11.1 Local Model & Air-Gap Isolation Engine, 11.2 Custom Extension SDK & Sandboxed Lifecycle Engine, 11.3 Advanced Analytics, Cost Attribution & Enterprise Audit, 11. Phase 7 Architecture: Ecosystem, Air-Gap & Enterprise Hardening, ADR-015: Local Model (Ollama) Air-Gap Isolation Architecture, 10. MCP & Provider Recovery, 2. Security Audit Summary, 1.1 Architecture & Enforced Controls (+12 more)
+
+### Community 306 - ".initialize"
+Cohesion: 0.10
+Nodes (10): 5.1 Two-Step Candidate Restore Workflow, 5.2 Partial Data Salvage Protocol, 5. Database Disaster Recovery & Data Integrity, 4.2 SQLite Database Integrity & Point-in-Time Recovery, 2.1 Development vs. Production Startup, 2.2 Database Initialization & Migrations, 2.4 Missing or Corrupted Configuration & Missing Project Directories, 2. Application Startup & Runtime Lifecycle Results (+2 more)
 
 ### Community 307 - "1. Audit Findings & Implemented Hardening"
 Cohesion: 0.20
 Nodes (8): 1.1 Tokenizer Accuracy & Model-Aware Evaluation, 1. Audit Findings & Implemented Hardening, 2. Unbundled Optimization Metrics: Disaggregating the 67.7% Claim, 3. Verification & Test Suite Summary, 4. Release Readiness Conclusion, AI Workspace — Phase 8.1: Intelligence Validation & Optimization Hardening Report, Executive Summary, Summary of Disaggregated Measurement:
 
+### Community 308 - "Centralized MCP Infrastructure — Automated End-to-End Operational Validation Report"
+Cohesion: 0.18
+Nodes (10): 1. Executive Summary, 2. Test Execution & Evidence Matrix, 3.1. CLI Tooling & Binary Compatibility, 3.2. Real MCP Protocol & Gateway Execution, 3.3. Security & Keychain Verification, 3.4. External AI Coding Agent Status, 3. Detailed Operational Findings, 4. Verification Suite Summary (+2 more)
+
+### Community 310 - "persistent-workspace-phase4.test.ts"
+Cohesion: 0.18
+Nodes (5): GetProjectWorkspaceStateSchema, SaveAppLayoutSchema, SaveProjectWorkspaceStateSchema, UpdateSettingsSchema, dbTables
+
 ### Community 311 - "workspaceService"
-Cohesion: 0.15
-Nodes (5): 14. Critical Issues (Root Causes), 4. Feature Status Matrix, workspaceService, AppLayoutConfig, ProjectWorkspaceState
+Cohesion: 0.14
+Nodes (6): 12. UI and UX Findings, 14. Critical Issues (Root Causes), 4. Feature Status Matrix, execFileAsync, workspaceService, AppLayoutConfig
 
 ### Community 312 - "Orbito — Project Intelligence Engine Implementation Report"
 Cohesion: 0.18
 Nodes (10): 1. Architectural Design & Operating Model, 3.1 Desktop User Interface (`ProjectIntelligenceView.tsx`), 3.2 CLI Commands (`bin/orbito.js`), 3. Desktop Experience & CLI Integration, 4. Verification Evidence Matrix, 6. Performance Observations & Resource Controls, 7. Known Limitations & Upgrade Paths, 8. Conclusion (+2 more)
 
 ### Community 313 - "analytics.service.ts"
-Cohesion: 0.21
-Nodes (5): Token Analytics & Accounting, analyticsService, AnalyticsEvent, AnalyticsSummary, ProviderCostMetrics
+Cohesion: 0.15
+Nodes (11): ADR-017: Multi-Tier Token Rate Cards, Heuristic Attribution & SQLite Audit Logging, zod, analyticsService, AirGapConfigSchema, AnalyticsEvent, AnalyticsFeature, AnalyticsStatus, AnalyticsSummary (+3 more)
 
 ### Community 314 - "ClaudeStreamParser"
 Cohesion: 0.33
@@ -1539,57 +1575,89 @@ Nodes (6): 1. Claude Code (`claude-code.adapter.ts`), 2. OpenAI Codex CLI (`code
 Cohesion: 0.50
 Nodes (3): [0.1.0] — 2026-11-08, Added, Orbito — Changelog & Version History
 
-### Community 316 - "7. Performance Engineering & Empirical Validation"
-Cohesion: 0.50
-Nodes (4): 7.1 Reference Hardware Baseline, 7.2 Separation of Mandatory Requirements vs. Empirical Targets, 7.3 Memory Metrics Distinction: Heap vs. Total Resident Set Size (RSS), 7. Performance Engineering & Empirical Validation
+### Community 316 - "manifest-validator.ts"
+Cohesion: 0.36
+Nodes (5): ManifestValidator, ValidationResult, SkillsCapability, SkillManifest, SkillManifestSchema
+
+### Community 317 - "Core Optimization Mechanisms"
+Cohesion: 0.22
+Nodes (8): 1. Semantic Whitespace & Formatting Compression, 2. Progressive Skill Loading (3 Levels), 3. Cross-Section Deduplication, Core Optimization Mechanisms, Overview, Token Analytics & Accounting, Token Optimization Engine — AI Workspace, Token Reduction Architecture
 
 ### Community 318 - "CodexStreamParser"
 Cohesion: 0.40
 Nodes (3): 3. Provider Integration Validation (Real Host vs. Mock Status), Capability & Integration Paths Verified:, CodexStreamParser
 
-### Community 321 - "intelligence.ts"
-Cohesion: 0.13
-Nodes (16): js-tiktoken, MODEL_WINDOW_CONFIGS, ModelWindowConfig, TokenCountConfidence, TokenCountMethod, TokenCountResult, TokenEvaluationResult, PromptAssemblyOptions (+8 more)
+### Community 321 - "adaptive-model-router.ts"
+Cohesion: 0.09
+Nodes (26): 1. Overview, 2. Files Created & Modified, 3. Verification, Phase 3 Deliverable: Adaptive Model Router, adaptiveModelRouter, RouteOperationOptions, CapabilityMatchResult, modelCapabilityEngine (+18 more)
 
-### Community 322 - "airGapManager"
-Cohesion: 0.19
-Nodes (7): 1. Original Phase 7 Objectives & Work Packages, Core Files Updated for Phase 7 Integration, airGapManager, ExtensionsManager(), AirGapConfig, registerCustomNode(), unregisterCustomNode()
+### Community 325 - "9. Multi-Agent Orchestration Architecture (Phase 5 Completed)"
+Cohesion: 0.33
+Nodes (6): 9.1 Orchestration Subsystem Structure, 9.2 Specialized Agent Personas & Skill Bindings, 9.3 Git Worktree Isolation & Lifecycle (`WorktreeManager`), 9.4 State Persistence & Crash Recovery (`databaseService`), 9.5 Agents Workspace UI (`AgentsWorkspace.tsx`), 9. Multi-Agent Orchestration Architecture (Phase 5 Completed)
 
 ### Community 326 - "multiModelCollaborationManager"
 Cohesion: 0.17
 Nodes (6): 1. Overview, 2. Files Created & Modified, 3. Verification, Multi-Model Collaboration Implementation Report, Phase 7 Deliverable: Cross-Model Review, Competition & Consensus, multiModelCollaborationManager
 
+### Community 327 - "Phase 5 Deliverable: Deterministic Evaluation & Cost Engine"
+Cohesion: 0.33
+Nodes (5): 1. Overview, 2. Files Created & Modified, 3. Verification, Adaptive Evaluation & Cost Intelligence Implementation Report, Phase 5 Deliverable: Deterministic Evaluation & Cost Engine
+
 ### Community 328 - "OrchestrationRecord"
-Cohesion: 0.13
-Nodes (5): 2.1 Core Architecture & Shared Contracts, 2.4 P1 (CRIT-04) — SQLite CLI Session Recovery on Startup, OrchestrationRecord, CLISessionMessage, CLISessionRecord
+Cohesion: 0.12
+Nodes (4): 2.1 Core Architecture & Shared Contracts, OrchestrationRecord, CLISessionMessage, CLISessionRecord
 
-### Community 329 - "10. Visual Automation & Flow Builder Architecture (Phase 6 Completed)"
+### Community 330 - "Token Optimization Benchmarks & Quality Evaluation"
+Cohesion: 0.40
+Nodes (5): Benchmark Overview, Benchmark Results Summary, Disaggregated Optimization Categories (Phase 8.1 Unbundled Metrics), Performance Footprint, Token Optimization Benchmarks & Quality Evaluation
+
+### Community 332 - "10. Complete Test Suite Execution Results"
+Cohesion: 0.67
+Nodes (3): 10. Complete Test Suite Execution Results, Key Test File Highlights:, Overall Metrics:
+
+### Community 334 - "3. SQLite Architecture & Worker Thread Concurrency"
 Cohesion: 0.50
-Nodes (4): 10.1 System Architecture, 10.2 Node Architecture & Categories, 10.3 Execution Semantics & Data Mapping, 10. Visual Automation & Flow Builder Architecture (Phase 6 Completed)
+Nodes (4): 3.1 Split Database Architecture: `app.sqlite` vs `index.sqlite`, 3.2 WAL Configuration, Transactions & Concurrency Control, 3.3 Transaction Batching & Crash Recovery, 3. SQLite Architecture & Worker Thread Concurrency
 
-### Community 332 - "Phase 6.1: Security Verification & Integration Validation Report"
-Cohesion: 0.13
-Nodes (13): 10. Complete Test Suite Execution Results, 11.1 TypeScript Compilation (`npm run typecheck`), 11.2 Production Electron Build (`npm run build`), 11. Typecheck & Production Build Verification, 13. Protected File & Repository Safety Confirmation, 14. Conclusion & Readiness, 4. Documented Architectural Limitations, 5. Permission Tier Adversarial Test Results (+5 more)
+### Community 335 - "D. SQLite Database Salvage, Integrity & Rollback"
+Cohesion: 0.50
+Nodes (4): D.1 Complete Schema-Aware Salvage, D.2 Non-Destructive WAL/SHM Quarantine, D.3 Detailed Row-Level Accounting, D. SQLite Database Salvage, Integrity & Rollback
+
+### Community 337 - "4. Core User Journey Validation"
+Cohesion: 0.50
+Nodes (4): 4.3 AI Execution, Context & Skills (Journey C), 4.4 Multi-Agent Orchestration (Journey D), 4.5 Persistence & Layout Recovery (Journey E), 4. Core User Journey Validation
+
+### Community 338 - "skill-execution-engine.ts"
+Cohesion: 0.67
+Nodes (3): ExecuteSkillOptions, SkillExecutionResult, WorkspacePermissionTier
+
+### Community 339 - "F. Universal IPC Security & Origin Architecture"
+Cohesion: 0.67
+Nodes (3): F.1 Universal Interception & Frame Validation, F.2 Channel Inventory & Classification Summary, F. Universal IPC Security & Origin Architecture
+
+### Community 341 - "11. Typecheck & Production Build Verification"
+Cohesion: 0.67
+Nodes (3): 11.1 TypeScript Compilation (`npm run typecheck`), 11.2 Production Electron Build (`npm run build`), 11. Typecheck & Production Build Verification
 
 ## Knowledge Gaps
 - **18 isolated node(s):** `@lobehub/icons-static-svg`, `clsx`, `drizzle-orm`, `tailwind-merge`, `tree-sitter-wasms` (+13 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2590 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2701 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `databaseService` connect `databaseService` to `database.service.ts`, `workflow-engine.ts`, `Primary Engineering Outcomes`, `CLIProvider`, `register.ts`, `ExtensionRecord`, `traceService`, `WorkflowRecord`, `agent-worker.ts`, `mcp.ts`, `2. Itemized Verification of Defects & Implemented Fixes`, `WorktreeManager`, `ast-parser.service.ts`, `context-engine.service.ts`, `ProjectExecution`, `workspace.store.ts`, `.initialize`, `Primary Engineering Outcomes`, `Phase 7 Completion Report: Ecosystem & Enterprise Hardening`, `workspaceService`, `analytics.service.ts`, `MemoryRecord`, `WorkspaceConfig`, `mcpRuntime`, `airGapManager`, `execution-engine.ts`, `main/index.ts`, `OrchestrationRecord`, `project-intelligence.ts`, `Full Integration & Reliability Audit — AI Workspace (Phase 5)`, `MCPServerConfig`, `agent-orchestrator.ts`, `.getIndexDb`, `WorkflowExecutionRecord`?**
-  _High betweenness centrality (0.053) - this node is a cross-community bridge._
-- **Are the 5 inferred relationships involving `databaseService` (e.g. with `14. Critical Issues (Root Causes)` and `Root Cause of Test Failures:`) actually correct?**
-  _`databaseService` has 5 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `databaseService` connect `databaseService` to `discord-rpc.service.ts`, `database.service.ts`, `ref_node_path`, `CLIProvider`, `CLIProvider`, `Primary Engineering Outcomes`, `workflow-engine.ts`, `executionEngine`, `register.ts`, `ExtensionRecord`, `auditService`, `traceService`, `review.ts`, `agent-worker.ts`, `WorkflowRecord`, `.getProject`, `workspace.service.ts`, `WorktreeManager`, `node-executors.ts`, `ast-parser.service.ts`, `context-engine.service.ts`, `.checkTaskFileConflicts`, `project-execution.service.ts`, `airGapManager`, `.initialize`, `Primary Engineering Outcomes`, `adaptive-model-router.ts`, `workspaceService`, `persistent-workspace-phase4.test.ts`, `analytics.service.ts`, `MemoryRecord`, `WorkspaceConfig`, `skill-registry.ts`, `skill-resolver.ts`, `OrchestrationRecord`, `AnalysisRunRecord`, `Full Integration & Reliability Audit — AI Workspace (Phase 5)`, `ProjectWorkspaceState`, `2. Repository Audit Findings (Phases 1–6)`, `MCPServerConfig`, `skill-execution-engine.ts`, `ptyService`, `git-providers.service.ts`, `agent-orchestrator.ts`, `SecretRedactor`, `WorkflowExecutionRecord`, `ORBITO — Operational Resilience Gap Closure & Recovery Validation`?**
+  _High betweenness centrality (0.068) - this node is a cross-community bridge._
+- **Are the 9 inferred relationships involving `databaseService` (e.g. with `14. Critical Issues (Root Causes)` and `Root Cause of Test Failures:`) actually correct?**
+  _`databaseService` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@lobehub/icons-static-svg`, `clsx`, `drizzle-orm` to the rest of the system?**
   _18 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Discord Rich Presence Integration Report — Orbito` be split into smaller, more focused modules?**
-  _Cohesion score 0.08771929824561403 - nodes in this community are weakly interconnected._
-- **Why does `WorktreeManager` connect `WorktreeManager` to `ORBITO — Full Project Architecture & Multi-Agent Readiness Audit`, `database.service.ts`, `System Architecture Specification — AI Workspace`, `AgentScheduler`, `register.ts`, `Multi-Agent Orchestration Architecture & Implementation — AI Workspace`, `agent-worker.ts`, `agent-orchestrator.ts`, `MCPServerConfig`, `Primary Engineering Outcomes`, `workspaceService`?**
-  _High betweenness centrality (0.050) - this node is a cross-community bridge._
+- **Should `discord-rpc.service.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.08 - nodes in this community are weakly interconnected._
+- **Why does `WorktreeManager` connect `WorktreeManager` to `ORBITO — Full Project Architecture & Multi-Agent Readiness Audit`, `ref_node_path`, `.executeTask`, `9. Multi-Agent Orchestration Architecture (Phase 5 Completed)`, `ORBITO — Production Hardening & Operational Resilience`, `Multi-Agent Orchestration Architecture & Implementation — AI Workspace`, `.checkTaskFileConflicts`, `register.ts`, `agent-worker.ts`, `agent-orchestrator.ts`, `worktree-manager.ts`, `project-execution.service.ts`, `4. Core User Journey Validation`, `MCPServerConfig`, `workspace.service.ts`, `Primary Engineering Outcomes`, `workspaceService`, `ORBITO — Operational Resilience Gap Closure & Recovery Validation`?**
+  _High betweenness centrality (0.051) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `IElectronAPI` (e.g. with `A. Application Foundation` and `Test B — Architecture (IPC Communication & Process Boundaries)`) actually correct?**
   _`IElectronAPI` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **Should `TerminalWorkspace.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.10846560846560846 - nodes in this community are weakly interconnected._
+- **Should `database.service.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.05900990099009901 - nodes in this community are weakly interconnected._
